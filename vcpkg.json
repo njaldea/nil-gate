@@ -1,0 +1,17 @@
+{
+    "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+    "description": "",
+    "name": "nil-gate",
+    "builtin-baseline": "da21e45c9ae689f63aa27f3a4ee0e64fe6b16494",
+    "features": {
+        "test": {
+            "description": "Enable tests",
+            "dependencies": [
+                {
+                    "name": "gtest",
+                    "version>=": "1.13.0"
+                }
+            ]
+        }
+    }
+}
