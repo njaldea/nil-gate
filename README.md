@@ -221,7 +221,7 @@ int main()
 
 ### Special Arguments
 
-If the 1nd argument is `const nil::gate::Core&`, the `Core` owner will be passed to it.
+If the 1st argument is `const nil::gate::Core&`, the `Core` owner will be passed to it.
 
 This can be useful when using async edges.
 
@@ -707,7 +707,6 @@ These are the errors detected with similar error message:
 
 ## TODO
 
-- allow parallelized execution of nodes
 - allow a way to disregard node state
     - force execution
 - connect two edges together without creating a node
