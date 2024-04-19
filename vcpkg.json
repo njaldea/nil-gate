@@ -4,6 +4,19 @@
     "name": "nil-gate",
     "builtin-baseline": "da21e45c9ae689f63aa27f3a4ee0e64fe6b16494",
     "features": {
+        "sandbox": {
+            "description": "Enable sandboxes",
+            "dependencies": [
+                {
+                    "name": "nil-clix",
+                    "version>=": "0.0.1"
+                },
+                {
+                    "name": "boost-asio",
+                    "version>=": "1.82.0"
+                }
+            ]
+        },
         "test": {
             "description": "Enable tests",
             "dependencies": [
