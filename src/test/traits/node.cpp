@@ -141,8 +141,8 @@ TEST(gate, traits_sync_output)
             std::unique_ptr<const int>,
             std::shared_ptr<const int>,
             std::optional<const int>>;
-        ASSERT_TRUE((std::is_same_v<type::sync_outputs::type, expected_t>));
-        ASSERT_TRUE((std::is_same_v<type::outputs::type, expected_t>));
+        ASSERT_TRUE((std::is_same_v<expected_t, type::sync_outputs::type>));
+        ASSERT_TRUE((std::is_same_v<expected_t, type::outputs::type>));
 
         ASSERT_TRUE(type::is_valid);
         ASSERT_FALSE(type::has_async);
@@ -189,8 +189,8 @@ TEST(gate, traits_async_output)
             std::unique_ptr<const int>,
             std::shared_ptr<const int>,
             std::optional<const int>>;
-        ASSERT_TRUE((std::is_same_v<type::async_outputs::type, expected_t>));
-        ASSERT_TRUE((std::is_same_v<type::outputs::type, expected_t>));
+        ASSERT_TRUE((std::is_same_v<expected_t, type::async_outputs::type>));
+        ASSERT_TRUE((std::is_same_v<expected_t, type::outputs::type>));
 
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::has_async);
@@ -243,8 +243,8 @@ TEST(gate, traits_async_output_with_core)
             std::unique_ptr<const int>,
             std::shared_ptr<const int>,
             std::optional<const int>>;
-        ASSERT_TRUE((std::is_same_v<type::async_outputs::type, expected_t>));
-        ASSERT_TRUE((std::is_same_v<type::outputs::type, expected_t>));
+        ASSERT_TRUE((std::is_same_v<expected_t, type::async_outputs::type>));
+        ASSERT_TRUE((std::is_same_v<expected_t, type::outputs::type>));
 
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::has_async);
@@ -252,8 +252,8 @@ TEST(gate, traits_async_output_with_core)
     }
     { // invalid cases
         using namespace nil::gate;
-        ASSERT_FALSE(SUT<TC<void(nil::gate::Core&, async_outputs<int>)>>::is_valid);
-        ASSERT_FALSE(SUT<TC<void(nil::gate::Core, async_outputs<int>)>>::is_valid);
+        ASSERT_FALSE(SUT<TC<void(async_outputs<int>, nil::gate::Core&)>>::is_valid);
+        ASSERT_FALSE(SUT<TC<void(async_outputs<int>, nil::gate::Core)>>::is_valid);
     }
 }
 

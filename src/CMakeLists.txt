@@ -41,4 +41,5 @@ target_include_directories(
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
+add_test_subdirectory()
 install_for_package(${PROJECT_NAME})
