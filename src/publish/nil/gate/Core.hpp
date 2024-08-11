@@ -179,7 +179,6 @@ namespace nil::gate
         /// starting from this point - edge
 
         template <typename T>
-            requires std::is_same_v<T, std::decay_t<T>>
         auto* edge(T value)
         {
             using type = traits::edgify_t<std::decay_t<T>>;

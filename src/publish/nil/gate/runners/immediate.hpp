@@ -19,11 +19,7 @@ namespace nil::gate::runners
         {
             for (const auto& node : nodes)
             {
-                if (node->is_pending() && node->is_ready())
-                {
-                    node->exec();
-                    node->done();
-                }
+                node->run();
             }
         }
     };

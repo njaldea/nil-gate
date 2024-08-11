@@ -22,6 +22,7 @@ namespace nil::gate
         virtual void exec() = 0;
         virtual void pend() = 0;
         virtual void done() = 0;
+        virtual void run() = 0;
 
         virtual bool is_pending() const = 0;
         virtual bool is_ready() const = 0;

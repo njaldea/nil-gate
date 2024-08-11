@@ -95,6 +95,15 @@ namespace nil::gate::detail
             }
         }
 
+        void run() override
+        {
+            if (is_pending() && is_ready())
+            {
+                exec();
+                done();
+            }
+        }
+
         typename output_t::edges output_edges()
         {
             return output_edges(

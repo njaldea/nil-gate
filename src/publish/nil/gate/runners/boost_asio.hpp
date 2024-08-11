@@ -56,7 +56,10 @@ namespace nil::gate::runners
                 main_context,
                 [this, diffs = std::move(diffs)]() mutable
                 {
-                    all_diffs.emplace_back(std::move(diffs));
+                    if (!diffs.empty())
+                    {
+                        all_diffs.emplace_back(std::move(diffs));
+                    }
                     if (running_list.empty())
                     {
                         for (const auto& dd : std::exchange(all_diffs, {}))

@@ -672,6 +672,23 @@ These are not included from `nil/gate.hpp` and users must opt-in to apply these 
     - If returning a temporary, you should return an object that will own the data (not a reference).
     - If returning a non-reference type, take note that the conversion will be done everytime the node is triggered.
 
+## Runners
+
+When calling `Core::run()` the behavior how the nodes are executed is controlled by a `runner`.
+
+By default, the nodes are ran one after another in the order of how they are registered.
+
+`Core::set_runner` is provided to override this behavior.
+
+The library provides a runner that can run the nodes in parallel. Use this only if you have dependency on boost asio
+
+```cpp
+#include <nil/gate/runners/boost_asio.hpp>
+
+nil::gate::Core core;
+core.set_runner(std::make_unique<nil::gate::runners::Asio>(thread_count));
+```
+
 ## Errors
 
 The library tries its best to provide undestandable error messages as much as possible.
