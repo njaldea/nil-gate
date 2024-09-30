@@ -93,8 +93,6 @@ namespace nil::gate::detail::traits
     template <typename... I>
     struct node_inputs<nil::gate::detail::traits::types<I...>>
     {
-        using sss = nil::gate::detail::traits::types<I...>;
-        using type = nil::gate::detail::traits::types<edgify_t<std::decay_t<I>>...>;
         using edges = nil::gate::inputs<edgify_t<std::decay_t<I>>...>;
         using make_index_sequence = std::make_index_sequence<sizeof...(I)>;
         static constexpr auto size = sizeof...(I);
@@ -107,7 +105,6 @@ namespace nil::gate::detail::traits
     template <typename... S>
     struct node_sync_outputs<nil::gate::detail::traits::types<S...>>
     {
-        using type = nil::gate::detail::traits::types<edgify_t<std::decay_t<S>>...>;
         using edges = std::tuple<nil::gate::edges::ReadOnly<edgify_t<std::decay_t<S>>>*...>;
         using data_edges = std::tuple<detail::edges::Data<edgify_t<std::decay_t<S>>>...>;
         using make_index_sequence = std::make_index_sequence<sizeof...(S)>;
@@ -122,8 +119,6 @@ namespace nil::gate::detail::traits
     template <typename... A>
     struct node_async_outputs<nil::gate::detail::traits::types<A...>>
     {
-        using type = nil::gate::detail::traits::types<edgify_t<std::decay_t<A>>...>;
-        using tuple = std::tuple<edgify_t<std::decay_t<A>>...>;
         using edges = nil::gate::async_outputs<edgify_t<std::decay_t<A>>...>;
         using data_edges = std::tuple<detail::edges::Data<edgify_t<std::decay_t<A>>>...>;
         using make_index_sequence = std::make_index_sequence<sizeof...(A)>;
@@ -139,17 +134,12 @@ namespace nil::gate::detail::traits
         nil::gate::detail::traits::types<S...>,
         nil::gate::detail::traits::types<A...>>
     {
-        using type = nil::gate::detail::traits::types<
-            edgify_t<std::decay_t<S>>...,
-            edgify_t<std::decay_t<A>>... //
-            >;
+        using sync_t = nil::gate::sync_outputs<edgify_t<std::decay_t<S>>...>;
+        using async_t = nil::gate::async_outputs<edgify_t<std::decay_t<A>>...>;
         using edges = std::conditional_t<
             sizeof...(S) + sizeof...(A) == 0,
             void,
-            nil::gate::outputs<
-                nil::gate::sync_outputs<edgify_t<std::decay_t<S>>...>,
-                nil::gate::async_outputs<edgify_t<std::decay_t<A>>...>> //
-            >;
+            nil::gate::outputs<sync_t, async_t>>;
         using make_index_sequence = std::make_index_sequence<sizeof...(S) + sizeof...(A)>;
         static constexpr auto size = sizeof...(S) + sizeof...(A);
     };

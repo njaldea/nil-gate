@@ -43,8 +43,6 @@ namespace nil::gate
         using inputs_t = detail::traits::node<T>::inputs::edges;
         template <typename T>
         using outputs_t = detail::traits::node<T>::outputs::edges;
-        template <typename T>
-        using asyncs_t = detail::traits::node<T>::async_outputs::tuple;
 
     public:
         Core() = default;
