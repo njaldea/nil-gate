@@ -19,9 +19,9 @@ namespace nil::gate
         IRunner& operator=(const IRunner&) = default;
 
         /**
-         * @param diffs these are changes needed to be applied to the graph
+         * @param invokable these are changes needed to be applied to the graph
          */
-        virtual void flush(std::vector<std::unique_ptr<ICallable<void()>>> diffs) = 0;
+        virtual void flush(std::unique_ptr<ICallable<void()>> invokable) = 0;
         /**
          * @param nodes lifetime of these nodes is owned by the parent Core.
          */

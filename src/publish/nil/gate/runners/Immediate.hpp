@@ -7,11 +7,11 @@ namespace nil::gate::runners
     class Immediate final: public IRunner
     {
     public:
-        void flush(std::vector<std::unique_ptr<ICallable<void()>>> diffs) override
+        void flush(std::unique_ptr<ICallable<void()>> invokable) override
         {
-            for (const auto& d : diffs)
+            if (invokable)
             {
-                d->call();
+                invokable->call();
             }
         }
 

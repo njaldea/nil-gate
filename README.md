@@ -152,7 +152,13 @@ int main()
 }
 ```
 
-### Sync Output
+### Output
+
+Outputs are separateed into two. Sync and Async.
+
+#### Sync Output
+
+Sync outputs are those that are returned by the node. These are intended to be modified by the node itself by returning the value through the call operator, thus, the returned type during registration is a `nil::gate::ReadOnly<T>*`.
 
 ```cpp
 #include <nil/gate.hpp>
@@ -169,8 +175,8 @@ int main()
 {
     nil::gate::Core core;
     
-    auto outputs = core.node(Node());
-    //   ┣━━━ nil::gate::outputs<float>
+    auto outputs = core.node(Node()).syncs; // Access syncs from the returned object
+    //   ┣━━━ nil::gate::sync_outputs<float>
     //   ┗━━━ std::tuple<nil::gate::edges::ReadOnly<float>*, ...>;
 
     {
@@ -184,37 +190,76 @@ int main()
 }
 ```
 
-### Async Output
+#### Async Output
+
+Async outputs are those that are not returned by the node. These are intended to represent optional output when the node is ran.
 
 ```cpp
 #include <nil/gate.hpp>
 
 struct Node
 {
-    void operator()(nil::gate::async_output<float> asyncs) const
+    void operator()(nil::gate::async_output<float> asyncs) const;
     //              ┣━━━ this is equivalent to `std::tuple<nil::gate::edges::Mutable<T>*...>`
     //              ┗━━━ this is not treated as an input
-    {
-        auto [ edge_f ] = asyncs;
-        //     ┗━━━ nil::gate::edges::Mutable<float>*
-    }
 };
 
 int main()
 {
     nil::gate::Core core;
     
-    nil::gate::outputs<float> = core.node(Node(), { 100.f });
-    //                 ┃                          ┗━━━ initial value of the async edges
-    //                 ┗━━━ all async outputs is appended to the end of all sync outputs
+    auto outputs = core.node(Node()).asyncs; // Access asyncs from the returned object
+    //   ┣━━━ nil::gate::async_outputs<float>
+    //   ┗━━━ std::tuple<nil::gate::edges::Mutable<float>*, ...>;
 
     {
         auto edge_f = get<0>(outputs);
-        //   ┗━━━ nil::gate::edges::ReadOnly<float>*
+        //   ┗━━━ nil::gate::edges::Mutable<float>*
     }
     {
         auto [ edge_f ] = outputs;
-        //     ┗━━━ nil::gate::edges::ReadOnly<float>*
+        //   ┗━━━ nil::gate::edges::Mutable<float>*
+    }
+}
+```
+
+#### Inline Structured Bindings For Mixed Outputs
+
+When you have sync and async outputs at the same time, you can directly access them from the `syncs` and `asyncs` tuple returned by the node registration method.
+
+In case you want to destructure them on the spot, you can do so but take note that the order would be:
+- all sync outputs
+- all async outputs
+
+You can also use `get<I>` (similar to std::tuple's std::get) where index will follow sync outputs first, then asyncs.
+
+```cpp
+#include <nil/gate.hpp>
+
+struct Node
+{
+    int operator()(nil::gate::async_output<float> asyncs) const;
+    //             ┣━━━ this is equivalent to `std::tuple<nil::gate::edges::Mutable<T>*...>`
+    //             ┗━━━ this is not treated as an input
+};
+
+int main()
+{
+    nil::gate::Core core;
+    
+    auto outputs = core.node(Node());
+    //   ┣━━━ nil::gate::outputs<nil::gate::sync_outputs<int>, nil::gate::async_outputs<float>>
+
+    {
+        auto edge_i = get<0>(outputs);
+        //   ┗━━━ nil::gate::edges::ReadOnly<int>*
+        auto edge_f = get<1>(outputs);
+        //   ┗━━━ nil::gate::edges::Mutable<float>*
+    }
+    {
+        auto [ edge_i, edge_f ] = outputs;
+        //     ┃       ┗━━━ nil::gate::edges::Mutable<float>*
+        //     ┗━━━ nil::gate::edges::ReadOnly<int>*
     }
 }
 ```
@@ -247,7 +292,7 @@ int main()
     nil::gate::Core core;
 
     auto [ edge_f ] = core.node(Node());
-    //     ┗━━━ nil::gate::edges::ReadOnly<float>*
+    //     ┗━━━ nil::gate::edges::Mutable<float>*
 }
 ```
 
@@ -280,7 +325,7 @@ nil::gate::outputs<S...> Core::node<T>(T instance, nil::gate::inputs<I...>);
 // no input, no sync output, has async output
 void Core::node<T>(T instance, std::tuple<A...>);
 // has input, has sync output, has async output
-nil::gate::outputs<S..., A...> Core::node<T>(T instance, std::tuple<A...>, nil::gate::inputs<I...>);
+nil::gate::outputs<S..., A...> Core::node<T>(T instance, nil::gate::inputs<I...>);
 ```
 
 ## Run
@@ -288,8 +333,6 @@ nil::gate::outputs<S..., A...> Core::node<T>(T instance, std::tuple<A...>, nil::
 Calling run will execute the nodes in proper order executing the nodes based on their inputs.
 
 Before running all necessary nodes, it will also resolve all calls to `edges::Mutable::set_value` updating the values held by the edges.
-
-NOTE: First call to `Core::run()` will execute all the nodes. Succeeding calls will only execute nodes that expects new data from their inputs.
 
 ```cpp
 struct Node
@@ -569,10 +612,10 @@ namespace nil::gate::traits
     template <typename T>
     struct compatibility<
         T
-    //  ┣━━━━━━━━ first template type is the type to conver from
+    //  ┣━━━━━━━━ first template type is the type to convert from
     //  ┗━━━━━━━━ this is normally the type expected by the node
         std::reference_wrapper<const T>,
-    //  ┗━━━━━━━━ second template type is the type to conver to
+    //  ┗━━━━━━━━ second template type is the type to convert to
     >
     {
         static const T& convert(
@@ -652,7 +695,7 @@ See [biased](#bias) section for more information of `nil/gate`'s suggested rules
          - `std::optional<T>` to `std::optional<const T>`
          - `std::reference_wrapper<T>` to `std::reference_wrapper<const T>`
  - [`#include <nil/gate/bias/is_edge_type_valid.hpp>`](publish/nil/gate/bias/is_edge_type_valid.hpp)
-     - disables the original types converted bvy `bias/edgify.hpp`
+     - disables the original types converted by `bias/edgify.hpp`
          - `std::unique_ptr<T>`
          - `std::shared_ptr<T>`
          - `std::optional<T>`
@@ -676,17 +719,23 @@ These are not included from `nil/gate.hpp` and users must opt-in to apply these 
 
 When calling `Core::run()` the behavior how the nodes are executed is controlled by a `runner`.
 
-By default, the nodes are ran one after another in the order of how they are registered.
+By default, these are the behavior of the library:
+- nodes are executed inside the same thread where `Core::run()` is invoked.
+- nodes are executed in order of registration.
 
-`Core::set_runner` is provided to override this behavior.
+Use `Core::set_runner` to override this behavior.
 
-The library provides a runner that can run the nodes in parallel. Use this only if you have dependency on boost asio
+The library provides a runner that can run the nodes in a different thread. This will require boost asio as the implementation depends on it.
 
 ```cpp
-#include <nil/gate/runners/boost_asio.hpp>
+// similar to default behavior but will run in a dedicated thread
+#include <nil/gate/runners/boost_asio/Serial.hpp>
+// will run everyting in a dedicated thread + each node will be ran in a thread pool
+#include <nil/gate/runners/boost_asio/Parallel.hpp>
 
 nil::gate::Core core;
-core.set_runner(std::make_unique<nil::gate::runners::Asio>(thread_count));
+core.set_runner(std::make_unique<nil::gate::runners::boost_asio::Parallel>(thread_count));
+core.set_runner(std::make_unique<nil::gate::runners::boost_asio::Serial>());
 ```
 
 ## Errors

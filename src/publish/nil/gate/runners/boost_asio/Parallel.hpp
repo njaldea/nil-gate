@@ -2,7 +2,7 @@
 
 // This header is only available for use if the user has actual dependency on boost asio
 
-#include "../IRunner.hpp"
+#include "../../IRunner.hpp"
 
 #include <boost/asio/executor_work_guard.hpp>
 #include <boost/asio/io_context.hpp>
@@ -13,12 +13,12 @@
 #include <thread>
 #include <vector>
 
-namespace nil::gate::runners
+namespace nil::gate::runners::boost_asio
 {
-    class Asio final: public nil::gate::IRunner
+    class Parallel final: public nil::gate::IRunner
     {
     public:
-        explicit Asio(std::size_t count)
+        explicit Parallel(std::size_t count)
             : main_work(boost::asio::make_work_guard(main_context))
             , exec_work(boost::asio::make_work_guard(exec_context))
             , main_th([this]() { main_context.run(); })
@@ -29,7 +29,7 @@ namespace nil::gate::runners
             }
         }
 
-        ~Asio() noexcept override
+        ~Parallel() noexcept override
         {
             main_context.stop();
             exec_context.stop();
@@ -45,28 +45,25 @@ namespace nil::gate::runners
             }
         }
 
-        Asio(Asio&&) = delete;
-        Asio(const Asio&) = delete;
-        Asio& operator=(Asio&&) = delete;
-        Asio& operator=(const Asio&) = delete;
+        Parallel(Parallel&&) = delete;
+        Parallel(const Parallel&) = delete;
+        Parallel& operator=(Parallel&&) = delete;
+        Parallel& operator=(const Parallel&) = delete;
 
-        void flush(std::vector<std::unique_ptr<nil::gate::ICallable<void()>>> diffs) override
+        void flush(std::unique_ptr<nil::gate::ICallable<void()>> invokable) override
         {
             boost::asio::post(
                 main_context,
-                [this, diffs = std::move(diffs)]() mutable
+                [this, invokable = std::move(invokable)]() mutable
                 {
-                    if (!diffs.empty())
-                    {
-                        all_diffs.emplace_back(std::move(diffs));
-                    }
+                    all_diffs.emplace_back(std::move(invokable));
                     if (running_list.empty())
                     {
                         for (const auto& dd : std::exchange(all_diffs, {}))
                         {
-                            for (const auto& d : dd)
+                            if (dd)
                             {
-                                d->call();
+                                dd->call();
                             }
                         }
                     }
@@ -125,7 +122,17 @@ namespace nil::gate::runners
                     node->done();
                     running_list.erase(node);
 
-                    if (nullptr == deferred_nodes)
+                    // This is early frame stop. Is this desirable?
+                    if (nullptr != deferred_nodes)
+                    {
+                        if (running_list.empty())
+                        {
+                            waiting_list.clear();
+                            flush({});
+                            run(*deferred_nodes);
+                        }
+                    }
+                    else
                     {
                         for (auto* n : waiting_list)
                         {
@@ -133,17 +140,7 @@ namespace nil::gate::runners
                             {
                                 waiting_list.erase(n);
                                 run_node(n);
-                                break;
                             }
-                        }
-                    }
-                    else
-                    {
-                        if (running_list.empty())
-                        {
-                            waiting_list.clear();
-                            flush({});
-                            run(*deferred_nodes);
                         }
                     }
                 }
@@ -155,7 +152,7 @@ namespace nil::gate::runners
         std::set<nil::gate::INode*> waiting_list;
 
         const std::vector<std::unique_ptr<nil::gate::INode>>* deferred_nodes = nullptr;
-        std::vector<std::vector<std::unique_ptr<nil::gate::ICallable<void()>>>> all_diffs;
+        std::vector<std::unique_ptr<nil::gate::ICallable<void()>>> all_diffs;
 
         boost::asio::io_context main_context;
         boost::asio::executor_work_guard<boost::asio::io_context::executor_type> main_work;

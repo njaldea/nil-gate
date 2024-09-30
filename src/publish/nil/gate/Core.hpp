@@ -3,17 +3,14 @@
 #include "Batch.hpp"
 #include "Diffs.hpp"
 #include "errors.hpp"
-#include "runners/immediate.hpp"
+#include "runners/Immediate.hpp"
 
 #include "edges/Mutable.hpp"
 #include "traits/edgify.hpp"
 
 #include "detail/Node.hpp"
 #include "detail/traits/node.hpp"
-
-#ifdef NIL_GATE_CHECKS
-#include <cassert>
-#endif
+#include <vector>
 
 namespace nil::gate::concepts
 {
@@ -106,19 +103,6 @@ namespace nil::gate
             inputs_t<T> edges,
             errors::Errors<T> = errors::Errors<T>() //
         );
-        template <concepts::is_node_invalid T>
-        outputs_t<T> node(
-            T instance,
-            asyncs_t<T> async_init,
-            inputs_t<T> edges,
-            errors::Errors<T> = errors::Errors<T>()
-        );
-        template <concepts::is_node_invalid T>
-        outputs_t<T> node(
-            T instance,
-            asyncs_t<T> async_init,
-            errors::Errors<T> = errors::Errors<T>() //
-        );
 
         template <concepts::has_input_no_async T>
         outputs_t<T> node(T instance, inputs_t<T> input_edges)
@@ -127,7 +111,6 @@ namespace nil::gate
                 diffs.get(),
                 this,
                 input_edges,
-                asyncs_t<T>(),
                 std::move(instance)
             );
             auto r = owned_nodes.emplace_back(std::move(n)).get();
@@ -141,7 +124,6 @@ namespace nil::gate
                 diffs.get(),
                 this,
                 inputs_t<T>(),
-                asyncs_t<T>(),
                 std::move(instance)
             );
             auto r = owned_nodes.emplace_back(std::move(n)).get();
@@ -149,13 +131,12 @@ namespace nil::gate
         }
 
         template <concepts::has_input_has_async T>
-        outputs_t<T> node(T instance, asyncs_t<T> async_init, inputs_t<T> input_edges)
+        outputs_t<T> node(T instance, inputs_t<T> input_edges)
         {
             auto n = std::make_unique<detail::Node<T>>(
                 diffs.get(),
                 this,
                 input_edges,
-                std::move(async_init),
                 std::move(instance)
             );
             auto r = owned_nodes.emplace_back(std::move(n)).get();
@@ -163,13 +144,12 @@ namespace nil::gate
         }
 
         template <concepts::no_input_has_async T>
-        outputs_t<T> node(T instance, asyncs_t<T> async_init)
+        outputs_t<T> node(T instance)
         {
             auto n = std::make_unique<detail::Node<T>>(
                 diffs.get(),
                 this,
                 inputs_t<T>(),
-                std::move(async_init),
                 std::move(instance)
             );
             auto r = owned_nodes.emplace_back(std::move(n)).get();
@@ -177,6 +157,15 @@ namespace nil::gate
         }
 
         /// starting from this point - edge
+
+        template <typename T>
+        auto* edge()
+        {
+            using type = traits::edgify_t<std::decay_t<T>>;
+            auto e = std::make_unique<detail::edges::Data<type>>(diffs.get());
+            auto r = required_edges.emplace_back(std::move(e)).get();
+            return static_cast<edges::Mutable<type>*>(r);
+        }
 
         template <typename T>
         auto* edge(T value)
@@ -230,10 +219,28 @@ namespace nil::gate
 
         void run() const
         {
-#ifdef NIL_GATE_CHECKS
-            assert(nullptr != diffs);
-#endif
-            runner->flush(diffs->flush());
+            struct Callable: ICallable<void()>
+            {
+                explicit Callable(std::vector<std::unique_ptr<ICallable<void()>>> init_d)
+                    : d(std::move(init_d))
+                {
+                }
+
+                void call() override
+                {
+                    for (const auto& dd : d)
+                    {
+                        if (dd)
+                        {
+                            dd->call();
+                        }
+                    }
+                }
+
+                std::vector<std::unique_ptr<ICallable<void()>>> d;
+            };
+
+            runner->flush(std::make_unique<Callable>(diffs->flush()));
             runner->run(owned_nodes);
         }
 

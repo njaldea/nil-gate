@@ -147,8 +147,8 @@ namespace nil::gate::detail::traits
             sizeof...(S) + sizeof...(A) == 0,
             void,
             nil::gate::outputs<
-                edgify_t<std::decay_t<S>>...,
-                edgify_t<std::decay_t<A>>...> //
+                nil::gate::sync_outputs<edgify_t<std::decay_t<S>>...>,
+                nil::gate::async_outputs<edgify_t<std::decay_t<A>>...>> //
             >;
         using make_index_sequence = std::make_index_sequence<sizeof...(S) + sizeof...(A)>;
         static constexpr auto size = sizeof...(S) + sizeof...(A);

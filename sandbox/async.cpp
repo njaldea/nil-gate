@@ -42,7 +42,9 @@ int main()
     auto* a = core.edge(false);
     auto* l = core.edge(std::cref(ref));
     auto* r = core.edge(200.f);
-    const auto [f, x] = core.node(&deferred, {9000}, {a});
+    const auto [f, x] = core.node(&deferred, {a});
+    x->set_value(9000);
+
     const auto [fs] = core.node(&switcher, {a, l, r});
     core.node(printer_i, {x});
 

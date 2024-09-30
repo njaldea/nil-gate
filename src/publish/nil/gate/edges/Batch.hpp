@@ -4,10 +4,6 @@
 
 #include "../detail/DataEdge.hpp"
 
-#ifdef NIL_GATE_CHECKS
-#include <cassert>
-#endif
-
 namespace nil::gate::edges
 {
     template <typename T>
@@ -25,18 +21,11 @@ namespace nil::gate::edges
 
         const T& value() const
         {
-#ifdef NIL_GATE_CHECKS
-            assert(nullptr != edge);
-#endif
             return edge->value();
         }
 
         void set_value(T new_data)
         {
-#ifdef NIL_GATE_CHECKS
-            assert(nullptr != edge);
-            assert(nullptr != diffs);
-#endif
             diffs->push_back(make_callable(
                 [e = edge, d = std::move(new_data)]() mutable
                 {

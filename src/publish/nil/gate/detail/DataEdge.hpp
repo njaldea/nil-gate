@@ -31,8 +31,16 @@ namespace nil::gate::detail::edges
         // this is called when instantiated from Core
         explicit Data(nil::gate::Diffs* init_diffs, T init_data)
             : nil::gate::edges::Mutable<T>()
-            , state(EState::Done)
+            , state(EState::Stale)
             , data(std::make_optional<T>(std::move(init_data)))
+            , diffs(init_diffs)
+        {
+        }
+
+        // this is called when instantiated from Core
+        explicit Data(nil::gate::Diffs* init_diffs)
+            : nil::gate::edges::Mutable<T>()
+            , state(EState::Stale)
             , diffs(init_diffs)
         {
         }
@@ -88,10 +96,7 @@ namespace nil::gate::detail::edges
 
         void done()
         {
-            if (state != EState::Done)
-            {
-                state = EState::Done;
-            }
+            state = EState::Stale;
         }
 
         void attach(INode* node)
@@ -104,20 +109,15 @@ namespace nil::gate::detail::edges
             diffs = new_diffs;
         }
 
-        bool is_pending() const
+        bool is_ready() const
         {
-            return state == EState::Pending;
-        }
-
-        bool validate(nil::gate::Diffs* reference_diffs) const
-        {
-            return diffs == reference_diffs;
+            return state != EState::Pending && data.has_value();
         }
 
     private:
         enum class EState
         {
-            Done = 0b0001,
+            Stale = 0b0001,
             Pending = 0b0010
         };
 

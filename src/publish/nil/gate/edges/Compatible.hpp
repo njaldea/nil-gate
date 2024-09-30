@@ -53,13 +53,9 @@ namespace nil::gate::edges
                   +[](IEdge* e, INode* node)
                   { static_cast<detail::edges::Data<U>*>(e)->attach(node); }
               )
-            , validate_impl( //
-                  +[](IEdge* e, Diffs* diffs) -> bool
-                  { return static_cast<detail::edges::Data<U>*>(e)->validate(diffs); }
-              )
-            , is_pending_impl( //
+            , is_ready_impl( //
                   +[](IEdge* e) -> bool
-                  { return static_cast<detail::edges::Data<U>*>(e)->is_pending(); }
+                  { return static_cast<detail::edges::Data<U>*>(e)->is_ready(); }
               )
             , value_impl( //
                   +[](IEdge* e) -> const T&
@@ -90,21 +86,15 @@ namespace nil::gate::edges
             return attach_impl(edge, node);
         }
 
-        bool is_pending() const
+        bool is_ready() const
         {
-            return is_pending_impl(edge);
-        }
-
-        bool validate(Diffs* diffs) const
-        {
-            return validate_impl(edge, diffs);
+            return is_ready_impl(edge);
         }
 
     private:
         nil::gate::IEdge* edge = nullptr;
         void (*attach_impl)(IEdge*, INode*);
-        bool (*validate_impl)(IEdge*, Diffs* diffs);
-        bool (*is_pending_impl)(IEdge*);
+        bool (*is_ready_impl)(IEdge*);
         const T& (*value_impl)(IEdge*);
     };
 }

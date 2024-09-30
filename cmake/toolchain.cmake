@@ -26,7 +26,9 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clan
     add_compile_options(-Wconversion)
     add_compile_options(-Wsign-conversion)
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    add_compile_options("/GR-")    # -fno-rtti
+    add_compile_options("/MT")
+    add_compile_options("/GR")
+    # add_compile_options("/GR-")    # -fno-rtti
     add_compile_options("/GL")     # -flto
     # add_compile_options("/Wall")   # -Wall
     # add_compile_options("/WX")     # -Werror
@@ -38,12 +40,4 @@ endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     add_link_options(-fuse-ld=lld-18)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
 endif()
-
-#   TODO:
-#    -  repo is currently setup using clang 18
-#    -  ubuntu 22 default gcc (libstdc++) is at version 11
-#    -  only one sandbox is requiring libc++ (due to stl <format>)
-#    -  for all libraries exported by this repo, libc++ should not be necessary
-#    -  a custom triplet for vcpkg is created for this purpose

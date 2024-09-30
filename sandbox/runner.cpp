@@ -1,10 +1,8 @@
 #include <nil/gate.hpp>
-#include <nil/gate/runners/boost_asio.hpp>
-#include <nil/gate/types.hpp>
+#include <nil/gate/runners/boost_asio/Parallel.hpp>
+#include <nil/gate/runners/boost_asio/Serial.hpp>
 
 #include <nil/gate/bias/nil.hpp>
-
-#include <boost/asio/executor_work_guard.hpp>
 
 #include <cstdio>
 #include <thread>
@@ -36,19 +34,21 @@ int main()
                 aa->set_value(aa->value() + 20);
             }
         },
-        {3000},
         {e1_i, e2_i}
     );
+    r->set_value(3000);
 
     core.node([](int i) { std::printf("printer: %d\n", i); }, {r});
 
-    core.set_runner(std::make_unique<nil::gate::runners::Asio>(10));
+    // core.set_runner(std::make_unique<nil::gate::runners::boost_asio::Parallel>(10));
+    core.set_runner(std::make_unique<nil::gate::runners::boost_asio::Serial>());
     core.set_commit([](const nil::gate::Core& c) { c.run(); });
 
     while (true)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
         auto [b] = core.batch(e1_i);
+        // getting value here might not be thread safe.. so be ware.
         b->set_value(b->value() + 1);
     }
 }

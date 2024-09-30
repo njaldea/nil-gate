@@ -8,10 +8,6 @@
 
 #include <tuple>
 
-#ifdef NIL_GATE_CHECKS
-#include <cassert>
-#endif
-
 namespace nil::gate
 {
     class Core;
@@ -38,9 +34,6 @@ namespace nil::gate
 
         ~Batch() noexcept
         {
-#ifdef NIL_GATE_CHECKS
-            assert(nullptr != diffs);
-#endif
             if (!batch_diffs.empty())
             {
                 diffs->push_batch(std::move(batch_diffs));
@@ -85,10 +78,6 @@ namespace nil::gate
         {
             e.edge = static_cast<detail::edges::Data<U>*>(data_edge);
             e.diffs = &batch_diffs;
-
-#ifdef NIL_GATE_CHECKS
-            assert(e.edge->validate(diffs));
-#endif
         }
 
         std::vector<std::unique_ptr<ICallable<void()>>> batch_diffs;

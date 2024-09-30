@@ -4,10 +4,6 @@
 #include "../INode.hpp"
 #include "traits/node.hpp"
 
-#ifdef NIL_GATE_CHECKS
-#include <cassert>
-#endif
-
 namespace nil::gate
 {
     class Core;
@@ -24,26 +20,19 @@ namespace nil::gate::detail
         using output_t = typename detail::traits::node<T>::outputs;
 
     public:
-        template <typename... Args>
         Node(
             Diffs* init_diffs,
             Core* init_core,
             const typename input_t::edges& init_inputs,
-            typename async_output_t::tuple init_asyncs,
             T init_instance
         )
-            : Node(
-                  init_diffs,
-                  init_core,
-                  init_inputs,
-                  std::move(init_asyncs),
-                  typename input_t::type(),
-                  typename input_t::make_index_sequence(),
-                  typename sync_output_t::make_index_sequence(),
-                  typename async_output_t::make_index_sequence(),
-                  std::move(init_instance)
-              )
+            : instance(std::move(init_instance))
+            , core(init_core)
+            , inputs(init_inputs)
         {
+            std::apply([this](auto&... i) { (i.attach(this), ...); }, inputs);
+            std::apply([init_diffs](auto&... o) { (o.attach(init_diffs), ...); }, sync_outputs);
+            std::apply([init_diffs](auto&... o) { (o.attach(init_diffs), ...); }, async_outputs);
         }
 
         ~Node() noexcept override = default;
@@ -123,34 +112,6 @@ namespace nil::gate::detail
         }
 
     private:
-        template <
-            typename... I,
-            std::size_t... i_indices,
-            std::size_t... s_indices,
-            std::size_t... a_indices>
-        Node(
-            [[maybe_unused]] Diffs* diffs,
-            Core* init_core,
-            const typename input_t::edges& init_inputs,
-            [[maybe_unused]] typename async_output_t::tuple init_asyncs,
-            traits::types<I...> /* unused */,
-            std::index_sequence<i_indices...> /* unused */,
-            std::index_sequence<s_indices...> /* unused */,
-            std::index_sequence<a_indices...> /* unused */,
-            T init_instance
-        )
-            : instance(std::move(init_instance))
-            , core(init_core)
-            , inputs(init_inputs)
-        {
-            (..., initialize_input(diffs, get<i_indices>(inputs)));
-
-            (get<s_indices>(sync_outputs).attach(diffs), ...);
-            (get<a_indices>(async_outputs).attach(diffs), ...);
-
-            (get<a_indices>(async_outputs).exec(std::move(get<a_indices>(init_asyncs))), ...);
-        }
-
         template <std::size_t... s_indices>
         void forward_to_output(
             [[maybe_unused]] auto result,
@@ -179,9 +140,6 @@ namespace nil::gate::detail
             {
                 if constexpr (traits::node<T>::has_core)
                 {
-#ifdef NIL_GATE_CHECKS
-                    assert(nullptr != core);
-#endif
                     return instance(
                         *core,
                         async_edges(typename async_output_t::make_index_sequence()),
@@ -226,25 +184,16 @@ namespace nil::gate::detail
             if constexpr (sizeof...(s_indices) > 0 || sizeof...(a_indices) > 0)
             {
                 return typename output_t::edges(
-                    std::addressof(get<s_indices>(sync_outputs))...,
-                    std::addressof(get<a_indices>(async_outputs))...
+                    {std::addressof(get<s_indices>(sync_outputs))...},
+                    {std::addressof(get<a_indices>(async_outputs))...}
                 );
             }
-        }
-
-        template <typename U>
-        void initialize_input([[maybe_unused]] Diffs* diffs, nil::gate::edges::Compatible<U>& edge)
-        {
-            edge.attach(this);
-#ifdef NIL_GATE_CHECKS
-            assert(edge.validate(diffs));
-#endif
         }
 
         template <std::size_t... i_indices>
         bool are_inputs_ready(std::index_sequence<i_indices...> /* unused */) const
         {
-            return (true && ... && !std::get<i_indices>(inputs).is_pending());
+            return (true && ... && std::get<i_indices>(inputs).is_ready());
         }
 
         EState state = EState::Pending;
