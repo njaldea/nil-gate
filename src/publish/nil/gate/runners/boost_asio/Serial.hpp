@@ -37,29 +37,25 @@ namespace nil::gate::runners::boost_asio
         Serial& operator=(Serial&&) = delete;
         Serial& operator=(const Serial&) = delete;
 
-        void flush(std::unique_ptr<nil::gate::ICallable<void()>> invokable) override
+        void run(
+            std::unique_ptr<ICallable<void()>> apply_changes,
+            std::span<const std::unique_ptr<INode>> nodes
+        ) override
         {
             boost::asio::post(
                 main_context,
-                [invokable = std::move(invokable)]() mutable
+                [apply_changes = std::move(apply_changes), nodes]() mutable
                 {
-                    if (invokable)
+                    if (apply_changes)
                     {
-                        invokable->call();
+                        apply_changes->call();
                     }
-                }
-            );
-        }
-
-        void run(const std::vector<std::unique_ptr<nil::gate::INode>>& nodes) override
-        {
-            boost::asio::post(
-                main_context,
-                [&nodes]()
-                {
                     for (const auto& node : nodes)
                     {
-                        node->run();
+                        if (nullptr != node)
+                        {
+                            node->run();
+                        }
                     }
                 }
             );

@@ -37,22 +37,6 @@ namespace nil::gate
         };
     }
 
-    //  TODO:
-    //      Figure out what is the best way to make this movable so that
-    //  users are not forced to use std::unique_ptr when returning
-    //  from method/functions.
-    //
-    //      The current approach is to edges and nodes a reference to the diffs
-    //  which is owned by Core. if Core is moved, diffs object is moved too.
-    //      Each node also has a reference to Core. if Core is moved, the pointer
-    //  held by the Node becomes invalidated and needs to be reset to the
-    //  new Core.
-    //
-    //      A possible approach is to simply have a context object that owns the
-    //  Diffs and a reference to Core. Core will not be copy-able (due to diffs's mutex)
-    //  but at least nodes/edges will not need to have more convoluted setup.
-    //
-    //
     class Core final
     {
         template <typename T>
@@ -145,10 +129,21 @@ namespace nil::gate
 
         void commit() const
         {
-            if (commit_cb)
-            {
-                commit_cb->call();
-            }
+            runner->run(
+                make_callable(
+                    [df = diffs->flush()]()
+                    {
+                        for (const auto& d : df)
+                        {
+                            if (d)
+                            {
+                                d->call();
+                            }
+                        }
+                    }
+                ),
+                owned_nodes
+            );
         }
 
         template <typename Runner, typename... Args>
@@ -168,26 +163,6 @@ namespace nil::gate
         std::unique_ptr<Diffs> diffs = std::make_unique<Diffs>();
         std::vector<std::unique_ptr<INode>> owned_nodes;
         std::vector<std::unique_ptr<IEdge>> independent_edges;
-        std::unique_ptr<ICallable<void()>> commit_cb = make_callable(
-            [this]()
-            {
-                auto _ = std::unique_lock(m);
-                runner->flush(make_callable(
-                    [df = diffs->flush()]()
-                    {
-                        for (const auto& d : df)
-                        {
-                            if (d)
-                            {
-                                d->call();
-                            }
-                        }
-                    }
-                ));
-                runner->run(owned_nodes);
-            }
-        );
         std::unique_ptr<IRunner> runner = std::make_unique<runners::Immediate>();
-        std::mutex m;
     };
 }

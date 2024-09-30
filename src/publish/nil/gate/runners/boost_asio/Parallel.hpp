@@ -8,10 +8,8 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/post.hpp>
 
-#include <memory>
 #include <set>
 #include <thread>
-#include <vector>
 
 namespace nil::gate::runners::boost_asio
 {
@@ -56,13 +54,16 @@ namespace nil::gate::runners::boost_asio
         Parallel& operator=(Parallel&&) = delete;
         Parallel& operator=(const Parallel&) = delete;
 
-        void flush(std::unique_ptr<nil::gate::ICallable<void()>> invokable) override
+        void run(
+            std::unique_ptr<ICallable<void()>> apply_changes,
+            std::span<const std::unique_ptr<INode>> nodes
+        ) override
         {
             boost::asio::post(
                 main_context,
-                [this, invokable = std::move(invokable)]() mutable
+                [this, nodes, apply_changes = std::move(apply_changes)]() mutable
                 {
-                    all_diffs.emplace_back(std::move(invokable));
+                    all_diffs.emplace_back(std::move(apply_changes));
                     if (running_list.empty())
                     {
                         for (const auto& dd : std::exchange(all_diffs, {}))
@@ -73,24 +74,15 @@ namespace nil::gate::runners::boost_asio
                             }
                         }
                     }
-                }
-            );
-        }
 
-        void run(const std::vector<std::unique_ptr<nil::gate::INode>>& nodes) override
-        {
-            boost::asio::post(
-                main_context,
-                [this, &nodes]()
-                {
                     if (!running_list.empty())
                     {
-                        deferred_nodes = &nodes;
+                        deferred_nodes = nodes;
                         return;
                     }
                     for (const auto& node : nodes)
                     {
-                        if (node->is_pending())
+                        if (nullptr != node && node->is_pending())
                         {
                             if (node->is_ready())
                             {
@@ -129,13 +121,13 @@ namespace nil::gate::runners::boost_asio
                     running_list.erase(node);
 
                     // This is early frame stop. Is this desirable?
-                    if (nullptr != deferred_nodes)
+                    if (!deferred_nodes.empty())
                     {
                         if (running_list.empty())
                         {
                             waiting_list.clear();
-                            flush({});
-                            run(*deferred_nodes);
+                            run({}, deferred_nodes);
+                            deferred_nodes = {};
                         }
                     }
                     else
@@ -161,8 +153,8 @@ namespace nil::gate::runners::boost_asio
         std::set<nil::gate::INode*> running_list;
         std::vector<nil::gate::INode*> waiting_list;
 
-        const std::vector<std::unique_ptr<nil::gate::INode>>* deferred_nodes = nullptr;
-        std::vector<std::unique_ptr<nil::gate::ICallable<void()>>> all_diffs;
+        std::span<const std::unique_ptr<INode>> deferred_nodes;
+        std::vector<std::unique_ptr<ICallable<void()>>> all_diffs;
 
         boost::asio::io_context main_context;
         boost::asio::io_context exec_context;
