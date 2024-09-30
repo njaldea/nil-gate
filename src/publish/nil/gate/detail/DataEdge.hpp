@@ -19,7 +19,6 @@ namespace nil::gate::detail::edges
     class Data final: public nil::gate::edges::Mutable<T>
     {
     public:
-        // this is called when instantiated from Node
         Data()
             : nil::gate::edges::Mutable<T>()
             , state(EState::Pending)
@@ -28,20 +27,11 @@ namespace nil::gate::detail::edges
         {
         }
 
-        // this is called when instantiated from Core
-        explicit Data(nil::gate::Diffs* init_diffs, T init_data)
+        explicit Data(T init_data)
             : nil::gate::edges::Mutable<T>()
             , state(EState::Stale)
             , data(std::make_optional<T>(std::move(init_data)))
-            , diffs(init_diffs)
-        {
-        }
-
-        // this is called when instantiated from Core
-        explicit Data(nil::gate::Diffs* init_diffs)
-            : nil::gate::edges::Mutable<T>()
-            , state(EState::Stale)
-            , diffs(init_diffs)
+            , diffs(nullptr)
         {
         }
 
@@ -114,6 +104,16 @@ namespace nil::gate::detail::edges
             return state != EState::Pending && data.has_value();
         }
 
+        nil::gate::edges::Mutable<T>* as_mutable()
+        {
+            return this;
+        }
+
+        nil::gate::edges::ReadOnly<T>* as_readonly()
+        {
+            return this;
+        }
+
     private:
         enum class EState
         {
@@ -126,10 +126,4 @@ namespace nil::gate::detail::edges
         nil::gate::Diffs* diffs;
         std::vector<INode*> outs;
     };
-
-    template <typename U>
-    Data<U>* as_data(nil::gate::edges::Mutable<U>* edge)
-    {
-        return static_cast<Data<U>*>(edge);
-    }
 }

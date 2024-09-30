@@ -34,12 +34,6 @@ struct T<R(A...)>
 int main()
 {
     nil::gate::Core core;
-    core.set_commit(
-        [](const nil::gate::Core&) {
-            std::cout << __FILE__ << ':' << __LINE__ << ':' << (const char*)(__FUNCTION__)
-                      << std::endl;
-        }
-    );
 
     using A = T<void()>;
     using B = T<std::tuple<std::string>(const std::unique_ptr<const bool>&)>;
@@ -73,10 +67,10 @@ int main()
     }
 
     std::cout << __FILE__ << ':' << __LINE__ << ':' << (const char*)(__FUNCTION__) << std::endl;
-    core.run();
+    core.commit();
 
     a2->set_value(2);
 
     std::cout << __FILE__ << ':' << __LINE__ << ':' << (const char*)(__FUNCTION__) << std::endl;
-    core.run();
+    core.commit();
 }

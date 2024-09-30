@@ -10,33 +10,15 @@
 
 #include "detail/Node.hpp"
 #include "detail/traits/node.hpp"
+
 #include <vector>
 
 namespace nil::gate::concepts
 {
     template <typename T>
+    concept is_node_valid = detail::traits::node<T>::is_valid;
+    template <typename T>
     concept is_node_invalid = !detail::traits::node<T>::is_valid;
-
-    template <typename T>
-    concept has_input_has_async                      //
-        = detail::traits::node<T>::is_valid          //
-        && detail::traits::node<T>::inputs::size > 0 //
-        && detail::traits::node<T>::has_async;
-    template <typename T>
-    concept has_input_no_async                       //
-        = detail::traits::node<T>::is_valid          //
-        && detail::traits::node<T>::inputs::size > 0 //
-        && !detail::traits::node<T>::has_async;
-    template <typename T>
-    concept no_input_has_async                        //
-        = detail::traits::node<T>::is_valid           //
-        && detail::traits::node<T>::inputs::size == 0 //
-        && detail::traits::node<T>::has_async;
-    template <typename T>
-    concept no_input_no_async                         //
-        = detail::traits::node<T>::is_valid           //
-        && detail::traits::node<T>::inputs::size == 0 //
-        && !detail::traits::node<T>::has_async;
 }
 
 namespace nil::gate
@@ -93,18 +75,12 @@ namespace nil::gate
         /// starting from this point - node
 
         template <concepts::is_node_invalid T>
-        outputs_t<T> node(
-            T instance,
-            errors::Errors<T> = errors::Errors<T>() //
-        );
+        outputs_t<T> node(T instance, errors::Errors<T> = errors::Errors<T>());
         template <concepts::is_node_invalid T>
-        outputs_t<T> node(
-            T instance,
-            inputs_t<T> edges,
-            errors::Errors<T> = errors::Errors<T>() //
-        );
+        outputs_t<T> node(T instance, inputs_t<T> edges, errors::Errors<T> = errors::Errors<T>());
 
-        template <concepts::has_input_no_async T>
+        template <concepts::is_node_valid T>
+            requires(detail::traits::node<T>::inputs::size > 0)
         outputs_t<T> node(T instance, inputs_t<T> input_edges)
         {
             auto n = std::make_unique<detail::Node<T>>(
@@ -113,11 +89,13 @@ namespace nil::gate
                 input_edges,
                 std::move(instance)
             );
-            auto r = owned_nodes.emplace_back(std::move(n)).get();
-            return static_cast<detail::Node<T>*>(r)->output_edges();
+            auto* r = n.get();
+            owned_nodes.emplace_back(std::move(n));
+            return r->output_edges();
         }
 
-        template <concepts::no_input_no_async T>
+        template <concepts::is_node_valid T>
+            requires(detail::traits::node<T>::inputs::size == 0)
         outputs_t<T> node(T instance)
         {
             auto n = std::make_unique<detail::Node<T>>(
@@ -126,34 +104,9 @@ namespace nil::gate
                 inputs_t<T>(),
                 std::move(instance)
             );
-            auto r = owned_nodes.emplace_back(std::move(n)).get();
-            return static_cast<detail::Node<T>*>(r)->output_edges();
-        }
-
-        template <concepts::has_input_has_async T>
-        outputs_t<T> node(T instance, inputs_t<T> input_edges)
-        {
-            auto n = std::make_unique<detail::Node<T>>(
-                diffs.get(),
-                this,
-                input_edges,
-                std::move(instance)
-            );
-            auto r = owned_nodes.emplace_back(std::move(n)).get();
-            return static_cast<detail::Node<T>*>(r)->output_edges();
-        }
-
-        template <concepts::no_input_has_async T>
-        outputs_t<T> node(T instance)
-        {
-            auto n = std::make_unique<detail::Node<T>>(
-                diffs.get(),
-                this,
-                inputs_t<T>(),
-                std::move(instance)
-            );
-            auto r = owned_nodes.emplace_back(std::move(n)).get();
-            return static_cast<detail::Node<T>*>(r)->output_edges();
+            auto* r = n.get();
+            owned_nodes.emplace_back(std::move(n));
+            return r->output_edges();
         }
 
         /// starting from this point - edge
@@ -162,8 +115,9 @@ namespace nil::gate
         auto* edge()
         {
             using type = traits::edgify_t<std::decay_t<T>>;
-            auto e = std::make_unique<detail::edges::Data<type>>(diffs.get());
-            auto r = required_edges.emplace_back(std::move(e)).get();
+            auto e = std::make_unique<detail::edges::Data<type>>();
+            e->attach(diffs.get());
+            auto r = independent_edges.emplace_back(std::move(e)).get();
             return static_cast<edges::Mutable<type>*>(r);
         }
 
@@ -171,87 +125,41 @@ namespace nil::gate
         auto* edge(T value)
         {
             using type = traits::edgify_t<std::decay_t<T>>;
-            auto e = std::make_unique<detail::edges::Data<type>>(diffs.get(), std::move(value));
-            auto r = required_edges.emplace_back(std::move(e)).get();
+            auto e = std::make_unique<detail::edges::Data<type>>(std::move(value));
+            e->attach(diffs.get());
+            auto r = independent_edges.emplace_back(std::move(e)).get();
             return static_cast<edges::Mutable<type>*>(r);
         }
 
         template <typename... T>
         Batch<T...> batch(edges::Mutable<T>*... edges) const
         {
-            return Batch<T...>(this, diffs.get(), commit_cb.get(), {edges...});
+            return Batch<T...>(diffs.get(), {edges...});
         }
 
         template <typename... T>
         Batch<T...> batch(std::tuple<edges::Mutable<T>*...> edges) const
         {
-            return Batch<T...>(this, diffs.get(), commit_cb.get(), edges);
+            return Batch<T...>(diffs.get(), edges);
         }
 
         void commit() const
         {
             if (commit_cb)
             {
-                commit_cb->call(this);
+                commit_cb->call();
             }
         }
 
-        template <typename CB>
-        void set_commit(CB cb) noexcept
+        template <typename Runner, typename... Args>
+        void set_runner(Args&&... args) noexcept
         {
-            struct Callable: ICallable<void(const Core*)>
-            {
-                explicit Callable(CB init_cb)
-                    : cb(std::move(init_cb))
-                {
-                }
-
-                void call(const Core* core) override
-                {
-                    cb(*core);
-                }
-
-                CB cb;
-            };
-
-            commit_cb = std::make_unique<Callable>(std::move(cb));
-        }
-
-        void run() const
-        {
-            struct Callable: ICallable<void()>
-            {
-                explicit Callable(std::vector<std::unique_ptr<ICallable<void()>>> init_d)
-                    : d(std::move(init_d))
-                {
-                }
-
-                void call() override
-                {
-                    for (const auto& dd : d)
-                    {
-                        if (dd)
-                        {
-                            dd->call();
-                        }
-                    }
-                }
-
-                std::vector<std::unique_ptr<ICallable<void()>>> d;
-            };
-
-            runner->flush(std::make_unique<Callable>(diffs->flush()));
-            runner->run(owned_nodes);
-        }
-
-        void set_runner(std::unique_ptr<IRunner> new_runner) noexcept
-        {
-            runner = std::move(new_runner);
+            runner = std::make_unique<Runner>(std::forward<Args>(args)...);
         }
 
         void clear()
         {
-            required_edges.clear();
+            independent_edges.clear();
             owned_nodes.clear();
             diffs = std::make_unique<Diffs>();
         }
@@ -259,8 +167,27 @@ namespace nil::gate
     private:
         std::unique_ptr<Diffs> diffs = std::make_unique<Diffs>();
         std::vector<std::unique_ptr<INode>> owned_nodes;
-        std::vector<std::unique_ptr<IEdge>> required_edges;
-        std::unique_ptr<ICallable<void(const Core*)>> commit_cb;
+        std::vector<std::unique_ptr<IEdge>> independent_edges;
+        std::unique_ptr<ICallable<void()>> commit_cb = make_callable(
+            [this]()
+            {
+                auto _ = std::unique_lock(m);
+                runner->flush(make_callable(
+                    [df = diffs->flush()]()
+                    {
+                        for (const auto& d : df)
+                        {
+                            if (d)
+                            {
+                                d->call();
+                            }
+                        }
+                    }
+                ));
+                runner->run(owned_nodes);
+            }
+        );
         std::unique_ptr<IRunner> runner = std::make_unique<runners::Immediate>();
+        std::mutex m;
     };
 }

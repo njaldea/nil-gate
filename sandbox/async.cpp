@@ -68,7 +68,7 @@ int main()
             [a, &core]()
             {
                 a->set_value(!a->value());
-                core.run();
+                core.commit();
             }
         );
     }

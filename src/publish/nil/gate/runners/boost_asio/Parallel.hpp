@@ -17,15 +17,24 @@ namespace nil::gate::runners::boost_asio
 {
     class Parallel final: public nil::gate::IRunner
     {
+        static std::thread create_thread(boost::asio::io_context& c)
+        {
+            return std::thread(
+                [&c]()
+                {
+                    auto _ = boost::asio::make_work_guard(c);
+                    c.run();
+                }
+            );
+        }
+
     public:
         explicit Parallel(std::size_t count)
-            : main_work(boost::asio::make_work_guard(main_context))
-            , exec_work(boost::asio::make_work_guard(exec_context))
-            , main_th([this]() { main_context.run(); })
+            : main_th(create_thread(main_context))
         {
             for (auto i = 0u; i < count; ++i)
             {
-                exec_th.emplace_back([this]() { exec_context.run(); });
+                exec_th.emplace_back(create_thread(exec_context));
             }
         }
 
@@ -33,9 +42,6 @@ namespace nil::gate::runners::boost_asio
         {
             main_context.stop();
             exec_context.stop();
-
-            main_work.reset();
-            exec_work.reset();
 
             main_th.join();
 
@@ -92,7 +98,7 @@ namespace nil::gate::runners::boost_asio
                             }
                             else
                             {
-                                waiting_list.emplace(node.get());
+                                waiting_list.push_back(node.get());
                             }
                         }
                     }
@@ -134,14 +140,18 @@ namespace nil::gate::runners::boost_asio
                     }
                     else
                     {
-                        for (auto* n : waiting_list)
-                        {
-                            if (n->is_ready())
+                        std::erase_if(
+                            waiting_list,
+                            [this](auto* n)
                             {
-                                waiting_list.erase(n);
-                                run_node(n);
+                                if (n->is_ready())
+                                {
+                                    run_node(n);
+                                    return true;
+                                }
+                                return false;
                             }
-                        }
+                        );
                     }
                 }
             );
@@ -149,16 +159,13 @@ namespace nil::gate::runners::boost_asio
 
     private:
         std::set<nil::gate::INode*> running_list;
-        std::set<nil::gate::INode*> waiting_list;
+        std::vector<nil::gate::INode*> waiting_list;
 
         const std::vector<std::unique_ptr<nil::gate::INode>>* deferred_nodes = nullptr;
         std::vector<std::unique_ptr<nil::gate::ICallable<void()>>> all_diffs;
 
         boost::asio::io_context main_context;
-        boost::asio::executor_work_guard<boost::asio::io_context::executor_type> main_work;
-
         boost::asio::io_context exec_context;
-        boost::asio::executor_work_guard<boost::asio::io_context::executor_type> exec_work;
 
         std::thread main_th;
         std::vector<std::thread> exec_th;

@@ -16,19 +16,8 @@ namespace nil::gate
     class Batch final
     {
     public:
-        Batch(
-            const Core* init_core,
-            Diffs* init_diffs,
-            ICallable<void(const Core*)>* init_commit,
-            const std::tuple<edges::Mutable<T>*...>& init_edges
-        )
-            : Batch(
-                  init_core,
-                  init_diffs,
-                  init_commit,
-                  init_edges,
-                  std::make_index_sequence<sizeof...(T)>()
-              )
+        Batch(Diffs* init_diffs, const std::tuple<edges::Mutable<T>*...>& init_edges)
+            : Batch(init_diffs, init_edges, std::make_index_sequence<sizeof...(T)>())
         {
         }
 
@@ -37,10 +26,6 @@ namespace nil::gate
             if (!batch_diffs.empty())
             {
                 diffs->push_batch(std::move(batch_diffs));
-                if (nullptr != commit)
-                {
-                    commit->call(core);
-                }
             }
         }
 
@@ -59,15 +44,11 @@ namespace nil::gate
     private:
         template <std::size_t... I>
         Batch(
-            const Core* init_core,
             Diffs* init_diffs,
-            ICallable<void(const Core*)>* init_commit,
             const std::tuple<edges::Mutable<T>*...>& init_edges,
             std::index_sequence<I...> /* unused */
         )
-            : core(init_core)
-            , diffs(init_diffs)
-            , commit(init_commit)
+            : diffs(init_diffs)
             , edges()
         {
             (..., (initialize_edge(std::get<I>(edges), std::get<I>(init_edges))));
@@ -81,9 +62,7 @@ namespace nil::gate
         }
 
         std::vector<std::unique_ptr<ICallable<void()>>> batch_diffs;
-        const Core* core = nullptr;
         Diffs* diffs = nullptr;
-        ICallable<void(const Core*)>* commit = nullptr;
         std::tuple<edges::Batch<T>...> edges;
     };
 

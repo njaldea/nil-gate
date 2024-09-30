@@ -16,15 +16,19 @@ namespace nil::gate::runners::boost_asio
     {
     public:
         explicit Serial()
-            : main_work(boost::asio::make_work_guard(main_context))
-            , main_th([this]() { main_context.run(); })
+            : main_th(
+                  [this]()
+                  {
+                      auto _ = boost::asio::make_work_guard(main_context);
+                      main_context.run();
+                  }
+              )
         {
         }
 
         ~Serial() noexcept override
         {
             main_context.stop();
-            main_work.reset();
             main_th.join();
         }
 
@@ -63,7 +67,6 @@ namespace nil::gate::runners::boost_asio
 
     private:
         boost::asio::io_context main_context;
-        boost::asio::executor_work_guard<boost::asio::io_context::executor_type> main_work;
 
         std::thread main_th;
     };

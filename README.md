@@ -10,18 +10,19 @@
         - [nil::gate::Core::edge](#nilgatecoreedge)
     - [Node](#node)
         - [Input](#input)
-        - [Sync Output](#sync-output)
-        - [Async Output](#async-output)
+        - [Output](#output)
+            - [Sync Output](#sync-output)
+            - [Async Output](#async-output)
         - [Special Arguments](#special-arguments)
         - [nil::gate::Core::node](#nilgatecorenode)
-    - [Run](#run)
-    - [Batch](#batch)
     - [Commit](#commit)
-    - [traits](#traits)
-        - [compatibility](#compatibility)
-        - [edgify](#edgify)
-        - [bias](#bias)
-        - [notes](#notes-personal-suggestions)
+    - [Batch](#batch)
+    - [Runners](#runners)
+- [nil::gate::traits](#traits)
+    - [compatibility](#compatibility)
+    - [edgify](#edgify)
+    - [bias](#bias)
+    - [notes](#notes-personal-suggestions)
 - [Errors](#errors)
 
 ## Supported Graph
@@ -50,6 +51,10 @@ Edges are only created through the following:
 
 ### `edges::ReadOnly`
 
+This base class provides an interface to access the value held by the edge.
+
+NOTE: `ReadOnly<T>::value()` is only thread safe when accessed inside the node's call operator.
+
 ```cpp
 #include <nil/gate.hpp>
 
@@ -76,7 +81,7 @@ int main()
 
 This type of edge is also an `edges::ReadOnly`.
 
-NOTE: `set_value` will only take effect on next `Core::run()`.
+NOTE: `set_value` will only take effect on next `Core::commit()`.
 
 ```cpp
 #include <nil/gate.hpp>
@@ -90,11 +95,11 @@ int main()
     //   ┗━━━ nil::gate::edges::Mutable<int>*
 
     edge->value(); // will return 100
-    // will request to set the value to 200 on next Core::run()
+    // will request to set the value to 200 on next Core::commit()
     edge->set_value(200);
     edge->value(); // will return 100
 
-    core.run();
+    core.commit();
     edge->value(); // will return 200
 }
 ```
@@ -120,6 +125,10 @@ Here are the list of available `edge()` signature available to `Core`:
 ```cpp
 // value will be moved to the data inside the edge
 nil::gate::edges::Mutable<T>* Core::edge(T value);
+
+// this will instantiate an edge without any value
+// Note that if an edge does not have a value, the node attached to it will not be invoked.
+nil::gate::edges::Mutable<T>* Core::edge();
 ```
 
 Requirements of the type for the edge:
@@ -268,7 +277,7 @@ int main()
 
 If the 1st argument is `const nil::gate::Core&`, the `Core` owner will be passed to it.
 
-This can be useful when using async edges.
+This can be useful when using async edges, batching, and committing.
 
 See [Batch](#batch) section for more detail.
 
@@ -308,135 +317,24 @@ Here are the list of available `node()` signature available to `Core`
 //
 // NOTES:
 //  1. `T instance` will be moved (or copied) inside the node
-//  2. `std::tuple<A...>` will be used to initialize each async edges
 //  3. `nil::gate::inputs<T...>` is simply an alias to `std::tuple<nil::gate::edges::Compatible<T>...>`
-//  4. `nil::gate::outputs<T...>` is simply an alias to `std::tuple<nil::gate::edges::ReadOnly<T>*...>`
 
-// no input, no sync output, no async output
-void Core::node<T>(T instance);
-// no input, has sync output, no async output
-nil::gate::outputs<S...> Core::node<T>(T instance);
-
-// has input, not sync output, no async output
+// has input, no output
 void Core::node<T>(T instance, nil::gate::inputs<I...>);
-// has input, has sync output, no async output
-nil::gate::outputs<S...> Core::node<T>(T instance, nil::gate::inputs<I...>);
 
-// no input, no sync output, has async output
-void Core::node<T>(T instance, std::tuple<A...>);
-// has input, has sync output, has async output
-nil::gate::outputs<S..., A...> Core::node<T>(T instance, nil::gate::inputs<I...>);
-```
-
-## Run
-
-Calling run will execute the nodes in proper order executing the nodes based on their inputs.
-
-Before running all necessary nodes, it will also resolve all calls to `edges::Mutable::set_value` updating the values held by the edges.
-
-```cpp
-struct Node
-{
-    std::tuple<int, int> operator(int, int) const;
-};
-
-int main()
-{
-    nil::gate::Core core;
-
-    /**
-     *  N1 and N2 are chained
-     *  ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-     *  ┃       ┏━━━━┓                       ┃
-     *  ┃ I1 => ┃    ┃                       ┃
-     *  ┃       ┃ N1 ┃          ┏━━━━┓       ┃
-     *  ┃ I1 => ┃    ┃ => I3 => ┃    ┃ => I5 ┃
-     *  ┃       ┗━━━━┛          ┃ N2 ┃       ┃
-     *  ┃ I2 =================> ┃    ┃ => I6 ┃
-     *  ┃                       ┗━━━━┛       ┃
-     *  ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
-     */
-    auto* edge_i1 = core.edge(10);
-    auto* edge_i2 = core.edge(20);
-    const auto [ edge_i3, edge_i4 ] = core.node(Node(), { edge_i1, edge_i1 }); // N1
-    const auto [ edge_i5, edge_i6 ] = core.node(Node(), { edge_i2, edge_i3 }); // N2
-
-    // This will execute N1 then N2
-    core.run();
-
-    edge_i2->set_value(3);
-
-    // Will return 20 since set_value will only be resolved before Core::run()
-    edge_i2->value();
-
-    // This will execute only N2
-    core.run();
-
-    // Will return 3
-    edge_i2->value();
-}
-```
-
-## Batch
-
-Imagine calling `set_value` and another thread is constantly calling `Core::run`.
-If somehow `Core::run` is called in between the calls to multiple `set_value`, that frame might not contain the "right" values for the edges.
-
-We can relate this to database session.
-
-```cpp
-#include <nil/gate.hpp>
-#include <thread>
-
-struct Node
-{
-    void operator()(int, float) const;
-};
-
-int main()
-{
-    nil::gate::Core core;
-
-    auto ei = core.edge(100);
-    //   ┗━━━ nil::gate::edges::Mutable<int>*
-    auto ef = core.edge(200.0f);
-    //   ┗━━━ nil::gate::edges::Mutable<float>*
-
-    core.node(Node(), { ei, ef });
-
-    // infinitely run core in another thread.
-    std::thread t([&core](){ while (true) { core.run(); }});
-
-    {
-        ei->set_value(101);
-        ef->set_value(201.0);
-        // depending on timing, it is possible that `core.run()`
-        // will run with `ei` having `101` and with `ef` having either `200.0` or `201.0`
-    }
-
-    // to guarantee batches
-    {
-        // auto [ bei, bef ] = core.batch(ei, ef);
-        auto batch = core.batch(ei, ef);
-        //   ┗━━━ nil::gate::Batch<int, float>
-        auto& [ bei, bef ] = batch;
-        //  ┃   ┃    ┗━━━ nil::gate::edges::Batch<float>*
-        //  ┃   ┗━━━━━━━━ nil::gate::edges::Batch<int>*
-        //  ┗━━━ required. batch is non-copyable and non-movable.
-
-        bei->set_value(102);
-        bef->set_value(202.0);
-        // this will guarantee that `core.run()`
-        // will run with ei having `102` and with `ef` having `202.0`
-    }
-}
+// has input, has output
+nil::gate::outputs<
+    nil::gate::sync_outputs<S...>,
+    nil::gate::async_outputs<A...>
+>
+    Core::node<T>(T instance, nil::gate::inputs<I...>);
 ```
 
 ## Commit
 
-This is a hook that will be called during the following:
-- manual call to `Core::commit()`
-- destruction of a `Batch<T...>`
+`Core::commit` applies all of the changes you want to do for the edges.
+
+See [Runners](#runners) section for more detail on when and where this changes are done.
 
 ```cpp
 #include <nil/gate.hpp>
@@ -447,19 +345,39 @@ struct Node
     void operator()(int, float) const;
 };
 
-// assume this will call the callable in another thread for scheduling
-void post(std::function<void()>);
-
-void commit_hook(nil::gate::Core& core)
-{
-    post([&core](){ self.run(); });
-}
-
 int main()
 {
     nil::gate::Core core;
 
-    core.set_commit(commit_hook);
+    auto ei = core.edge(100);
+    //   ┗━━━ nil::gate::edges::Mutable<int>*
+    auto ef = core.edge(200.0);
+    //   ┗━━━ nil::gate::edges::Mutable<float>*
+
+    core.node(Node(), { ei, ef });
+
+    ei->set_value(101);
+    ef->set_value(201.0);
+    core.commit();
+}
+```
+
+## Batch
+
+Use `Core::batch` for cases that you need guarantee that changes are done in one go.
+
+```cpp
+#include <nil/gate.hpp>
+#include <functional>
+
+struct Node
+{
+    void operator()(int, float) const;
+};
+
+int main()
+{
+    nil::gate::Core core;
 
     auto ei = core.edge(100);
     //   ┗━━━ nil::gate::edges::Mutable<int>*
@@ -469,33 +387,48 @@ int main()
     core.node(Node(), { ei, ef });
 
     {
-        ei->set_value(101);
-        ef->set_value(201.0);
-        core.commit(); // manual commit call
-    }
-
-    {
         auto [ bei, bef ] = core.batch(ei, ef);
+        // or
+        // auto [ bei, bef ] = core.batch({ei, ef});
         bei->set_value(102);
         bef->set_value(202.0);
-        // will call the callback when the batch goes out of scope.
-    }
-
-    // also supports receiving tuple of mutable edges
-    {
-        auto [ bei, bef ] = core.batch({ ei, ef });
-        //     ┃    ┃                  ┣━━━ nil::gate::async_outputs<int, float>
-        //     ┃    ┃                  ┗━━━ std::tuple<edges::Mutable<int>*, edges::Mutable<float>*>
-        //     ┃    ┗━━━ nil::gate::edges::Batch<float>*
-        //     ┗━━━━━━━━ nil::gate::edges::Batch<int>*
-        bei->set_value(102);
-        bef->set_value(202.0);
-        // will call the callback when the batch goes out of scope.
-    }
+    } // make sure that a batch is destroyed to queue the changes
+    core.commit();
 }
 ```
 
-## traits
+## Runners
+
+The behavior how the nodes are executed during `Core::commit()` is defined by a `runner`.
+
+By default, these are the behavior of the library:
+- nodes are executed inside the same thread where `Core::commit()` is invoked.
+- nodes are executed in order of registration.
+
+Use `Core::set_runner` to override this behavior.
+
+The library provides a runner that can run the nodes in a different thread. This will require boost asio as the implementation depends on it.
+
+```cpp
+// similar to default behavior but will run in a dedicated thread
+#include <nil/gate/runners/boost_asio/Serial.hpp>
+// will run everyting in a dedicated thread + each node will be ran in a thread pool
+#include <nil/gate/runners/boost_asio/Parallel.hpp>
+
+...
+
+nil::gate::Core core;
+core.set_runner<nil::gate::runners::boost_asio::Parallel>(thread_count);
+core.set_runner<nil::gate::runners::boost_asio::Serial>();
+```
+
+Runners are expected to implement two methods (WIP: to be revised):
+- `flush(invokable)`
+- `run(nodes)`
+
+Make sure that flushing and running are done in a thread safe manner
+
+## `nil::gate::traits`
 
 `nil/gate` provides an overridable traits to allow customization and add rules to graph creation.
 
@@ -715,29 +648,6 @@ These are not included from `nil/gate.hpp` and users must opt-in to apply these 
     - If returning a temporary, you should return an object that will own the data (not a reference).
     - If returning a non-reference type, take note that the conversion will be done everytime the node is triggered.
 
-## Runners
-
-When calling `Core::run()` the behavior how the nodes are executed is controlled by a `runner`.
-
-By default, these are the behavior of the library:
-- nodes are executed inside the same thread where `Core::run()` is invoked.
-- nodes are executed in order of registration.
-
-Use `Core::set_runner` to override this behavior.
-
-The library provides a runner that can run the nodes in a different thread. This will require boost asio as the implementation depends on it.
-
-```cpp
-// similar to default behavior but will run in a dedicated thread
-#include <nil/gate/runners/boost_asio/Serial.hpp>
-// will run everyting in a dedicated thread + each node will be ran in a thread pool
-#include <nil/gate/runners/boost_asio/Parallel.hpp>
-
-nil::gate::Core core;
-core.set_runner(std::make_unique<nil::gate::runners::boost_asio::Parallel>(thread_count));
-core.set_runner(std::make_unique<nil::gate::runners::boost_asio::Serial>());
-```
-
 ## Errors
 
 The library tries its best to provide undestandable error messages as much as possible.
@@ -773,7 +683,6 @@ These are the errors detected with similar error message:
 
 ## TODO
 
-- allow a way to disregard node state
-    - force execution
 - connect two edges together without creating a node
     - this will allow easier feedback loop
+- if a sync output edge is returned with the same value, can it bypass the execution of the next node?

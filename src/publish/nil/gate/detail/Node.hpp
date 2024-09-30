@@ -71,7 +71,7 @@ namespace nil::gate::detail
             if (state != EState::Pending)
             {
                 state = EState::Pending;
-                pend(typename sync_output_t::make_index_sequence());
+                std::apply([](auto&... syncs) { (syncs.pend(), ...); }, sync_outputs);
             }
         }
 
@@ -80,7 +80,7 @@ namespace nil::gate::detail
             if (state != EState::Done)
             {
                 state = EState::Done;
-                done(typename sync_output_t::make_index_sequence());
+                std::apply([](auto&... syncs) { (syncs.done(), ...); }, sync_outputs);
             }
         }
 
@@ -93,12 +93,21 @@ namespace nil::gate::detail
             }
         }
 
-        typename output_t::edges output_edges()
+        auto output_edges()
         {
-            return output_edges(
-                typename sync_output_t::make_index_sequence(),
-                typename async_output_t::make_index_sequence()
-            );
+            if constexpr (output_t::size > 0)
+            {
+                return typename output_t::edges(
+                    std::apply(
+                        [](auto&... s) { return std::tuple(s.as_readonly()...); },
+                        sync_outputs
+                    ),
+                    std::apply(
+                        [](auto&... s) { return std::tuple(s.as_mutable()...); },
+                        async_outputs
+                    )
+                );
+            }
         }
 
         bool is_pending() const override
@@ -108,7 +117,10 @@ namespace nil::gate::detail
 
         bool is_ready() const override
         {
-            return this->are_inputs_ready(typename input_t::make_index_sequence());
+            return std::apply(
+                [](const auto&... i) { return (true && ... && i.is_ready()); },
+                inputs
+            );
         }
 
     private:
@@ -121,18 +133,6 @@ namespace nil::gate::detail
             (get<s_indices>(sync_outputs).exec(std::move(get<s_indices>(result))), ...);
         }
 
-        template <std::size_t... s_indices>
-        void pend(std::index_sequence<s_indices...> /* unused */)
-        {
-            (get<s_indices>(sync_outputs).pend(), ...);
-        }
-
-        template <std::size_t... s_indices>
-        void done(std::index_sequence<s_indices...> /* unused */)
-        {
-            (get<s_indices>(sync_outputs).done(), ...);
-        }
-
         template <std::size_t... i_indices>
         auto call(std::index_sequence<i_indices...> /* unused */)
         {
@@ -142,14 +142,22 @@ namespace nil::gate::detail
                 {
                     return instance(
                         *core,
-                        async_edges(typename async_output_t::make_index_sequence()),
+                        std::apply(
+                            [](auto&... a) -> async_output_t::edges
+                            { return std::tuple(a.as_mutable()...); },
+                            async_outputs
+                        ),
                         get<i_indices>(inputs).value()...
                     );
                 }
                 else
                 {
                     return instance(
-                        async_edges(typename async_output_t::make_index_sequence()),
+                        std::apply(
+                            [](auto&... a) -> async_output_t::edges
+                            { return std::tuple(a.as_mutable()...); },
+                            async_outputs
+                        ),
                         get<i_indices>(inputs).value()...
                     );
                 }
@@ -165,35 +173,6 @@ namespace nil::gate::detail
                     return instance(get<i_indices>(inputs).value()...);
                 }
             }
-        }
-
-        template <std::size_t... a_indices>
-        auto async_edges(std::index_sequence<a_indices...> /* unused */)
-        {
-            return typename async_output_t::edges( //
-                std::addressof(get<a_indices>(async_outputs))...
-            );
-        }
-
-        template <std::size_t... s_indices, std::size_t... a_indices>
-        auto output_edges(
-            std::index_sequence<s_indices...> /* unused */,
-            std::index_sequence<a_indices...> /* unused */
-        )
-        {
-            if constexpr (sizeof...(s_indices) > 0 || sizeof...(a_indices) > 0)
-            {
-                return typename output_t::edges(
-                    {std::addressof(get<s_indices>(sync_outputs))...},
-                    {std::addressof(get<a_indices>(async_outputs))...}
-                );
-            }
-        }
-
-        template <std::size_t... i_indices>
-        bool are_inputs_ready(std::index_sequence<i_indices...> /* unused */) const
-        {
-            return (true && ... && std::get<i_indices>(inputs).is_ready());
         }
 
         EState state = EState::Pending;

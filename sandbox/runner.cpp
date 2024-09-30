@@ -40,15 +40,17 @@ int main()
 
     core.node([](int i) { std::printf("printer: %d\n", i); }, {r});
 
-    // core.set_runner(std::make_unique<nil::gate::runners::boost_asio::Parallel>(10));
-    core.set_runner(std::make_unique<nil::gate::runners::boost_asio::Serial>());
-    core.set_commit([](const nil::gate::Core& c) { c.run(); });
+    core.set_runner<nil::gate::runners::boost_asio::Parallel>(10);
+    // core.set_runner<nil::gate::runners::boost_asio::Serial>();
 
     while (true)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        auto [b] = core.batch(e1_i);
-        // getting value here might not be thread safe.. so be ware.
-        b->set_value(b->value() + 1);
+        {
+            auto [b] = core.batch(e1_i);
+            // getting value here might not be thread safe.. so be ware.
+            b->set_value(b->value() + 1);
+        }
+        core.commit();
     }
 }
