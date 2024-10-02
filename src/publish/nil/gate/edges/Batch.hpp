@@ -29,9 +29,10 @@ namespace nil::gate::edges
             diffs->push_back(make_callable(
                 [e = edge, d = std::move(new_data)]() mutable
                 {
-                    if (e->exec(d))
+                    if (!e->is_equal(d))
                     {
                         e->pend();
+                        e->exec(std::move(d));
                         e->done();
                     }
                 }

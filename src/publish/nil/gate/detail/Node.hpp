@@ -3,6 +3,7 @@
 #include "../Diffs.hpp"
 #include "../INode.hpp"
 #include "traits/node.hpp"
+#include <memory>
 
 namespace nil::gate
 {
@@ -23,12 +24,12 @@ namespace nil::gate::detail
         Node(
             Diffs* init_diffs,
             Core* init_core,
-            const typename input_t::edges& init_inputs,
+            typename input_t::edges init_inputs,
             T init_instance
         )
             : instance(std::move(init_instance))
             , core(init_core)
-            , inputs(init_inputs)
+            , inputs(std::move(init_inputs))
         {
             std::apply([this](auto&... i) { (i.attach(this), ...); }, inputs);
             std::apply([init_diffs](auto&... o) { (o.attach(init_diffs), ...); }, sync_outputs);
@@ -99,11 +100,11 @@ namespace nil::gate::detail
             {
                 return typename output_t::edges(
                     std::apply(
-                        [](auto&... s) { return std::tuple(s.as_readonly()...); },
+                        [](auto&... s) { return typename output_t::sync_t(std::addressof(s)...); },
                         sync_outputs
                     ),
                     std::apply(
-                        [](auto&... s) { return std::tuple(s.as_mutable()...); },
+                        [](auto&... s) { return typename output_t::async_t(std::addressof(s)...); },
                         async_outputs
                     )
                 );
@@ -143,8 +144,8 @@ namespace nil::gate::detail
                     return instance(
                         *core,
                         std::apply(
-                            [](auto&... a) -> async_output_t::edges
-                            { return std::tuple(a.as_mutable()...); },
+                            [](auto&... a)
+                            { return typename async_output_t::edges(std::addressof(a)...); },
                             async_outputs
                         ),
                         get<i_indices>(inputs).value()...
@@ -154,8 +155,8 @@ namespace nil::gate::detail
                 {
                     return instance(
                         std::apply(
-                            [](auto&... a) -> async_output_t::edges
-                            { return std::tuple(a.as_mutable()...); },
+                            [](auto&... a)
+                            { return typename async_output_t::edges(std::addressof(a)...); },
                             async_outputs
                         ),
                         get<i_indices>(inputs).value()...

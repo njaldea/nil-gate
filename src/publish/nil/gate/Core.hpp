@@ -21,22 +21,22 @@ namespace nil::gate::concepts
     concept is_node_invalid = !detail::traits::node<T>::is_valid;
 }
 
+namespace nil::gate::errors
+{
+    template <typename T>
+    struct Errors
+    {
+        using traits = nil::gate::detail::traits::node<T>;
+        Error arg_asyncs = Check<traits::arg_async::is_valid>();
+        Error arg_core = Check<traits::arg_core::is_valid>();
+        Error inputs = Check<traits::inputs::is_valid>();
+        Error sync_outputs = Check<traits::sync_outputs::is_valid>();
+        Error async_outputs = Check<traits::async_outputs::is_valid>();
+    };
+}
+
 namespace nil::gate
 {
-    namespace errors
-    {
-        template <typename T>
-        struct Errors
-        {
-            using traits = nil::gate::detail::traits::node<T>;
-            Error arg_asyncs = Check<traits::arg_async::is_valid>();
-            Error arg_core = Check<traits::arg_core::is_valid>();
-            Error inputs = Check<traits::inputs::is_valid>();
-            Error sync_outputs = Check<traits::sync_outputs::is_valid>();
-            Error async_outputs = Check<traits::async_outputs::is_valid>();
-        };
-    }
-
     class Core final
     {
         template <typename T>
@@ -68,7 +68,7 @@ namespace nil::gate
             auto n = std::make_unique<detail::Node<T>>(
                 diffs.get(),
                 this,
-                input_edges,
+                std::move(input_edges),
                 std::move(instance)
             );
             auto* r = n.get();

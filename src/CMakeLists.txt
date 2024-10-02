@@ -26,7 +26,6 @@ set(
         publish/nil/gate/detail/traits/types.hpp
         publish/nil/gate/detail/validation.hpp
         publish/nil/gate/edges/Batch.hpp
-        publish/nil/gate/edges/Compatible.hpp
         publish/nil/gate/edges/Mutable.hpp
         publish/nil/gate/edges/ReadOnly.hpp
         publish/nil/gate/nodes/Scoped.hpp

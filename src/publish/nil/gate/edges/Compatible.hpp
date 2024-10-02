@@ -1,6 +1,5 @@
 #pragma once
 
-#include "../IEdge.hpp"
 #include "../detail/DataEdge.hpp"
 #include "../errors.hpp"
 #include "../traits/compatibility.hpp"
@@ -10,27 +9,25 @@ namespace nil::gate
     class INode;
 }
 
-namespace nil::gate::errors
+namespace nil::gate::concepts
 {
-    template <typename T, typename U, typename = void>
-    struct is_compatible
-    {
-        static constexpr bool value = false;
+    template <typename T, typename U>
+    concept is_compatible = requires(T t, U u) {
+        { traits::compatibility<T, U>::convert(u) };
     };
 
     template <typename T, typename U>
-    struct is_compatible<
-        T,
-        U,
-        std::void_t<decltype(traits::compatibility<T, U>::convert(std::declval<U>()))>>
-    {
-        static constexpr bool value = true;
-    };
+    concept is_ref_return = std::is_reference_v<                          //
+        decltype(traits::compatibility<T, U>::convert(std::declval<U>())) //
+        >;
+}
 
+namespace nil::gate::errors
+{
     template <typename T, typename U>
     struct CompatibilityError
     {
-        Error compatibility = Check<is_compatible<T, U>::value>();
+        Error compatibility = Check<concepts::is_compatible<T, U>>();
     };
 }
 
@@ -40,29 +37,39 @@ namespace nil::gate::edges
     class Compatible final
     {
     public:
+        Compatible() = delete;
+
         template <typename U>
-            requires(!errors::is_compatible<T, U>::value)
+            requires(!concepts::is_compatible<T, U>)
         Compatible(edges::ReadOnly<U>* init_edge, errors::CompatibilityError<T, U> = {}) = delete;
 
         template <typename U>
-            requires(errors::is_compatible<T, U>::value)
+            requires(concepts::is_compatible<T, U>)
         // NOLINTNEXTLINE(hicpp-explicit-conversions)
-        Compatible(edges::ReadOnly<U>* init_edge)
-            : edge(init_edge)
+        constexpr Compatible(edges::ReadOnly<U>* edge)
+            : adapter(static_cast<detail::edges::Data<U>*>(edge)->template adapt<T>())
             , attach_impl( //
-                  +[](IEdge* e, INode* node)
-                  { static_cast<detail::edges::Data<U>*>(e)->attach(node); }
+                  +[](void* p, INode* node)
+                  {
+                      using type
+                          = decltype(std::declval<detail::edges::Data<U>>().template adapt<T>());
+                      static_cast<type>(p)->attach(node);
+                  }
               )
             , is_ready_impl( //
-                  +[](IEdge* e) -> bool
-                  { return static_cast<detail::edges::Data<U>*>(e)->is_ready(); }
+                  +[](void* p)
+                  {
+                      using type
+                          = decltype(std::declval<detail::edges::Data<U>>().template adapt<T>());
+                      return static_cast<type>(p)->is_ready();
+                  }
               )
             , value_impl( //
-                  +[](IEdge* e) -> const T&
+                  +[](void* p) -> const T&
                   {
-                      using compat = traits::compatibility<T, U>;
-                      using type = detail::edges::Data<U>;
-                      return compat::convert(static_cast<type*>(e)->value());
+                      using type
+                          = decltype(std::declval<detail::edges::Data<U>>().template adapt<T>());
+                      return static_cast<type>(p)->value();
                   }
               )
         {
@@ -70,31 +77,31 @@ namespace nil::gate::edges
 
         ~Compatible() noexcept = default;
 
-        Compatible(Compatible&&) noexcept = delete;
-        Compatible& operator=(Compatible&&) noexcept = delete;
+        Compatible(Compatible&&) noexcept = default;
+        Compatible& operator=(Compatible&&) noexcept = default;
 
         Compatible(const Compatible&) = default;
         Compatible& operator=(const Compatible&) = default;
 
         const T& value() const
         {
-            return value_impl(edge);
+            return value_impl(adapter);
         }
 
         void attach(INode* node)
         {
-            return attach_impl(edge, node);
+            attach_impl(adapter, node);
         }
 
         bool is_ready() const
         {
-            return is_ready_impl(edge);
+            return is_ready_impl(adapter);
         }
 
     private:
-        nil::gate::IEdge* edge = nullptr;
-        void (*attach_impl)(IEdge*, INode*);
-        bool (*is_ready_impl)(IEdge*);
-        const T& (*value_impl)(IEdge*);
+        void* adapter = nullptr;
+        void (*attach_impl)(void*, INode*);
+        bool (*is_ready_impl)(void*);
+        const T& (*value_impl)(void*);
     };
 }

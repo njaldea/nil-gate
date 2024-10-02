@@ -1,12 +1,9 @@
 #include <nil/gate.hpp>
 
 #include <nil/gate/bias/nil.hpp>
-
-#include <boost/asio/io_context.hpp>
-#include <boost/asio/strand.hpp>
+#include <nil/gate/runners/boost_asio/Serial.hpp>
 
 #include <iostream>
-#include <thread>
 
 float deferred(const nil::gate::Core& core, nil::gate::async_outputs<int> z, bool a)
 {
@@ -26,6 +23,11 @@ std::reference_wrapper<const float> switcher(bool a, const float& l, const float
     return a ? std::ref(l) : std::ref(r);
 }
 
+void bar(std::reference_wrapper<const bool> a)
+{
+    std::cout << a.get() << std::endl;
+}
+
 void foo(int v)
 {
     std::cout << "foo: " << v << std::endl;
@@ -42,6 +44,9 @@ int main()
     auto* a = core.edge(false);
     auto* l = core.edge(std::cref(ref));
     auto* r = core.edge(200.f);
+
+    core.node(&bar, {a});
+
     const auto [f, x] = core.node(&deferred, {a});
     x->set_value(9000);
 
@@ -51,27 +56,12 @@ int main()
     core.node(printer_f, {fs});
     core.node(&foo, {x});
 
-    boost::asio::io_context context;
-    std::thread gate_thread(
-        [&context]()
-        {
-            auto g = boost::asio::make_work_guard(context);
-            context.run();
-        }
-    );
+    core.set_runner<nil::gate::runners::boost_asio::Serial>();
 
     while (true)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        boost::asio::post(
-            context,
-            [a, &core]()
-            {
-                a->set_value(!a->value());
-                core.commit();
-            }
-        );
+        a->set_value(!a->value());
+        core.commit();
     }
-
-    gate_thread.join();
 }
