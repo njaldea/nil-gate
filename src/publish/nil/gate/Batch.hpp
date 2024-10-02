@@ -10,8 +10,6 @@
 
 namespace nil::gate
 {
-    class Core;
-
     template <typename... T>
     class Batch final
     {

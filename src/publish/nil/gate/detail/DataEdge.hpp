@@ -85,9 +85,9 @@ namespace nil::gate::detail::edges
             if (state != EState::Pending)
             {
                 state = EState::Pending;
-                for (auto* out : this->outs)
+                for (auto* n : this->node_out)
                 {
-                    out->pend();
+                    n->pend();
                 }
             }
         }
@@ -99,7 +99,7 @@ namespace nil::gate::detail::edges
 
         void attach(INode* node)
         {
-            outs.push_back(node);
+            node_out.push_back(node);
         }
 
         void attach(Diffs* new_diffs)
@@ -115,12 +115,15 @@ namespace nil::gate::detail::edges
         template <typename U>
         auto* adapt()
         {
-            if constexpr (std::is_same_v<T, U>)
+            using FROM = T;
+            using TO = U;
+            if constexpr (std::is_same_v<TO, FROM>)
             {
                 struct Impl final: IAdapter
                 {
-                    explicit Impl(detail::edges::Data<T>* init_edge)
+                    explicit Impl(detail::edges::Data<TO>* init_edge)
                         : edge(init_edge)
+                        , cache(nullptr)
                     {
                         if (edge->state == EState::Stale)
                         {
@@ -130,7 +133,7 @@ namespace nil::gate::detail::edges
 
                     const T& value() const
                     {
-                        return cache.value();
+                        return *cache;
                     }
 
                     void attach(INode* node)
@@ -143,13 +146,13 @@ namespace nil::gate::detail::edges
                         return edge->is_ready();
                     }
 
-                    void set(const T& new_value)
+                    void set(const FROM& new_value)
                     {
-                        cache.emplace(std::cref(new_value));
+                        cache = &new_value;
                     }
 
-                    detail::edges::Data<T>* edge;
-                    std::optional<std::reference_wrapper<const U>> cache;
+                    detail::edges::Data<FROM>* edge;
+                    const TO* cache;
                 };
 
                 if (auto it = adapters.find(nullptr); it != adapters.end())
@@ -164,13 +167,14 @@ namespace nil::gate::detail::edges
             else
             {
                 constexpr auto needs_cache = std::is_reference_v<
-                    decltype(traits::compatibility<U, T>::convert(std::declval<T>()))>;
+                    decltype(traits::compatibility<TO, FROM>::convert(std::declval<FROM>()))>;
                 if constexpr (needs_cache)
                 {
                     struct Impl final: IAdapter
                     {
-                        explicit Impl(detail::edges::Data<T>* init_edge)
+                        explicit Impl(detail::edges::Data<FROM>* init_edge)
                             : edge(init_edge)
+                            , cache(nullptr)
                         {
                             if (edge->state == EState::Stale)
                             {
@@ -178,9 +182,9 @@ namespace nil::gate::detail::edges
                             }
                         }
 
-                        const U& value() const
+                        const TO& value() const
                         {
-                            return cache.value();
+                            return *cache;
                         }
 
                         void attach(INode* node)
@@ -193,16 +197,16 @@ namespace nil::gate::detail::edges
                             return edge->is_ready();
                         }
 
-                        void set(const T& new_value) override
+                        void set(const FROM& new_value) override
                         {
-                            cache.emplace(std::cref(new_value));
+                            cache = &traits::compatibility<TO, FROM>::convert(new_value);
                         }
 
-                        detail::edges::Data<T>* edge;
-                        std::optional<std::reference_wrapper<const U>> cache;
+                        detail::edges::Data<FROM>* edge;
+                        const TO* cache;
                     };
 
-                    const void* const id = (void*)traits::compatibility<U, T>::convert;
+                    const void* const id = (void*)traits::compatibility<TO, FROM>::convert;
                     if (auto it = adapters.find(id); it != adapters.end())
                     {
                         return static_cast<Impl*>(it->second.get());
@@ -215,7 +219,7 @@ namespace nil::gate::detail::edges
                 {
                     struct Impl final: IAdapter
                     {
-                        explicit Impl(detail::edges::Data<T>* init_edge)
+                        explicit Impl(detail::edges::Data<FROM>* init_edge)
                             : edge(init_edge)
                         {
                             if (edge->state == EState::Stale)
@@ -224,7 +228,7 @@ namespace nil::gate::detail::edges
                             }
                         }
 
-                        const U& value() const
+                        const TO& value() const
                         {
                             return cache.value();
                         }
@@ -239,16 +243,16 @@ namespace nil::gate::detail::edges
                             return edge->is_ready();
                         }
 
-                        void set(const T& new_value) override
+                        void set(const FROM& new_value) override
                         {
-                            cache = traits::compatibility<U, T>::convert(new_value);
+                            cache = traits::compatibility<TO, FROM>::convert(new_value);
                         }
 
-                        detail::edges::Data<T>* edge;
-                        std::optional<U> cache;
+                        detail::edges::Data<FROM>* edge;
+                        std::optional<TO> cache;
                     };
 
-                    const void* const id = (void*)traits::compatibility<U, T>::convert;
+                    const void* const id = (void*)traits::compatibility<TO, FROM>::convert;
                     if (auto it = adapters.find(id); it != adapters.end())
                     {
                         return static_cast<Impl*>(it->second.get());
@@ -270,7 +274,7 @@ namespace nil::gate::detail::edges
         EState state;
         std::optional<T> data;
         nil::gate::Diffs* diffs;
-        std::vector<INode*> outs;
+        std::vector<INode*> node_out;
 
         struct IAdapter
         {

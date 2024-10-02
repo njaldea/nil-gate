@@ -2,13 +2,16 @@
 
 namespace nil::gate::traits
 {
-    template <typename T, typename U>
-    struct compatibility;
-
-    template <typename T>
-    struct compatibility<T, T>
+    template <typename TO, typename FROM>
+    struct compatibility
     {
-        static const T& convert(const T& u)
+        static const TO& convert(const FROM& u) = delete;
+    };
+
+    template <typename TYPE>
+    struct compatibility<TYPE, TYPE>
+    {
+        static const TYPE& convert(const TYPE& u)
         {
             return u;
         }

@@ -91,6 +91,15 @@ namespace nil::gate
             return r->output_edges();
         }
 
+        template <typename TO, typename FROM>
+            requires requires(TO to, FROM from) {
+                { traits::compatibility<TO, FROM>::convert(to) };
+            }
+        void link(edges::ReadOnly<FROM>* from, edges::Mutable<TO>* to)
+        {
+            this->node([to](const TO& v) { to->set_value(v); }, {from});
+        }
+
         /// starting from this point - edge
 
         template <typename T>

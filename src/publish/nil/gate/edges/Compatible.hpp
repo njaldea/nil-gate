@@ -11,64 +11,68 @@ namespace nil::gate
 
 namespace nil::gate::concepts
 {
-    template <typename T, typename U>
-    concept is_compatible = requires(T t, U u) {
-        { traits::compatibility<T, U>::convert(u) };
+    template <typename TO, typename FROM>
+    concept is_compatible = requires(TO to, FROM from) {
+        { traits::compatibility<TO, FROM>::convert(from) };
     };
 
-    template <typename T, typename U>
-    concept is_ref_return = std::is_reference_v<                          //
-        decltype(traits::compatibility<T, U>::convert(std::declval<U>())) //
-        >;
+    template <typename TO, typename FROM>
+    concept is_ref_return = std::is_reference_v<decltype( //
+        traits::compatibility<TO, FROM>::convert(std::declval<FROM>())
+    )>;
 }
 
 namespace nil::gate::errors
 {
-    template <typename T, typename U>
+    template <typename TO, typename FROM>
     struct CompatibilityError
     {
-        Error compatibility = Check<concepts::is_compatible<T, U>>();
+        Error compatibility = Check<concepts::is_compatible<TO, FROM>>();
     };
 }
 
+template <typename T>
+void printer_nil();
+
 namespace nil::gate::edges
 {
-    template <typename T>
+    template <typename TO>
     class Compatible final
     {
     public:
         Compatible() = delete;
 
-        template <typename U>
-            requires(!concepts::is_compatible<T, U>)
-        Compatible(edges::ReadOnly<U>* init_edge, errors::CompatibilityError<T, U> = {}) = delete;
+        template <typename FROM>
+            requires(!concepts::is_compatible<TO, FROM>)
+        Compatible(edges::ReadOnly<FROM>* init_edge, errors::CompatibilityError<TO, FROM> = {})
+            = delete;
 
-        template <typename U>
-            requires(concepts::is_compatible<T, U>)
+        template <typename FROM>
+            requires(concepts::is_compatible<TO, FROM>)
         // NOLINTNEXTLINE(hicpp-explicit-conversions)
-        constexpr Compatible(edges::ReadOnly<U>* edge)
-            : adapter(static_cast<detail::edges::Data<U>*>(edge)->template adapt<T>())
+        Compatible(edges::ReadOnly<FROM>* edge)
+            : adapter(static_cast<detail::edges::Data<FROM>*>(edge)->template adapt<TO>())
             , attach_impl( //
                   +[](void* p, INode* node)
                   {
-                      using type
-                          = decltype(std::declval<detail::edges::Data<U>>().template adapt<T>());
+                      using DATA = detail::edges::Data<FROM>;
+                      using type = decltype(std::declval<DATA>().template adapt<TO>());
                       static_cast<type>(p)->attach(node);
                   }
               )
             , is_ready_impl( //
                   +[](void* p)
                   {
-                      using type
-                          = decltype(std::declval<detail::edges::Data<U>>().template adapt<T>());
+                      using DATA = detail::edges::Data<FROM>;
+                      using type = decltype(std::declval<DATA>().template adapt<TO>());
                       return static_cast<type>(p)->is_ready();
                   }
               )
             , value_impl( //
-                  +[](void* p) -> const T&
+                  +[](void* p) -> const TO&
                   {
-                      using type
-                          = decltype(std::declval<detail::edges::Data<U>>().template adapt<T>());
+                      using DATA = detail::edges::Data<FROM>;
+                      using type = decltype(std::declval<DATA>().template adapt<TO>());
                       return static_cast<type>(p)->value();
                   }
               )
@@ -83,7 +87,7 @@ namespace nil::gate::edges
         Compatible(const Compatible&) = default;
         Compatible& operator=(const Compatible&) = default;
 
-        const T& value() const
+        const TO& value() const
         {
             return value_impl(adapter);
         }
@@ -102,6 +106,6 @@ namespace nil::gate::edges
         void* adapter = nullptr;
         void (*attach_impl)(void*, INode*);
         bool (*is_ready_impl)(void*);
-        const T& (*value_impl)(void*);
+        const TO& (*value_impl)(void*);
     };
 }

@@ -1,4 +1,3 @@
-#include "nil/gate/types.hpp"
 #include <nil/gate.hpp>
 
 #include <nil/gate/bias/nil.hpp>

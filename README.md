@@ -407,10 +407,17 @@ By default, these are the behavior of the library:
 
 Use `Core::set_runner` to override this behavior.
 
-The library provides a runner that can run the nodes in a different thread. This will require boost asio as the implementation depends on it.
+The library provides a runner that can run the nodes in a different thread.
 
 ```cpp
-// similar to default behavior but will run in a dedicated thread
+// This is the default runner used
+#include <nil/gate/runners/Immediate.hpp>
+// This will run the graph in a separate thread
+#include <nil/gate/runners/NonBlockking.hpp>
+
+// The following runners requires boost dependency
+
+// This is similar to NonBlocking but using boost asio
 #include <nil/gate/runners/boost_asio/Serial.hpp>
 // will run everyting in a dedicated thread + each node will be ran in a thread pool
 #include <nil/gate/runners/boost_asio/Parallel.hpp>
@@ -418,13 +425,14 @@ The library provides a runner that can run the nodes in a different thread. This
 ...
 
 nil::gate::Core core;
-core.set_runner<nil::gate::runners::boost_asio::Parallel>(thread_count);
+core.set_runner<nil::gate::runners::Immediate>();
+core.set_runner<nil::gate::runners::NonBlocking>();
 core.set_runner<nil::gate::runners::boost_asio::Serial>();
+core.set_runner<nil::gate::runners::boost_asio::Parallel>(thread_count);
 ```
 
-Runners are expected to implement two methods (WIP: to be revised):
-- `flush(invokable)`
-- `run(nodes)`
+Runners are expected to implement the following (WIP: to be revised):
+- `run(std::unique_ptr<ICallable<void()>>, std::span<nodes>)`
 
 Make sure that flushing and running are done in a thread safe manner
 
@@ -505,10 +513,7 @@ Here is an example of when this is going to be used:
 ```cpp
 #include <nil/gate.hpp>
 
-std::reference_wrapper<const int> switcher(bool flag, int a, int b)
-{
-    return flag ? a : b;
-}
+std::reference_wrapper<const int> switcher(bool flag, int a, int b);
 
 void consumer(int);
 
@@ -516,13 +521,17 @@ int main()
 {
     nil::gate::Core core;
 
-    auto* flag = core.edge(false);
-    //    ┗━━━━━━━━ nil::gate::edges::Mutable<bool>*
+    bool ref = false;
+    auto* flag = core.edge(std::cref(false));
+    //    ┗━━━━━━━━ nil::gate::edges::Mutable<std::reference_wrapper<const bool>>*
     auto* a = core.edge(1);
     //    ┗━━━━━━━━ nil::gate::edges::Mutable<int>*
     auto* b = core.edge(2);
     //    ┗━━━━━━━━ nil::gate::edges::Mutable<int>*
     const auto [ out ] = core.node(&switcher, {flag, a, b});
+    //           ┃                             ┗━━━━━━━━ This will produce a compilation failure.
+    //           ┃                                       ReadOnly<std::reference_wrapper<const bool>>
+    //           ┃                                       is not convertible to ReadOnly<bool>
     //           ┗━━━━━━━━ nil::gate::edges::ReadOnly<std::reference_wrapper<const int>>*
 
     core.node(&consumer, { out });
@@ -542,29 +551,37 @@ to allow compatibility, users must define how to convert the data by doing the f
 
 namespace nil::gate::traits
 {
-    template <typename T>
+    template <typename To>
     struct compatibility<
         T
-    //  ┣━━━━━━━━ first template type is the type to convert from
+    //  ┣━━━━━━━━ first template type is the type to convert to
     //  ┗━━━━━━━━ this is normally the type expected by the node
         std::reference_wrapper<const T>,
-    //  ┗━━━━━━━━ second template type is the type to convert to
+    //  ┗━━━━━━━━ second template type is the type to convert from
     >
     {
-        static const T& convert(
-            const std::reference_wrapper<const T>& u
-        //  ┗━━━━━━━━ this data will be alive through the lifetime of the edge owning it
-        )
+        static const T& convert(const std::reference_wrapper<const T>& u)
         {
             return u.get();
         }
     };
+    template <typename To>
+    struct compatibility<
+        std::reference_wrapper<const T>,
+    //  ┣━━━━━━━━ first template type is the type to convert to
+    //  ┗━━━━━━━━ this is normally the type expected by the node
+        T
+    //  ┗━━━━━━━━ second template type is the type to convert from
+    >
+    {
+        static std::reference_wrapper<const T> convert(const T& u)
+        {
+            return u;
+        }
+    };
 }
 
-std::reference_wrapper<const int> switcher(bool flag, int a, int b)
-{
-    return flag ? a : b;
-}
+std::reference_wrapper<const int> switcher(bool flag, int a, int b);
 
 void consumer(int);
 
@@ -572,8 +589,8 @@ int main()
 {
     nil::gate::Core core;
 
-    auto* flag = core.edge(false);
-    //    ┗━━━━━━━━ nil::gate::edges::Mutable<bool>*
+    auto* flag = core.edge(std::cref(false));
+    //    ┗━━━━━━━━ nil::gate::edges::Mutable<std::reference_wrapper<const bool>>*
     auto* a = core.edge(1);
     //    ┗━━━━━━━━ nil::gate::edges::Mutable<int>*
     auto* b = core.edge(2);

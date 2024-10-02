@@ -1,7 +1,7 @@
 #include <nil/gate.hpp>
 
 #include <nil/gate/bias/nil.hpp>
-#include <nil/gate/runners/boost_asio/Serial.hpp>
+#include <nil/gate/runners/NonBlocking.hpp>
 
 #include <iostream>
 
@@ -56,7 +56,7 @@ int main()
     core.node(printer_f, {fs});
     core.node(&foo, {x});
 
-    core.set_runner<nil::gate::runners::boost_asio::Serial>();
+    core.set_runner<nil::gate::runners::NonBlocking>();
 
     while (true)
     {
