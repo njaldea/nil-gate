@@ -18,7 +18,7 @@ namespace nil::gate::concepts
     template <typename T>
     concept is_node_valid = detail::traits::node<T>::is_valid;
     template <typename T>
-    concept is_node_invalid = !detail::traits::node<T>::is_valid;
+    concept is_node_invalid = !is_node_valid<T>;
 }
 
 namespace nil::gate::errors
@@ -27,11 +27,13 @@ namespace nil::gate::errors
     struct Errors
     {
         using traits = nil::gate::detail::traits::node<T>;
-        Error arg_asyncs = Check<traits::arg_async::is_valid>();
-        Error arg_core = Check<traits::arg_core::is_valid>();
-        Error inputs = Check<traits::inputs::is_valid>();
-        Error sync_outputs = Check<traits::sync_outputs::is_valid>();
-        Error async_outputs = Check<traits::async_outputs::is_valid>();
+        // clang-format off
+        Error arg_asyncs = Check<traits::arg_async::is_valid>("invalid async arg type detected, must be by copy or by const ref");
+        Error arg_core = Check<traits::arg_core::is_valid>("invalid core type, must be `const Core&`");
+        Error inputs = Check<traits::inputs::is_valid>("invalid input type detected");
+        Error sync_outputs = Check<traits::sync_outputs::is_valid>("invalid sync output type detected");
+        Error async_outputs = Check<traits::async_outputs::is_valid>("invalid async output type detected");
+        // clang-format on
     };
 }
 

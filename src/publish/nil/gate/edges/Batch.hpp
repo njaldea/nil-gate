@@ -10,14 +10,24 @@ namespace nil::gate::edges
     class Batch final
     {
     public:
-        Batch() = default;
+        Batch() = delete;
+
+        Batch(
+            detail::edges::Data<T>* init_edge,
+            std::vector<std::unique_ptr<ICallable<void()>>>* init_diffs
+        )
+            : edge(init_edge)
+            , diffs(init_diffs)
+        {
+        }
+
         ~Batch() noexcept = default;
 
         Batch(Batch&&) noexcept = delete;
         Batch& operator=(Batch&&) noexcept = delete;
 
-        Batch(const Batch&) = delete;
-        Batch& operator=(const Batch&) = delete;
+        Batch(const Batch&) = default;
+        Batch& operator=(const Batch&) = default;
 
         const T& value() const
         {

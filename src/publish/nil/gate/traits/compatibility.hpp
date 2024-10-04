@@ -1,5 +1,7 @@
 #pragma once
 
+#include <type_traits>
+
 namespace nil::gate::traits
 {
     template <typename TO, typename FROM>
@@ -16,4 +18,11 @@ namespace nil::gate::traits
             return u;
         }
     };
+}
+
+namespace nil::gate::concepts
+{
+    template <typename TO, typename FROM>
+    concept compatibility_requires_cache = !std::is_reference_v<
+        decltype(traits::compatibility<TO, FROM>::convert(std::declval<FROM>()))>;
 }

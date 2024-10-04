@@ -15,11 +15,6 @@ namespace nil::gate::concepts
     concept is_compatible = requires(TO to, FROM from) {
         { traits::compatibility<TO, FROM>::convert(from) };
     };
-
-    template <typename TO, typename FROM>
-    concept is_ref_return = std::is_reference_v<decltype( //
-        traits::compatibility<TO, FROM>::convert(std::declval<FROM>())
-    )>;
 }
 
 namespace nil::gate::errors
@@ -30,9 +25,6 @@ namespace nil::gate::errors
         Error compatibility = Check<concepts::is_compatible<TO, FROM>>();
     };
 }
-
-template <typename T>
-void printer_nil();
 
 namespace nil::gate::edges
 {
@@ -103,7 +95,7 @@ namespace nil::gate::edges
         }
 
     private:
-        void* adapter = nullptr;
+        void* adapter;
         void (*attach_impl)(void*, INode*);
         bool (*is_ready_impl)(void*);
         const TO& (*value_impl)(void*);
