@@ -6,7 +6,6 @@
 #include "../traits/compatibility.hpp"
 
 #include <optional>
-#include <type_traits>
 #include <unordered_map>
 #include <vector>
 
@@ -76,6 +75,11 @@ namespace nil::gate::detail::edges
             for (auto& a : adapters)
             {
                 a.second->set(*data);
+            }
+
+            for (auto* n : this->node_out)
+            {
+                n->input_changed();
             }
         }
 

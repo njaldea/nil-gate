@@ -24,14 +24,23 @@ namespace nil::gate
         virtual void done() = 0;
         virtual void run() = 0;
 
+        virtual bool is_input_changed() const = 0;
         virtual bool is_pending() const = 0;
         virtual bool is_ready() const = 0;
 
+        virtual void input_changed() = 0;
+
     protected:
-        enum class EState
+        enum class ENodeState
         {
             Done = 0b0001,
             Pending = 0b0010
+        };
+
+        enum class EInputState
+        {
+            Stale = 0b0001,
+            Changed = 0b0010
         };
     };
 }

@@ -43,31 +43,7 @@ namespace nil::gate::edges
             requires(concepts::is_compatible<TO, FROM>)
         // NOLINTNEXTLINE(hicpp-explicit-conversions)
         Compatible(edges::ReadOnly<FROM>* edge)
-            : adapter(static_cast<detail::edges::Data<FROM>*>(edge)->template adapt<TO>())
-            , attach_impl( //
-                  +[](void* p, INode* node)
-                  {
-                      using DATA = detail::edges::Data<FROM>;
-                      using type = decltype(std::declval<DATA>().template adapt<TO>());
-                      static_cast<type>(p)->attach(node);
-                  }
-              )
-            , is_ready_impl( //
-                  +[](void* p)
-                  {
-                      using DATA = detail::edges::Data<FROM>;
-                      using type = decltype(std::declval<DATA>().template adapt<TO>());
-                      return static_cast<type>(p)->is_ready();
-                  }
-              )
-            , value_impl( //
-                  +[](void* p) -> const TO&
-                  {
-                      using DATA = detail::edges::Data<FROM>;
-                      using type = decltype(std::declval<DATA>().template adapt<TO>());
-                      return static_cast<type>(p)->value();
-                  }
-              )
+            : Compatible(static_cast<detail::edges::Data<FROM>*>(edge)->template adapt<TO>())
         {
         }
 
@@ -97,7 +73,23 @@ namespace nil::gate::edges
     private:
         void* adapter;
         void (*attach_impl)(void*, INode*);
-        bool (*is_ready_impl)(void*);
-        const TO& (*value_impl)(void*);
+        bool (*is_ready_impl)(const void*);
+        const TO& (*value_impl)(const void*);
+
+        template <typename Adapter>
+        explicit Compatible(Adapter* init_adapter)
+            : adapter(init_adapter)
+            , attach_impl( //
+                  +[](void* p, INode* node) { static_cast<Adapter*>(p)->attach(node); }
+              )
+            , is_ready_impl( //
+                  +[](const void* p) { return static_cast<const Adapter*>(p)->is_ready(); }
+              )
+            , value_impl( //
+                  +[](const void* p) -> const TO&
+                  { return static_cast<const Adapter*>(p)->value(); }
+              )
+        {
+        }
     };
 }

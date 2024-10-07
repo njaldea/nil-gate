@@ -62,25 +62,30 @@ namespace nil::gate::detail
                 auto result = call(typename input_t::make_index_sequence());
                 if constexpr (sync_output_t::size == 1)
                 {
-                    get<0>(sync_outputs).exec(std::move(result));
+                    auto& o = get<0>(sync_outputs);
+                    if (!o.is_equal(result))
+                    {
+                        o.exec(std::move(result));
+                    }
                 }
             }
         }
 
         void pend() override
         {
-            if (state != EState::Pending)
+            if (node_state != ENodeState::Pending)
             {
-                state = EState::Pending;
+                node_state = ENodeState::Pending;
                 std::apply([](auto&... syncs) { (syncs.pend(), ...); }, sync_outputs);
             }
         }
 
         void done() override
         {
-            if (state != EState::Done)
+            if (node_state != ENodeState::Done)
             {
-                state = EState::Done;
+                node_state = ENodeState::Done;
+                input_state = EInputState::Stale;
                 std::apply([](auto&... syncs) { (syncs.done(), ...); }, sync_outputs);
             }
         }
@@ -89,7 +94,10 @@ namespace nil::gate::detail
         {
             if (is_pending() && is_ready())
             {
-                exec();
+                if (input_state == EInputState::Changed)
+                {
+                    exec();
+                }
                 done();
             }
         }
@@ -111,9 +119,14 @@ namespace nil::gate::detail
             }
         }
 
+        bool is_input_changed() const override
+        {
+            return input_state == EInputState::Changed;
+        }
+
         bool is_pending() const override
         {
-            return state == EState::Pending;
+            return node_state == ENodeState::Pending;
         }
 
         bool is_ready() const override
@@ -124,6 +137,11 @@ namespace nil::gate::detail
             );
         }
 
+        void input_changed() override
+        {
+            input_state = EInputState::Changed;
+        }
+
     private:
         template <std::size_t... s_indices>
         void forward_to_output(
@@ -131,7 +149,14 @@ namespace nil::gate::detail
             std::index_sequence<s_indices...> /* unused */
         )
         {
-            (get<s_indices>(sync_outputs).exec(std::move(get<s_indices>(result))), ...);
+            constexpr auto setter = [](auto& o, auto&& v)
+            {
+                if (!o.is_equal(v))
+                {
+                    o.exec(std::forward<decltype(v)>(v));
+                }
+            };
+            (setter(get<s_indices>(sync_outputs), std::move(get<s_indices>(result))), ...);
         }
 
         template <std::size_t... i_indices>
@@ -176,10 +201,12 @@ namespace nil::gate::detail
             }
         }
 
-        EState state = EState::Pending;
+        ENodeState node_state = ENodeState::Pending;
+        EInputState input_state = EInputState::Stale;
 
         T instance;
         Core* core;
+
         typename input_t::edges inputs;
         typename sync_output_t::data_edges sync_outputs;
         typename async_output_t::data_edges async_outputs;

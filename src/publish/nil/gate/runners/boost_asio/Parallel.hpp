@@ -100,53 +100,54 @@ namespace nil::gate::runners::boost_asio
 
         void run_node(nil::gate::INode* node)
         {
-            running_list.emplace(node);
-            boost::asio::post(
-                exec_context,
-                [this, node]()
-                {
-                    node->exec();
-                    mark_done(node);
-                }
-            );
+            if (node->is_input_changed())
+            {
+                running_list.emplace(node);
+                boost::asio::post(
+                    exec_context,
+                    [this, node]()
+                    {
+                        node->exec();
+                        boost::asio::post(main_context, [this, node]() { this->mark_done(node); });
+                    }
+                );
+            }
+            else
+            {
+                mark_done(node);
+            }
         }
 
         void mark_done(nil::gate::INode* node)
         {
-            boost::asio::post(
-                main_context,
-                [this, node]()
-                {
-                    node->done();
-                    running_list.erase(node);
+            node->done();
+            running_list.erase(node);
 
-                    // This is early frame stop. Is this desirable?
-                    if (!deferred_nodes.empty())
-                    {
-                        if (running_list.empty())
-                        {
-                            waiting_list.clear();
-                            run({}, deferred_nodes);
-                            deferred_nodes = {};
-                        }
-                    }
-                    else
-                    {
-                        std::erase_if(
-                            waiting_list,
-                            [this](auto* n)
-                            {
-                                if (n->is_ready())
-                                {
-                                    run_node(n);
-                                    return true;
-                                }
-                                return false;
-                            }
-                        );
-                    }
+            // This is early frame stop. Is this desirable?
+            if (!deferred_nodes.empty())
+            {
+                if (running_list.empty())
+                {
+                    waiting_list.clear();
+                    run({}, deferred_nodes);
+                    deferred_nodes = {};
                 }
-            );
+            }
+            else
+            {
+                std::erase_if(
+                    waiting_list,
+                    [this](auto* n)
+                    {
+                        if (n->is_ready())
+                        {
+                            run_node(n);
+                            return true;
+                        }
+                        return false;
+                    }
+                );
+            }
         }
 
     private:
