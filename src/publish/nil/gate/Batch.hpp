@@ -29,7 +29,18 @@ namespace nil::gate
         {
             if (!batch_diffs.empty())
             {
-                diffs->push_batch(std::move(batch_diffs));
+                diffs->push(make_callable(
+                    [ds = std::move(batch_diffs)]()
+                    {
+                        for (const auto& d : ds)
+                        {
+                            if (d)
+                            {
+                                d->call();
+                            }
+                        }
+                    }
+                ));
             }
         }
 

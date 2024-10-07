@@ -8,6 +8,7 @@ namespace nil::gate::runners
     {
     public:
         void run(
+            Core* core,
             std::unique_ptr<ICallable<void()>> apply_changes,
             std::span<const std::unique_ptr<INode>> nodes
         ) override
@@ -20,7 +21,7 @@ namespace nil::gate::runners
             {
                 if (nullptr != node)
                 {
-                    node->run();
+                    node->run(core);
                 }
             }
         }

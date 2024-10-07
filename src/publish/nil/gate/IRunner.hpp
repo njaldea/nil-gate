@@ -8,6 +8,8 @@
 
 namespace nil::gate
 {
+    class Core;
+
     struct IRunner
     {
         IRunner() = default;
@@ -25,6 +27,7 @@ namespace nil::gate
          * @param nodes - these nodes are alive as long as the Core object is alive.
          */
         virtual void run(
+            Core* core,
             std::unique_ptr<ICallable<void()>> apply_changes,
             std::span<const std::unique_ptr<INode>> nodes
         ) = 0;

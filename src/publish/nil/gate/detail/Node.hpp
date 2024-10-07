@@ -3,6 +3,7 @@
 #include "../Diffs.hpp"
 #include "../INode.hpp"
 #include "traits/node.hpp"
+
 #include <memory>
 
 namespace nil::gate
@@ -21,14 +22,8 @@ namespace nil::gate::detail
         using output_t = typename detail::traits::node<T>::outputs;
 
     public:
-        Node(
-            Diffs* init_diffs,
-            Core* init_core,
-            typename input_t::edges init_inputs,
-            T init_instance
-        )
+        Node(Diffs* init_diffs, T init_instance, typename input_t::edges init_inputs)
             : instance(std::move(init_instance))
-            , core(init_core)
             , inputs(std::move(init_inputs))
         {
             std::apply([this](auto&... i) { (i.attach(this), ...); }, inputs);
@@ -44,22 +39,22 @@ namespace nil::gate::detail
         Node(const Node&) = delete;
         Node& operator=(const Node&) = delete;
 
-        void exec() override
+        void exec(Core* core) override
         {
             if constexpr (traits::callable<T>::tag == traits::EReturnType::Void)
             {
-                call(typename input_t::make_index_sequence());
+                call(core, typename input_t::make_index_sequence());
             }
             if constexpr (traits::callable<T>::tag == traits::EReturnType::Tuple)
             {
                 forward_to_output(
-                    call(typename input_t::make_index_sequence()),
+                    call(core, typename input_t::make_index_sequence()),
                     typename sync_output_t::make_index_sequence()
                 );
             }
             if constexpr (traits::callable<T>::tag == traits::EReturnType::Mono)
             {
-                auto result = call(typename input_t::make_index_sequence());
+                auto result = call(core, typename input_t::make_index_sequence());
                 if constexpr (sync_output_t::size == 1)
                 {
                     auto& o = get<0>(sync_outputs);
@@ -90,13 +85,13 @@ namespace nil::gate::detail
             }
         }
 
-        void run() override
+        void run(Core* core) override
         {
             if (is_pending() && is_ready())
             {
                 if (input_state == EInputState::Changed)
                 {
-                    exec();
+                    exec(core);
                 }
                 done();
             }
@@ -149,7 +144,7 @@ namespace nil::gate::detail
             std::index_sequence<s_indices...> /* unused */
         )
         {
-            constexpr auto setter = [](auto& o, auto&& v)
+            [[maybe_unused]] constexpr auto setter = [](auto& o, auto&& v)
             {
                 if (!o.is_equal(v))
                 {
@@ -160,7 +155,7 @@ namespace nil::gate::detail
         }
 
         template <std::size_t... i_indices>
-        auto call(std::index_sequence<i_indices...> /* unused */)
+        auto call(Core* core, std::index_sequence<i_indices...> /* unused */)
         {
             if constexpr (traits::node<T>::has_async)
             {
@@ -205,7 +200,6 @@ namespace nil::gate::detail
         EInputState input_state = EInputState::Stale;
 
         T instance;
-        Core* core;
 
         typename input_t::edges inputs;
         typename sync_output_t::data_edges sync_outputs;

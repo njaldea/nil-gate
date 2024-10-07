@@ -21,15 +21,6 @@ namespace nil::gate
         Diffs(const Diffs&) = delete;
         Diffs& operator=(const Diffs&) = delete;
 
-        void push_batch(std::vector<std::unique_ptr<ICallable<void()>>> cbs)
-        {
-            std::lock_guard g(mutex);
-            for (auto&& cb : cbs)
-            {
-                diffs.push_back(std::move(cb));
-            }
-        }
-
         void push(std::unique_ptr<ICallable<void()>> cb)
         {
             std::lock_guard g(mutex);

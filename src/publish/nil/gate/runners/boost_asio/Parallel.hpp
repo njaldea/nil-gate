@@ -55,13 +55,14 @@ namespace nil::gate::runners::boost_asio
         Parallel& operator=(const Parallel&) = delete;
 
         void run(
+            Core* core,
             std::unique_ptr<ICallable<void()>> apply_changes,
             std::span<const std::unique_ptr<INode>> nodes
         ) override
         {
             boost::asio::post(
                 main_context,
-                [this, nodes, apply_changes = std::move(apply_changes)]() mutable
+                [this, core, nodes, apply_changes = std::move(apply_changes)]() mutable
                 {
                     all_diffs.emplace_back(std::move(apply_changes));
                     if (running_list.empty())
@@ -86,7 +87,7 @@ namespace nil::gate::runners::boost_asio
                         {
                             if (node->is_ready())
                             {
-                                run_node(node.get());
+                                run_node(core, node.get());
                             }
                             else
                             {
@@ -98,27 +99,30 @@ namespace nil::gate::runners::boost_asio
             );
         }
 
-        void run_node(nil::gate::INode* node)
+        void run_node(Core* core, INode* node)
         {
             if (node->is_input_changed())
             {
                 running_list.emplace(node);
                 boost::asio::post(
                     exec_context,
-                    [this, node]()
+                    [this, core, node]()
                     {
-                        node->exec();
-                        boost::asio::post(main_context, [this, node]() { this->mark_done(node); });
+                        node->exec(core);
+                        boost::asio::post(
+                            main_context,
+                            [this, core, node]() { this->mark_done(core, node); }
+                        );
                     }
                 );
             }
             else
             {
-                mark_done(node);
+                mark_done(core, node);
             }
         }
 
-        void mark_done(nil::gate::INode* node)
+        void mark_done(Core* core, INode* node)
         {
             node->done();
             running_list.erase(node);
@@ -129,7 +133,7 @@ namespace nil::gate::runners::boost_asio
                 if (running_list.empty())
                 {
                     waiting_list.clear();
-                    run({}, deferred_nodes);
+                    run(core, {}, deferred_nodes);
                     deferred_nodes = {};
                 }
             }
@@ -137,11 +141,11 @@ namespace nil::gate::runners::boost_asio
             {
                 std::erase_if(
                     waiting_list,
-                    [this](auto* n)
+                    [this, core](auto* n)
                     {
                         if (n->is_ready())
                         {
-                            run_node(n);
+                            run_node(core, n);
                             return true;
                         }
                         return false;

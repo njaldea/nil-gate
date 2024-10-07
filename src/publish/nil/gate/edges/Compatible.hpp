@@ -20,9 +20,9 @@ namespace nil::gate::concepts
 namespace nil::gate::errors
 {
     template <typename TO, typename FROM>
-    struct CompatibilityError
+    struct Compatibility
     {
-        Error compatibility = Check<concepts::is_compatible<TO, FROM>>();
+        Error compatibility = Check<concepts::is_compatible<TO, FROM>>("Not Compatible");
     };
 }
 
@@ -36,8 +36,8 @@ namespace nil::gate::edges
 
         template <typename FROM>
             requires(!concepts::is_compatible<TO, FROM>)
-        Compatible(edges::ReadOnly<FROM>* init_edge, errors::CompatibilityError<TO, FROM> = {})
-            = delete;
+        // NOLINTNEXTLINE(hicpp-explicit-conversions)
+        Compatible(edges::ReadOnly<FROM>* init_edge, errors::Compatibility<TO, FROM> = {});
 
         template <typename FROM>
             requires(concepts::is_compatible<TO, FROM>)

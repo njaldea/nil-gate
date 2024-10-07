@@ -2,17 +2,17 @@
 
 namespace nil::gate::errors
 {
+    struct Error
+    {
+    };
+
     template <bool T>
     struct Check
     {
         const char* message;
+        // NOLINTNEXTLINE
+        operator Error()
+            requires(T);
     };
 
-    struct Error
-    {
-        Error(Check<false> /* tag */) = delete;
-
-        // NOLINTNEXTLINE(hicpp-explicit-conversions)
-        Error(Check<true> /* tag */);
-    };
 }

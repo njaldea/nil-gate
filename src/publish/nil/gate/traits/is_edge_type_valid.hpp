@@ -10,13 +10,7 @@ namespace nil::gate::traits
     };
 
     template <typename T>
-        requires(std::is_pointer_v<T> || std::is_reference_v<T>)
-    struct is_edge_type_valid<T>: std::false_type
-    {
-    };
-
-    template <typename T>
-    struct is_edge_type_valid<const T>: std::false_type
+    struct is_edge_type_valid<T*>: std::false_type
     {
     };
 

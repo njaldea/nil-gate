@@ -19,12 +19,19 @@ namespace nil::gate::concepts
     concept is_node_valid = detail::traits::node<T>::is_valid;
     template <typename T>
     concept is_node_invalid = !is_node_valid<T>;
+
+    template <typename T>
+    concept is_edge_valid =                //
+        std::is_same_v<T, std::decay_t<T>> //
+        && traits::is_edge_type_valid_v<traits::edgify_t<T>>;
+    template <typename T>
+    concept is_edge_invalid = !is_edge_valid<T>;
 }
 
 namespace nil::gate::errors
 {
     template <typename T>
-    struct Errors
+    struct Node
     {
         using traits = nil::gate::detail::traits::node<T>;
         // clang-format off
@@ -34,6 +41,15 @@ namespace nil::gate::errors
         Error sync_outputs = Check<traits::sync_outputs::is_valid>("invalid sync output type detected");
         Error async_outputs = Check<traits::async_outputs::is_valid>("invalid async output type detected");
         // clang-format on
+    };
+
+    template <typename T>
+    struct Edge
+    {
+        static constexpr auto decayed_v = std::is_same_v<T, std::decay_t<T>>;
+        static constexpr auto valid_type = traits::is_edge_type_valid_v<traits::edgify_t<T>>;
+        Error not_decayed = Check<decayed_v>("Type provided is not decayed");
+        Error invalid_type = Check<valid_type>("Edge type is not allowed");
     };
 }
 
@@ -59,9 +75,9 @@ namespace nil::gate
         /// starting from this point - node
 
         template <concepts::is_node_invalid T>
-        outputs_t<T> node(T instance, errors::Errors<T> = errors::Errors<T>());
+        outputs_t<T> node(T instance, errors::Node<T> = errors::Node<T>());
         template <concepts::is_node_invalid T>
-        outputs_t<T> node(T instance, inputs_t<T> edges, errors::Errors<T> = errors::Errors<T>());
+        outputs_t<T> node(T instance, inputs_t<T> edges, errors::Node<T> = errors::Node<T>());
 
         template <concepts::is_node_valid T>
             requires(detail::traits::node<T>::inputs::size > 0)
@@ -69,9 +85,8 @@ namespace nil::gate
         {
             auto n = std::make_unique<detail::Node<T>>(
                 diffs.get(),
-                this,
-                std::move(input_edges),
-                std::move(instance)
+                std::move(instance),
+                std::move(input_edges)
             );
             auto* r = n.get();
             owned_nodes.emplace_back(std::move(n));
@@ -84,14 +99,15 @@ namespace nil::gate
         {
             auto n = std::make_unique<detail::Node<T>>(
                 diffs.get(),
-                this,
-                inputs_t<T>(),
-                std::move(instance)
+                std::move(instance),
+                inputs_t<T>()
             );
             auto* r = n.get();
             owned_nodes.emplace_back(std::move(n));
             return r->output_edges();
         }
+
+        /// starting from this point - link
 
         template <typename TO, typename FROM>
             requires requires(TO to, FROM from) {
@@ -104,25 +120,32 @@ namespace nil::gate
 
         /// starting from this point - edge
 
-        template <typename T>
+        template <concepts::is_edge_invalid T>
+        auto* edge(errors::Edge<T> = errors::Edge<T>());
+        template <concepts::is_edge_invalid T>
+        auto* edge(T, errors::Edge<T> = errors::Edge<T>());
+
+        template <concepts::is_edge_valid T>
         auto* edge()
         {
-            using type = traits::edgify_t<std::decay_t<T>>;
-            auto e = std::make_unique<detail::edges::Data<type>>();
+            using type = traits::edgify_t<T>;
+            auto e = std::make_unique<detail::edges::Data<traits::edgify_t<T>>>();
             e->attach(diffs.get());
             auto r = independent_edges.emplace_back(std::move(e)).get();
             return static_cast<edges::Mutable<type>*>(r);
         }
 
-        template <typename T>
+        template <concepts::is_edge_valid T>
         auto* edge(T value)
         {
-            using type = traits::edgify_t<std::decay_t<T>>;
+            using type = traits::edgify_t<T>;
             auto e = std::make_unique<detail::edges::Data<type>>(std::move(value));
             e->attach(diffs.get());
             auto r = independent_edges.emplace_back(std::move(e)).get();
             return static_cast<edges::Mutable<type>*>(r);
         }
+
+        /// starting from this point - batch
 
         template <typename... T>
         Batch<T...> batch(edges::Mutable<T>*... edges) const
@@ -136,9 +159,16 @@ namespace nil::gate
             return Batch<T...>(diffs.get(), edges);
         }
 
-        void commit() const
+        /// starting from this point - misc
+
+        /**
+         * Commit all of the changes to the graph.
+         * Changes are scheduled by mutating the edges through their set_value method.
+         */
+        void commit()
         {
             runner->run(
+                this,
                 make_callable(
                     [df = diffs->flush()]()
                     {
@@ -155,6 +185,9 @@ namespace nil::gate
             );
         }
 
+        /**
+         * Use a custom runner. By default uses `nil::gate:runner::Immediate`.
+         */
         template <typename Runner, typename... Args>
         void set_runner(Args&&... args) noexcept
         {

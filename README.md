@@ -609,8 +609,6 @@ This trait is intended for cases where you want to detect and prevent creation o
 
 By default, all of the edge types are valid except for the following:
 - T is a pointer type
-- T is a reference type
-- T is const
 
 ```cpp
 #include <nil/gate.hpp>
@@ -638,6 +636,9 @@ See [biased](#bias) section for more information of `nil/gate`'s suggested rules
 `nil/gate` provides a very opinionated setup from these header:
  - [`#include <nil/gate/bias/compatibility.hpp>`](publish/nil/gate/bias/compatibility.hpp)
      - covers conversion between `T` and `std::reference_wrapper<const T>`
+     - covers conversion of `std::unique_ptr<const T>` to `const T*`
+     - covers conversion of `std::shared_ptr<const T>` to `const T*`
+     - covers conversion of `std::optional<const T>` to `const T*`
  - [`#include <nil/gate/bias/edgify.hpp>`](publish/nil/gate/bias/edgify.hpp)
      - covers the following types:
          - `std::unique_ptr<T>` to `std::unique_ptr<const T>`
@@ -661,9 +662,6 @@ These are not included from `nil/gate.hpp` and users must opt-in to apply these 
 - When implementing your own `edgify<T>` traits, avoid converting `T` to something different that is not related to `T`.
     - This will produce weird behavior when defining nodes.
     - `edgify<T>` is mainly intended for things with indirections like pointer-like objects.
-- When implementing your own `compatibility` traits, beware of returning a reference type
-    - If returning a temporary, you should return an object that will own the data (not a reference).
-    - If returning a non-reference type, take note that the conversion will be done everytime the node is triggered.
 
 ## Errors
 
@@ -697,9 +695,3 @@ These are the errors detected with similar error message:
  -  async_outputs is invalid
  -  core argument is invalid
  -  input `edges::Readable<T>*` is not compatible to the expected input edge of the node
-
-## TODO
-
-- connect two edges together without creating a node
-    - this will allow easier feedback loop
-- if a sync output edge is returned with the same value, can it bypass the execution of the next node?

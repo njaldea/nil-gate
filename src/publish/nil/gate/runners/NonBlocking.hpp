@@ -33,12 +33,13 @@ namespace nil::gate::runners
         NonBlocking& operator=(const NonBlocking&) = delete;
 
         void run(
+            Core* core,
             std::unique_ptr<ICallable<void()>> apply_changes,
             std::span<const std::unique_ptr<INode>> nodes
         ) override
         {
             auto _ = std::unique_lock(mutex);
-            queue.emplace(std::move(apply_changes), nodes);
+            queue.emplace(core, std::move(apply_changes), nodes);
             cv.notify_one();
         }
 
@@ -48,8 +49,9 @@ namespace nil::gate::runners
         std::mutex mutex;
         std::condition_variable cv;
 
-        struct Task
+        struct Task // NOLINT
         {
+            Core* core;
             std::unique_ptr<ICallable<void()>> apply_changes;
             std::span<const std::unique_ptr<INode>> nodes;
         };
@@ -81,7 +83,7 @@ namespace nil::gate::runners
                 {
                     if (nullptr != node)
                     {
-                        node->run();
+                        node->run(task.core);
                     }
                 }
                 task = Task();

@@ -36,7 +36,7 @@ int main()
     nil::gate::Core core;
 
     using A = T<void()>;
-    using B = T<std::tuple<std::string>(const std::unique_ptr<const bool>&)>;
+    using B = T<std::tuple<std::string>(const bool*)>;
     using C = T<std::tuple<double>(int)>;
     using D = T<std::tuple<float>(const double)>;
     using E = T<std::tuple<char>(const std::string&, float)>;
@@ -46,7 +46,7 @@ int main()
     using I = T<void(char, float)>;
 
     auto* a1 = core.edge(std::unique_ptr<bool>());
-    auto* a2 = core.edge(0);
+    auto* a2 = core.edge<int>(0);
     auto* a3 = core.edge(0.0);
     auto* a4 = core.edge(std::string());
 

@@ -96,7 +96,7 @@ namespace nil::gate::detail::traits
         using edges = nil::gate::inputs<edgify_t<std::decay_t<I>>...>;
         using make_index_sequence = std::make_index_sequence<sizeof...(I)>;
         static constexpr auto size = sizeof...(I);
-        static constexpr bool is_valid = (true && ... && (node_validate<I>::value));
+        static constexpr bool is_valid = (true && ... && (input_validate_v<I>));
     };
 
     template <typename T>
@@ -109,8 +109,7 @@ namespace nil::gate::detail::traits
         using data_edges = std::tuple<detail::edges::Data<edgify_t<std::decay_t<S>>>...>;
         using make_index_sequence = std::make_index_sequence<sizeof...(S)>;
         static constexpr auto size = sizeof...(S);
-        static constexpr bool is_valid
-            = (true && ... && (!std::is_reference_v<S> && !std::is_pointer_v<S>));
+        static constexpr bool is_valid = (true && ... && (sync_output_validate_v<S>));
     };
 
     template <typename T>
@@ -123,7 +122,7 @@ namespace nil::gate::detail::traits
         using data_edges = std::tuple<detail::edges::Data<edgify_t<std::decay_t<A>>>...>;
         using make_index_sequence = std::make_index_sequence<sizeof...(A)>;
         static constexpr auto size = sizeof...(A);
-        static constexpr bool is_valid = (true && ... && edge_validate_v<A>);
+        static constexpr bool is_valid = (true && ... && async_output_validate_v<A>);
     };
 
     template <typename S, typename A>
@@ -151,8 +150,8 @@ namespace nil::gate::detail::traits
         using split_i = input_splitter<full_i>;
 
         using final_s = typename callable<T>::outputs;
-        using final_i = typename split_i::inputs;
         using final_a = typename split_i::asyncs;
+        using final_i = typename split_i::inputs;
 
         using inputs = node_inputs<final_i>;
         using sync_outputs = node_sync_outputs<final_s>;
