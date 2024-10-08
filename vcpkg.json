@@ -1,8 +1,6 @@
 {
     "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
-    "description": "",
     "name": "nil-gate",
-    "builtin-baseline": "da21e45c9ae689f63aa27f3a4ee0e64fe6b16494",
     "features": {
         "sandbox": {
             "description": "Enable sandboxes",

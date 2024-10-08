@@ -60,7 +60,10 @@ namespace nil::gate
         template <typename T>
         using inputs_t = detail::traits::node<T>::inputs::edges;
         template <typename T>
-        using outputs_t = detail::traits::node<T>::outputs::edges;
+        using outputs_t = std::conditional_t<
+            detail::traits::node<T>::outputs::size == 0,
+            void,
+            typename detail::traits::node<T>::outputs::edges>;
 
     public:
         Core() = default;

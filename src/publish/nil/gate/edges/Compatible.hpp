@@ -37,7 +37,10 @@ namespace nil::gate::edges
         template <typename FROM>
             requires(!concepts::is_compatible<TO, FROM>)
         // NOLINTNEXTLINE(hicpp-explicit-conversions)
-        Compatible(edges::ReadOnly<FROM>* init_edge, errors::Compatibility<TO, FROM> = {});
+        Compatible(edges::ReadOnly<FROM>* /*edge*/)
+            : Compatible(errors::Compatibility<TO, FROM>())
+        {
+        }
 
         template <typename FROM>
             requires(concepts::is_compatible<TO, FROM>)
@@ -91,5 +94,9 @@ namespace nil::gate::edges
               )
         {
         }
+
+        template <typename FROM>
+            requires(!concepts::is_compatible<TO, FROM>)
+        explicit Compatible(errors::Compatibility<TO, FROM> /* errors */);
     };
 }

@@ -16,7 +16,7 @@
   "[cpp]": {
     "editor.formatOnSave": true,
     "editor.defaultFormatter": "xaver.clang-format",
-    "editor.inlayHints.enabled": "offUnlessPressed"
+    "editor.inlayHints.enabled": "offUnlessPressed",
   },
   "clang-format.executable": "clang-format-18",
   "clangd.path": "clangd-18",

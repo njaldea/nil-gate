@@ -16,6 +16,15 @@ namespace nil::gate
 namespace nil::gate::detail::traits
 {
     template <typename T>
+    static constexpr bool is_core_valid_v //
+        = (std::is_reference_v<T> && std::is_const_v<std::remove_reference_t<T>>);
+
+    template <typename T>
+    static constexpr bool is_async_valid_v //
+        = std::is_same_v<T, std::decay_t<T>>
+        || (std::is_reference_v<T> && std::is_const_v<std::remove_reference_t<T>>);
+
+    template <typename T>
     using edgify_t = gate::traits::edgify_t<T>;
 
     template <typename A>
@@ -34,64 +43,58 @@ namespace nil::gate::detail::traits
     struct input_splitter;
 
     template <typename... I>
-    struct input_splitter<nil::gate::detail::traits::types<I...>>
+    struct input_splitter<types<I...>>
     {
-        using inputs = nil::gate::detail::traits::types<I...>;
-        using asyncs = nil::gate::detail::traits::types<>;
+        using inputs = types<I...>;
+        using asyncs = types<>;
         static constexpr bool has_core = false;
         static constexpr bool has_async = false;
         static constexpr bool is_core_valid = true;
         static constexpr bool is_async_valid = true;
     };
 
-    template <typename T>
-    static constexpr bool is_const_reference_v
-        = std::is_reference_v<T> && std::is_const_v<std::remove_reference_t<T>>;
-    template <typename T>
-    static constexpr bool is_vanilla_v = std::is_same_v<T, std::decay_t<T>>;
-
     template <typename First, typename... I>
         requires async_checker<std::decay_t<First>>::is_async
-    struct input_splitter<nil::gate::detail::traits::types<First, I...>>
+    struct input_splitter<types<First, I...>>
     {
-        using inputs = nil::gate::detail::traits::types<I...>;
-        using asyncs = nil::gate::detail::traits::typify_t<std::decay_t<First>>;
+        using inputs = types<I...>;
+        using asyncs = typify_t<std::decay_t<First>>;
         static constexpr bool has_core = false;
         static constexpr bool has_async = true;
         static constexpr bool is_core_valid = true;
-        static constexpr bool is_async_valid = is_vanilla_v<First> || is_const_reference_v<First>;
+        static constexpr bool is_async_valid = is_async_valid_v<First>;
     };
 
     template <typename First, typename... I>
         requires std::is_same_v<nil::gate::Core, std::decay_t<First>>
-    struct input_splitter<nil::gate::detail::traits::types<First, I...>>
+    struct input_splitter<types<First, I...>>
     {
-        using inputs = nil::gate::detail::traits::types<I...>;
-        using asyncs = nil::gate::detail::traits::types<>;
+        using inputs = types<I...>;
+        using asyncs = types<>;
         static constexpr bool has_core = true;
         static constexpr bool has_async = false;
-        static constexpr bool is_core_valid = is_const_reference_v<First>;
+        static constexpr bool is_core_valid = is_core_valid_v<First>;
         static constexpr bool is_async_valid = true;
     };
 
     template <typename First, typename Second, typename... I>
         requires std::is_same_v<nil::gate::Core, std::decay_t<First>>
         && async_checker<std::decay_t<Second>>::is_async
-    struct input_splitter<nil::gate::detail::traits::types<First, Second, I...>>
+    struct input_splitter<types<First, Second, I...>>
     {
-        using inputs = nil::gate::detail::traits::types<I...>;
-        using asyncs = nil::gate::detail::traits::typify_t<std::decay_t<Second>>;
+        using inputs = types<I...>;
+        using asyncs = typify_t<std::decay_t<Second>>;
         static constexpr bool has_core = true;
         static constexpr bool has_async = true;
-        static constexpr bool is_core_valid = is_const_reference_v<First>;
-        static constexpr bool is_async_valid = is_vanilla_v<Second> || is_const_reference_v<Second>;
+        static constexpr bool is_core_valid = is_core_valid_v<First>;
+        static constexpr bool is_async_valid = is_async_valid_v<Second>;
     };
 
     template <typename T>
     struct node_inputs;
 
     template <typename... I>
-    struct node_inputs<nil::gate::detail::traits::types<I...>>
+    struct node_inputs<types<I...>>
     {
         using edges = nil::gate::inputs<edgify_t<std::decay_t<I>>...>;
         using make_index_sequence = std::make_index_sequence<sizeof...(I)>;
@@ -103,7 +106,7 @@ namespace nil::gate::detail::traits
     struct node_sync_outputs;
 
     template <typename... S>
-    struct node_sync_outputs<nil::gate::detail::traits::types<S...>>
+    struct node_sync_outputs<types<S...>>
     {
         using edges = std::tuple<nil::gate::edges::ReadOnly<edgify_t<std::decay_t<S>>>*...>;
         using data_edges = std::tuple<detail::edges::Data<edgify_t<std::decay_t<S>>>...>;
@@ -116,7 +119,7 @@ namespace nil::gate::detail::traits
     struct node_async_outputs;
 
     template <typename... A>
-    struct node_async_outputs<nil::gate::detail::traits::types<A...>>
+    struct node_async_outputs<types<A...>>
     {
         using edges = nil::gate::async_outputs<edgify_t<std::decay_t<A>>...>;
         using data_edges = std::tuple<detail::edges::Data<edgify_t<std::decay_t<A>>>...>;
@@ -129,16 +132,10 @@ namespace nil::gate::detail::traits
     struct node_outputs;
 
     template <typename... S, typename... A>
-    struct node_outputs<
-        nil::gate::detail::traits::types<S...>,
-        nil::gate::detail::traits::types<A...>>
+    struct node_outputs<nil::gate::sync_outputs<S...>, nil::gate::async_outputs<A...>>
     {
-        using sync_t = nil::gate::sync_outputs<edgify_t<std::decay_t<S>>...>;
-        using async_t = nil::gate::async_outputs<edgify_t<std::decay_t<A>>...>;
-        using edges = std::conditional_t<
-            sizeof...(S) + sizeof...(A) == 0,
-            void,
-            nil::gate::outputs<sync_t, async_t>>;
+        using edges
+            = nil::gate::outputs<nil::gate::sync_outputs<S...>, nil::gate::async_outputs<A...>>;
         using make_index_sequence = std::make_index_sequence<sizeof...(S) + sizeof...(A)>;
         static constexpr auto size = sizeof...(S) + sizeof...(A);
     };
@@ -146,6 +143,7 @@ namespace nil::gate::detail::traits
     template <typename T>
     struct node final
     {
+    private:
         using full_i = typename callable<T>::inputs;
         using split_i = input_splitter<full_i>;
 
@@ -153,10 +151,11 @@ namespace nil::gate::detail::traits
         using final_a = typename split_i::asyncs;
         using final_i = typename split_i::inputs;
 
+    public:
         using inputs = node_inputs<final_i>;
         using sync_outputs = node_sync_outputs<final_s>;
         using async_outputs = node_async_outputs<final_a>;
-        using outputs = node_outputs<final_s, final_a>;
+        using outputs = node_outputs<typename sync_outputs::edges, typename async_outputs::edges>;
 
         struct arg_async
         {
@@ -168,10 +167,8 @@ namespace nil::gate::detail::traits
             static constexpr bool is_valid = split_i::is_core_valid;
         };
 
-        static constexpr bool has_async //
-            = split_i::has_async;       //
-        static constexpr bool has_core  //
-            = split_i::has_core;        //
+        static constexpr bool has_async = split_i::has_async;
+        static constexpr bool has_core = split_i::has_core;
         static constexpr bool is_valid  //
             = arg_async::is_valid       //
             && arg_core::is_valid       //

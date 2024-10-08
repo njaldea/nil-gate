@@ -103,11 +103,13 @@ namespace nil::gate::detail
             {
                 return typename output_t::edges(
                     std::apply(
-                        [](auto&... s) { return typename output_t::sync_t(std::addressof(s)...); },
+                        [](auto&... s)
+                        { return typename sync_output_t::edges(std::addressof(s)...); },
                         sync_outputs
                     ),
                     std::apply(
-                        [](auto&... s) { return typename output_t::async_t(std::addressof(s)...); },
+                        [](auto&... s)
+                        { return typename async_output_t::edges(std::addressof(s)...); },
                         async_outputs
                     )
                 );
