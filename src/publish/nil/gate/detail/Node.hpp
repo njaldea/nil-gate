@@ -89,7 +89,7 @@ namespace nil::gate::detail
         {
             if (is_pending() && is_ready())
             {
-                if (input_state == EInputState::Changed)
+                if (is_input_changed())
                 {
                     exec(core);
                 }
@@ -199,7 +199,7 @@ namespace nil::gate::detail
         }
 
         ENodeState node_state = ENodeState::Pending;
-        EInputState input_state = EInputState::Stale;
+        EInputState input_state = EInputState::Changed;
 
         T instance;
 

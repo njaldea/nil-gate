@@ -4,8 +4,9 @@
 
 #include <condition_variable>
 #include <mutex>
-#include <queue>
 #include <thread>
+#include <utility>
+#include <vector>
 
 namespace nil::gate::runners
 {
@@ -19,9 +20,9 @@ namespace nil::gate::runners
 
         ~NonBlocking() noexcept override
         {
-            stopped = true;
             {
                 auto _ = std::unique_lock(mutex);
+                stopped = true;
                 cv.notify_one();
             }
             th.join();
@@ -39,12 +40,12 @@ namespace nil::gate::runners
         ) override
         {
             auto _ = std::unique_lock(mutex);
-            queue.emplace(core, std::move(apply_changes), nodes);
+            tasks.emplace_back(core, std::move(apply_changes), nodes);
             cv.notify_one();
         }
 
     private:
-        std::atomic<bool> stopped = false;
+        bool stopped = false;
         std::thread th;
         std::mutex mutex;
         std::condition_variable cv;
@@ -56,37 +57,43 @@ namespace nil::gate::runners
             std::span<const std::unique_ptr<INode>> nodes;
         };
 
-        std::queue<Task> queue;
+        std::vector<Task> tasks;
 
         void loop()
         {
-            Task task;
             while (!stopped)
             {
+                auto tasks_to_execute = [this]() -> decltype(tasks)
                 {
                     auto _ = std::unique_lock(mutex);
-                    if (queue.empty())
+                    if (tasks.empty())
                     {
                         cv.wait(_);
+                        if (stopped)
+                        {
+                            return {};
+                        }
                     }
-                    if (!queue.empty())
-                    {
-                        task = std::move(queue.front());
-                        queue.pop();
-                    }
-                }
-                if (task.apply_changes)
+                    return std::exchange(tasks, {});
+                }();
+                for (const auto& task : tasks_to_execute)
                 {
-                    task.apply_changes->call();
-                }
-                for (const auto& node : task.nodes)
-                {
-                    if (nullptr != node)
+                    if (task.apply_changes)
                     {
-                        node->run(task.core);
+                        task.apply_changes->call();
                     }
                 }
-                task = Task();
+                if (!tasks_to_execute.empty())
+                {
+                    const auto& t = tasks_to_execute.back();
+                    for (const auto& node : t.nodes)
+                    {
+                        if (nullptr != node)
+                        {
+                            node->run(t.core);
+                        }
+                    }
+                }
             }
         }
     };
