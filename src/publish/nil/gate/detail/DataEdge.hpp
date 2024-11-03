@@ -115,47 +115,6 @@ namespace nil::gate::detail::edges
             return state != EState::Pending && data.has_value();
         }
 
-        template <std::same_as<T> U>
-        auto* adapt()
-        {
-            using FROM = T;
-            using TO = U;
-
-            struct Impl final: IAdapter
-            {
-                explicit Impl(detail::edges::Data<TO>* init_edge)
-                    : IAdapter(init_edge)
-                    , cache(nullptr)
-                {
-                    if (this->edge->state == EState::Stale)
-                    {
-                        set(this->edge->value());
-                    }
-                }
-
-                const T& value() const
-                {
-                    return *cache;
-                }
-
-                void set(const FROM& new_value)
-                {
-                    cache = &new_value;
-                }
-
-                const TO* cache;
-            };
-
-            if (auto it = adapters.find(nullptr); it != adapters.end())
-            {
-                return static_cast<Impl*>(it->second.get());
-            }
-
-            return static_cast<Impl*>(
-                adapters.emplace(nullptr, std::make_unique<Impl>(this)).first->second.get()
-            );
-        }
-
         template <typename U>
             requires(!std::same_as<T, U> && !nil::gate::concepts::compatibility_requires_cache<U, T>)
         auto* adapt()
