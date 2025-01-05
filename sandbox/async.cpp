@@ -10,9 +10,12 @@ float deferred(const nil::gate::Core& core, nil::gate::async_outputs<int> z, boo
     std::cout << "deferred: " << a << std::endl;
     if (a)
     {
-        auto [zz] = core.batch(z);
-        // this will be triggered on next core.run()
-        zz->set_value(zz->value() + 100);
+        {
+            auto [zz] = core.batch(z);
+            // this will be triggered on next core.run()
+            zz->set_value(zz->value() + 100);
+        }
+        core.commit();
         return 321.0f;
     }
     return 432.0f;

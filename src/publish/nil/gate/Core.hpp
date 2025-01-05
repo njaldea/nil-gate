@@ -168,10 +168,10 @@ namespace nil::gate
          * Commit all of the changes to the graph.
          * Changes are scheduled by mutating the edges through their set_value method.
          */
-        void commit()
+        void commit() const
         {
             runner->run(
-                this,
+                self,
                 make_callable(
                     [df = diffs->flush()]()
                     {
@@ -205,6 +205,10 @@ namespace nil::gate
         }
 
     private:
+        Core* self = this; // This is to be used for commit since executing the runner requires a
+                           // non-const version of this. This is done this way to only allow users
+                           // to add nodes/edges on the non-const version while still allowing them
+                           // to commit on the const version.
         std::unique_ptr<Diffs> diffs = std::make_unique<Diffs>();
         std::vector<std::unique_ptr<INode>> owned_nodes;
         std::vector<std::unique_ptr<IEdge>> independent_edges;
