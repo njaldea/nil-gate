@@ -174,14 +174,11 @@ namespace nil::gate
         {
             runner->run(
                 self,
-                [this]()
+                [d = std::shared_ptr(diffs->flush())]()
                 {
-                    for (const auto& d : diffs->flush())
+                    if (d)
                     {
-                        if (d)
-                        {
-                            d->call();
-                        }
+                        d->call();
                     }
                 },
                 owned_nodes
@@ -194,6 +191,7 @@ namespace nil::gate
         template <typename Runner, typename... Args>
         void set_runner(Args&&... args) noexcept
         {
+            runner.reset();
             runner = std::make_unique<Runner>(std::forward<Args>(args)...);
         }
 

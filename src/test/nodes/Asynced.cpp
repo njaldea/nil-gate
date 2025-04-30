@@ -7,7 +7,7 @@
 
 TEST(nodes, asynced_blank)
 {
-    testing::InSequence seq;
+    const testing::InSequence seq;
     testing::StrictMock<testing::MockFunction<void(std::string)>> mocked_fn;
 
     nil::gate::Core core;
@@ -23,7 +23,7 @@ TEST(nodes, asynced_blank)
 
 TEST(nodes, asynced_input)
 {
-    testing::InSequence seq;
+    const testing::InSequence seq;
     testing::StrictMock<testing::MockFunction<void(std::string)>> mocked_fn;
 
     nil::gate::Core core;
@@ -53,7 +53,7 @@ TEST(nodes, asynced_input)
 
 TEST(nodes, asynced_sync_output)
 {
-    testing::InSequence seq;
+    const testing::InSequence seq;
     testing::StrictMock<testing::MockFunction<void(std::string)>> mocked_fn;
 
     nil::gate::Core core;
@@ -82,7 +82,7 @@ TEST(nodes, asynced_sync_output)
 
 TEST(nodes, asynced_async_output)
 {
-    testing::InSequence seq;
+    const testing::InSequence seq;
     testing::StrictMock<testing::MockFunction<void(std::string)>> mocked_fn;
 
     nil::gate::Core core;
@@ -111,7 +111,7 @@ TEST(nodes, asynced_async_output)
 
 TEST(nodes, asynced_outputs)
 {
-    testing::InSequence seq;
+    const testing::InSequence seq;
     testing::StrictMock<testing::MockFunction<void(std::string)>> mocked_fn;
 
     nil::gate::Core core;

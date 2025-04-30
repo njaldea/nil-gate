@@ -65,17 +65,17 @@ namespace nil::gate::detail
     };
 
     template <typename T>
-    constexpr bool input_validate_v = //
+    concept input_validate_v = //
         input_validate<T>::value;
 
     template <typename T>
-    constexpr bool sync_output_validate_v =                        //
+    concept sync_output_validate_v =                               //
         std::is_same_v<T, std::decay_t<T>>                         //
         && gate::traits::is_edge_type_valid_v<traits::edgify_t<T>> //
         && is_equally_comparable<T>;
 
     template <typename T>
-    constexpr bool async_output_validate_v       //
+    concept async_output_validate_v              //
         = std::is_same_v<T, std::decay_t<T>>     //
         && gate::traits::is_edge_type_valid_v<T> //
         && is_equally_comparable<T>;

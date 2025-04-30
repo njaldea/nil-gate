@@ -26,10 +26,21 @@ namespace nil::gate
             diffs.push_back(std::move(cb));
         }
 
-        std::vector<std::unique_ptr<ICallable<void()>>> flush()
+        std::unique_ptr<ICallable<void()>> flush()
         {
             std::lock_guard g(mutex);
-            return std::exchange(diffs, {});
+            return make_callable(
+                [dd = std::exchange(diffs, {})]()
+                {
+                    for (const auto& d : dd)
+                    {
+                        if (d)
+                        {
+                            d->call();
+                        }
+                    }
+                }
+            );
         }
 
     private:

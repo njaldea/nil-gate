@@ -3,7 +3,6 @@
 #include "INode.hpp"
 
 #include <functional>
-#include <memory>
 #include <span>
 
 namespace nil::gate

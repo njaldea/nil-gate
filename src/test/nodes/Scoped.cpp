@@ -7,7 +7,7 @@
 
 TEST(nodes, scoped_blank)
 {
-    testing::InSequence seq;
+    const testing::InSequence seq;
     testing::StrictMock<testing::MockFunction<void(std::string)>> mocked_fn;
 
     nil::gate::Core core;
@@ -33,7 +33,7 @@ TEST(nodes, scoped_blank)
 
 TEST(nodes, scoped_with_sync_out)
 {
-    testing::InSequence seq;
+    const testing::InSequence seq;
     testing::StrictMock<testing::MockFunction<void(std::string)>> mocked_fn;
 
     nil::gate::Core core;
