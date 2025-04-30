@@ -1,8 +1,8 @@
 #pragma once
 
-#include "ICallable.hpp"
 #include "INode.hpp"
 
+#include <functional>
 #include <memory>
 #include <span>
 
@@ -28,8 +28,8 @@ namespace nil::gate
          */
         virtual void run(
             Core* core,
-            std::unique_ptr<ICallable<void()>> apply_changes,
-            std::span<const std::unique_ptr<INode>> nodes
+            std::function<void()> apply_changes,
+            std::span<INode* const> nodes
         ) = 0;
     };
 }

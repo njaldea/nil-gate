@@ -1,5 +1,4 @@
 #include <nil/gate.hpp>
-
 #include <nil/gate/bias/nil.hpp>
 #include <nil/gate/runners/NonBlocking.hpp>
 

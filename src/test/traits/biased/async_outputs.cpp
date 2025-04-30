@@ -1,5 +1,7 @@
 #include <nil/gate.hpp>
 
+#include <nil/xalt/tlist.hpp>
+
 #include <gtest/gtest.h>
 
 template <typename T>
@@ -9,7 +11,7 @@ template <typename... T>
 using async_outputs = nil::gate::async_outputs<T...>;
 
 template <typename... T>
-using types = nil::gate::detail::traits::types<T...>;
+using types = nil::xalt::tlist_types<T...>;
 
 TEST(gate_node_async_outputs, traits)
 {

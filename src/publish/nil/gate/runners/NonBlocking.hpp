@@ -33,11 +33,8 @@ namespace nil::gate::runners
         NonBlocking& operator=(NonBlocking&&) = delete;
         NonBlocking& operator=(const NonBlocking&) = delete;
 
-        void run(
-            Core* core,
-            std::unique_ptr<ICallable<void()>> apply_changes,
-            std::span<const std::unique_ptr<INode>> nodes
-        ) override
+        void run(Core* core, std::function<void()> apply_changes, std::span<INode* const> nodes)
+            override
         {
             auto _ = std::unique_lock(mutex);
             tasks.emplace_back(core, std::move(apply_changes), nodes);
@@ -53,8 +50,8 @@ namespace nil::gate::runners
         struct Task // NOLINT
         {
             Core* core;
-            std::unique_ptr<ICallable<void()>> apply_changes;
-            std::span<const std::unique_ptr<INode>> nodes;
+            std::function<void()> apply_changes;
+            std::span<INode* const> nodes;
         };
 
         std::vector<Task> tasks;
@@ -76,15 +73,15 @@ namespace nil::gate::runners
                     }
                     return std::exchange(tasks, {});
                 }();
-                for (const auto& task : tasks_to_execute)
-                {
-                    if (task.apply_changes)
-                    {
-                        task.apply_changes->call();
-                    }
-                }
                 if (!tasks_to_execute.empty())
                 {
+                    for (const auto& task : tasks_to_execute)
+                    {
+                        if (task.apply_changes)
+                        {
+                            task.apply_changes();
+                        }
+                    }
                     const auto& t = tasks_to_execute.back();
                     for (const auto& node : t.nodes)
                     {

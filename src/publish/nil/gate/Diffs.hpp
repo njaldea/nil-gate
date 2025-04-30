@@ -1,11 +1,10 @@
 #pragma once
 
-#include <memory>
+#include "ICallable.hpp"
+
 #include <mutex>
 #include <utility>
 #include <vector>
-
-#include "ICallable.hpp"
 
 namespace nil::gate
 {

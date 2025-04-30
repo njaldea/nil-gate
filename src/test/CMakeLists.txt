@@ -21,3 +21,13 @@ target_link_libraries(traits_biased_test PRIVATE gate)
 target_link_libraries(traits_biased_test PRIVATE GTest::gmock)
 target_link_libraries(traits_biased_test PRIVATE GTest::gtest)
 target_link_libraries(traits_biased_test PRIVATE GTest::gtest_main)
+
+add_test_executable(
+    nodes_test
+    nodes/Scoped.cpp
+    nodes/Asynced.cpp
+)
+target_link_libraries(nodes_test PRIVATE gate)
+target_link_libraries(nodes_test PRIVATE GTest::gmock)
+target_link_libraries(nodes_test PRIVATE GTest::gtest)
+target_link_libraries(nodes_test PRIVATE GTest::gtest_main)

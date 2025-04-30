@@ -1,56 +1,33 @@
 #pragma once
 
-#include "types.hpp"
+#include <nil/xalt/checks.hpp>
+#include <nil/xalt/fn_sign.hpp>
+#include <nil/xalt/tlist.hpp>
 
 #include <tuple>
 
 namespace nil::gate::detail::traits
 {
-    enum class EReturnType
+    template <typename T>
+    struct callable
     {
-        Void,
-        Tuple,
-        Mono
+        using inputs = typename xalt::fn_sign<T>::arg_types;
+        using outputs = xalt::tlist_types<typename xalt::fn_sign<T>::return_type>;
     };
 
     template <typename T>
-    struct callable: callable<decltype(&T::operator())>
+        requires(xalt::is_of_template_v<typename xalt::fn_sign<T>::return_type, std::tuple>)
+    struct callable<T>
     {
+        using inputs = typename xalt::fn_sign<T>::arg_types;
+        using outputs = typename xalt::to_tlist_types<typename xalt::fn_sign<T>::return_type>::type;
     };
 
-    template <typename R, typename... Args>
-    struct callable<R (*)(Args...)>: callable<R(Args...)>
+    template <typename T>
+        requires(std::is_same_v<typename xalt::fn_sign<T>::return_type, void>)
+    struct callable<T>
     {
-    };
-
-    template <typename T, typename R, typename... Args>
-    struct callable<R (T::*)(Args...) const>: callable<R(Args...)>
-    {
-    };
-
-    template <typename... I, typename... O>
-    struct callable<std::tuple<O...>(I...)>: callable<types<O...>(I...)>
-    {
-        static constexpr auto tag = EReturnType::Tuple;
-    };
-
-    template <typename... I>
-    struct callable<void(I...)>: callable<types<>(I...)>
-    {
-        static constexpr auto tag = EReturnType::Void;
-    };
-
-    template <typename... I, typename O>
-    struct callable<O(I...)>: callable<types<O>(I...)>
-    {
-        static constexpr auto tag = EReturnType::Mono;
-    };
-
-    template <typename... I, typename... O>
-    struct callable<types<O...>(I...)>
-    {
-        using type = types<O...>(I...);
-        using inputs = types<I...>;
-        using outputs = types<O...>;
+        using inputs = typename xalt::fn_sign<T>::arg_types;
+        using outputs = xalt::tlist_types<>;
     };
 }

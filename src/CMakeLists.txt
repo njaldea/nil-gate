@@ -1,5 +1,7 @@
 project(gate)
 
+find_package(nil-xalt CONFIG REQUIRED)
+
 set(
     HEADERS
         publish/nil/gate.hpp
@@ -21,9 +23,7 @@ set(
         publish/nil/gate/traits/is_edge_type_valid.hpp
         publish/nil/gate/detail/DataEdge.hpp
         publish/nil/gate/detail/Node.hpp
-        publish/nil/gate/detail/traits/callable.hpp
         publish/nil/gate/detail/traits/node.hpp
-        publish/nil/gate/detail/traits/types.hpp
         publish/nil/gate/detail/validation.hpp
         publish/nil/gate/edges/Batch.hpp
         publish/nil/gate/edges/Mutable.hpp
@@ -32,6 +32,10 @@ set(
 )
 
 add_library(${PROJECT_NAME} INTERFACE ${HEADERS})
+
+target_link_libraries(
+    ${PROJECT_NAME} INTERFACE nil::xalt
+)
 
 target_include_directories(
     ${PROJECT_NAME}

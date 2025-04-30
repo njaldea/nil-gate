@@ -4,6 +4,9 @@
 #include "../INode.hpp"
 #include "traits/node.hpp"
 
+#include <nil/xalt/checks.hpp>
+#include <nil/xalt/fn_sign.hpp>
+
 #include <memory>
 
 namespace nil::gate
@@ -41,18 +44,19 @@ namespace nil::gate::detail
 
         void exec(Core* core) override
         {
-            if constexpr (traits::callable<T>::tag == traits::EReturnType::Void)
+            using return_type = xalt::fn_sign<T>::return_type;
+            if constexpr (std::is_same_v<return_type, void>)
             {
                 call(core, typename input_t::make_index_sequence());
             }
-            if constexpr (traits::callable<T>::tag == traits::EReturnType::Tuple)
+            else if constexpr (xalt::is_of_template_v<return_type, std::tuple>)
             {
                 forward_to_output(
                     call(core, typename input_t::make_index_sequence()),
                     typename sync_output_t::make_index_sequence()
                 );
             }
-            if constexpr (traits::callable<T>::tag == traits::EReturnType::Mono)
+            else
             {
                 auto result = call(core, typename input_t::make_index_sequence());
                 if constexpr (sync_output_t::size == 1)

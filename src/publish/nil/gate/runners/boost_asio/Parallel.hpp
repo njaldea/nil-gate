@@ -13,7 +13,7 @@
 
 namespace nil::gate::runners::boost_asio
 {
-    class Parallel final: public nil::gate::IRunner
+    class Parallel final: public IRunner
     {
         static std::thread create_thread(boost::asio::io_context& c)
         {
@@ -54,11 +54,8 @@ namespace nil::gate::runners::boost_asio
         Parallel& operator=(Parallel&&) = delete;
         Parallel& operator=(const Parallel&) = delete;
 
-        void run(
-            Core* core,
-            std::unique_ptr<ICallable<void()>> apply_changes,
-            std::span<const std::unique_ptr<INode>> nodes
-        ) override
+        void run(Core* core, std::function<void()> apply_changes, std::span<INode* const> nodes)
+            override
         {
             boost::asio::post(
                 main_context,
@@ -71,7 +68,7 @@ namespace nil::gate::runners::boost_asio
                         {
                             if (dd)
                             {
-                                dd->call();
+                                dd();
                             }
                         }
                     }
@@ -87,11 +84,11 @@ namespace nil::gate::runners::boost_asio
                         {
                             if (node->is_ready())
                             {
-                                run_node(core, node.get());
+                                run_node(core, node);
                             }
                             else
                             {
-                                waiting_list.push_back(node.get());
+                                waiting_list.push_back(node);
                             }
                         }
                     }
@@ -158,8 +155,8 @@ namespace nil::gate::runners::boost_asio
         std::set<nil::gate::INode*> running_list;
         std::vector<nil::gate::INode*> waiting_list;
 
-        std::span<const std::unique_ptr<INode>> deferred_nodes;
-        std::vector<std::unique_ptr<ICallable<void()>>> all_diffs;
+        std::span<INode* const> deferred_nodes;
+        std::vector<std::function<void()>> all_diffs;
 
         boost::asio::io_context main_context;
         boost::asio::io_context exec_context;

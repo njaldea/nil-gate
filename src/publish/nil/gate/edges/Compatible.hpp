@@ -92,10 +92,10 @@ namespace nil::gate::edges
         }
 
     private:
-        void* context;
-        void (*attach_impl)(void*, INode*);
-        bool (*is_ready_impl)(const void*);
-        const TO& (*value_impl)(const void*);
+        void* context = nullptr;
+        void (*attach_impl)(void*, INode*) = nullptr;
+        bool (*is_ready_impl)(const void*) = nullptr;
+        const TO& (*value_impl)(const void*) = nullptr;
 
         template <typename Adapter>
             requires(!std::is_base_of_v<IEdge, Adapter>)
@@ -113,9 +113,5 @@ namespace nil::gate::edges
               )
         {
         }
-
-        template <typename FROM>
-            requires(!concepts::is_compatible<TO, FROM>)
-        explicit Compatible(errors::Compatibility<TO, FROM> /* errors */);
     };
 }

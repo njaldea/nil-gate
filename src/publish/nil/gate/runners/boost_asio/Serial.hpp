@@ -12,7 +12,7 @@
 
 namespace nil::gate::runners::boost_asio
 {
-    class Serial final: public nil::gate::IRunner
+    class Serial final: public IRunner
     {
     public:
         explicit Serial()
@@ -37,19 +37,16 @@ namespace nil::gate::runners::boost_asio
         Serial& operator=(Serial&&) = delete;
         Serial& operator=(const Serial&) = delete;
 
-        void run(
-            Core* core,
-            std::unique_ptr<ICallable<void()>> apply_changes,
-            std::span<const std::unique_ptr<INode>> nodes
-        ) override
+        void run(Core* core, std::function<void()> apply_changes, std::span<INode* const> nodes)
+            override
         {
             boost::asio::post(
                 main_context,
-                [apply_changes = std::move(apply_changes), core, nodes]() mutable
+                [apply_changes = std::move(apply_changes), core, nodes]()
                 {
                     if (apply_changes)
                     {
-                        apply_changes->call();
+                        apply_changes();
                     }
                     for (const auto& node : nodes)
                     {

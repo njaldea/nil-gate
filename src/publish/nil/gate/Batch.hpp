@@ -21,7 +21,7 @@ namespace nil::gate
     public:
         Batch(Diffs* init_diffs, const std::tuple<edges::Mutable<T>*...>& init_edges)
             : diffs(init_diffs)
-            , edges(transform_edges(init_edges, std::make_index_sequence<sizeof...(T)>()))
+            , edges(transform_edges(init_edges, std::index_sequence_for<T...>()))
         {
         }
 

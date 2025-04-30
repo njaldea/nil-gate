@@ -5,6 +5,7 @@
 #include "../edges/Mutable.hpp"
 #include "../traits/compatibility.hpp"
 
+#include <memory>
 #include <optional>
 #include <unordered_map>
 #include <vector>
@@ -18,7 +19,7 @@ namespace nil::gate::detail::edges
      * @tparam T
      */
     template <typename T>
-    class Data final: public nil::gate::edges::Mutable<T>
+    class Data final: public gate::edges::Mutable<T>
     {
     public:
         Data()
@@ -116,7 +117,7 @@ namespace nil::gate::detail::edges
         }
 
         template <typename U>
-            requires(!std::same_as<T, U> && !nil::gate::concepts::compatibility_requires_cache<U, T>)
+            requires(!std::same_as<T, U> && !concepts::compatibility_requires_cache<U, T>)
         auto* adapt()
         {
             using FROM = T;

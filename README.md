@@ -432,7 +432,7 @@ core.set_runner<nil::gate::runners::boost_asio::Parallel>(thread_count);
 ```
 
 Runners are expected to implement the following (WIP: to be revised):
-- `run(std::unique_ptr<ICallable<void()>>, std::span<nodes>)`
+- `run(Core* core, std::function<void()> apply_changes, std::span<INode* const>)`
 
 Make sure that flushing and running are done in a thread safe manner
 

@@ -33,7 +33,7 @@ namespace nil::gate::errors
     template <typename T>
     struct Node
     {
-        using traits = nil::gate::detail::traits::node<T>;
+        using traits = detail::traits::node<T>;
         // clang-format off
         Error arg_asyncs = Check<traits::arg_async::is_valid>("invalid async arg type detected, must be by copy or by const ref");
         Error arg_core = Check<traits::arg_core::is_valid>("invalid core type, must be `const Core&`");
@@ -67,7 +67,11 @@ namespace nil::gate
 
     public:
         Core() = default;
-        ~Core() noexcept = default;
+
+        ~Core() noexcept
+        {
+            clear();
+        }
 
         Core(Core&&) noexcept = delete;
         Core& operator=(Core&&) noexcept = delete;
@@ -91,9 +95,8 @@ namespace nil::gate
                 std::move(instance),
                 std::move(input_edges)
             );
-            auto* r = n.get();
-            owned_nodes.emplace_back(std::move(n));
-            return r->output_edges();
+            return static_cast<detail::Node<T>*>(owned_nodes.emplace_back(n.release()))
+                ->output_edges();
         }
 
         template <concepts::is_node_valid T>
@@ -105,9 +108,8 @@ namespace nil::gate
                 std::move(instance),
                 inputs_t<T>()
             );
-            auto* r = n.get();
-            owned_nodes.emplace_back(std::move(n));
-            return r->output_edges();
+            return static_cast<detail::Node<T>*>(owned_nodes.emplace_back(n.release()))
+                ->output_edges();
         }
 
         /// starting from this point - link
@@ -134,7 +136,7 @@ namespace nil::gate
             using type = traits::edgify_t<T>;
             auto e = std::make_unique<detail::edges::Data<traits::edgify_t<T>>>();
             e->attach(diffs.get());
-            auto r = independent_edges.emplace_back(std::move(e)).get();
+            auto* r = independent_edges.emplace_back(e.release());
             return static_cast<edges::Mutable<type>*>(r);
         }
 
@@ -144,7 +146,7 @@ namespace nil::gate
             using type = traits::edgify_t<T>;
             auto e = std::make_unique<detail::edges::Data<type>>(std::move(value));
             e->attach(diffs.get());
-            auto r = independent_edges.emplace_back(std::move(e)).get();
+            auto* r = independent_edges.emplace_back(e.release());
             return static_cast<edges::Mutable<type>*>(r);
         }
 
@@ -172,18 +174,16 @@ namespace nil::gate
         {
             runner->run(
                 self,
-                make_callable(
-                    [df = diffs->flush()]()
+                [this]()
+                {
+                    for (const auto& d : diffs->flush())
                     {
-                        for (const auto& d : df)
+                        if (d)
                         {
-                            if (d)
-                            {
-                                d->call();
-                            }
+                            d->call();
                         }
                     }
-                ),
+                },
                 owned_nodes
             );
         }
@@ -199,7 +199,16 @@ namespace nil::gate
 
         void clear()
         {
+            for (auto* e : independent_edges)
+            {
+                delete e; // NOLINT
+            }
             independent_edges.clear();
+
+            for (auto* e : owned_nodes)
+            {
+                delete e; // NOLINT
+            }
             owned_nodes.clear();
             diffs = std::make_unique<Diffs>();
         }
@@ -210,8 +219,8 @@ namespace nil::gate
                            // to add nodes/edges on the non-const version while still allowing them
                            // to commit on the const version.
         std::unique_ptr<Diffs> diffs = std::make_unique<Diffs>();
-        std::vector<std::unique_ptr<INode>> owned_nodes;
-        std::vector<std::unique_ptr<IEdge>> independent_edges;
+        std::vector<INode*> owned_nodes;
+        std::vector<IEdge*> independent_edges;
         std::unique_ptr<IRunner> runner = std::make_unique<runners::Immediate>();
     };
 }

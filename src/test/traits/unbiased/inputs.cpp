@@ -1,5 +1,6 @@
-#include "nil/gate/detail/traits/node.hpp"
 #include <nil/gate.hpp>
+
+#include <nil/xalt/tlist.hpp>
 
 #include <gtest/gtest.h>
 
@@ -10,7 +11,7 @@ template <typename... T>
 using inputs = nil::gate::inputs<T...>;
 
 template <typename... T>
-using types = nil::gate::detail::traits::types<T...>;
+using types = nil::xalt::tlist_types<T...>;
 
 TEST(gate_node_inputs, traits)
 {

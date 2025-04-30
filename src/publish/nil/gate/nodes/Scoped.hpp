@@ -1,22 +1,51 @@
 #pragma once
 
-#include "../ICallable.hpp"
+#include <nil/xalt/fn_sign.hpp>
 
-#include "../detail/traits/callable.hpp"
+#include <functional>
+#include <utility>
 
 namespace nil::gate::nodes
 {
-    template <typename T, typename Inputs = detail::traits::callable<T>::inputs>
-    struct Scoped;
-
-    template <typename T, typename... Inputs>
-    struct Scoped<T, nil::gate::detail::traits::types<Inputs...>> final
+    namespace detail
     {
-        template <typename Pre, typename Post>
+        template <typename T, typename Return, typename Inputs>
+        struct ScopedCRTP;
+
+        template <typename T, typename Return, typename... Inputs>
+        struct ScopedCRTP<T, Return, xalt::tlist_types<Inputs...>>
+        {
+            auto operator()(const Inputs&... args) const
+            {
+                auto* self = static_cast<const T*>(this);
+                if constexpr (std::is_same_v<Return, void>)
+                {
+                    self->pre();
+                    std::invoke(self->node, args...);
+                    self->post();
+                }
+                else
+                {
+                    self->pre();
+                    auto r = std::invoke(self->node, args...);
+                    self->post();
+                    return r;
+                }
+            }
+        };
+    }
+
+    template <typename T, typename Pre, typename Post>
+    struct Scoped final
+        : detail::ScopedCRTP<
+              Scoped<T, Pre, Post>,
+              typename xalt::fn_sign<T>::return_type,
+              typename xalt::fn_sign<T>::arg_types>
+    {
         Scoped(Pre init_pre, T init_node, Post init_post)
-            : pre(make_callable(std::move(init_pre)))
-            , post(make_callable(std::move(init_post)))
+            : pre(std::move(init_pre))
             , node{std::move(init_node)}
+            , post(std::move(init_post))
         {
         }
 
@@ -28,39 +57,13 @@ namespace nil::gate::nodes
         Scoped& operator=(Scoped&&) = default;
         Scoped& operator=(const Scoped&) = delete;
 
-        auto operator()(const Inputs&... args) const
-        {
-            struct OnDestroy final
-            {
-                explicit OnDestroy(ICallable<void()>* init_post)
-                    : post(init_post)
-                {
-                }
+        using detail::ScopedCRTP<
+            Scoped<T, Pre, Post>,
+            typename xalt::fn_sign<T>::return_type,
+            typename xalt::fn_sign<T>::arg_types>::operator();
 
-                ~OnDestroy()
-                {
-                    post->call();
-                }
-
-                OnDestroy() = delete;
-
-                OnDestroy(OnDestroy&&) noexcept = delete;
-                OnDestroy& operator=(OnDestroy&&) noexcept = delete;
-
-                OnDestroy(const OnDestroy&) = delete;
-                OnDestroy& operator=(const OnDestroy&) = delete;
-
-                ICallable<void()>* post;
-            };
-
-            pre->call();
-            OnDestroy _(post.get());
-
-            return node.operator()(args...);
-        }
-
-        std::unique_ptr<ICallable<void()>> pre;
-        std::unique_ptr<ICallable<void()>> post;
+        Pre pre;
         T node;
+        Post post;
     };
 }

@@ -1,28 +1,15 @@
 {
     "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
     "name": "nil-gate",
+    "dependencies": [ "nil-xalt" ],
     "features": {
         "sandbox": {
             "description": "Enable sandboxes",
-            "dependencies": [
-                {
-                    "name": "nil-clix",
-                    "version>=": "0.0.1"
-                },
-                {
-                    "name": "boost-asio",
-                    "version>=": "1.82.0"
-                }
-            ]
+            "dependencies": [ "nil-clix", "boost-asio" ]
         },
         "test": {
             "description": "Enable tests",
-            "dependencies": [
-                {
-                    "name": "gtest",
-                    "version>=": "1.13.0"
-                }
-            ]
+            "dependencies": [ "gtest" ]
         }
     }
 }
