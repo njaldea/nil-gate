@@ -28,7 +28,7 @@ TEST(nodes, asynced_input)
 
     nil::gate::Core core;
 
-    auto* e = core.edge(std::string("value"));
+    auto* e = core.port(std::string("value"));
 
     core.node(
         nil::gate::nodes::Asynced(

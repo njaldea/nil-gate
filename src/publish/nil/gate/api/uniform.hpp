@@ -8,7 +8,7 @@ namespace nil::gate::api::uniform
     auto add_node(
         T instance,
         nil::gate::Core& core,
-        typename nil::gate::detail::traits::node<T>::inputs::edges inputs
+        typename nil::gate::detail::traits::node<T>::inputs::ports inputs
     )
     {
         constexpr auto has_output = nil::gate::detail::traits::node<T>::outputs::size > 0;

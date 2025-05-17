@@ -45,10 +45,10 @@ int main()
     using H = T<void(bool, char)>;
     using I = T<void(char, float)>;
 
-    auto* a1 = core.edge(std::unique_ptr<bool>());
-    auto* a2 = core.edge<int>(0);
-    auto* a3 = core.edge(0.0);
-    auto* a4 = core.edge(std::string());
+    auto* a1 = core.port(std::unique_ptr<bool>());
+    auto* a2 = core.port<int>(0);
+    auto* a3 = core.port(0.0);
+    auto* a4 = core.port(std::string());
 
     core.node(A("a"));
     const auto [b1] = core.node(B("b"), {a1});

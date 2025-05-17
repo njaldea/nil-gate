@@ -21,8 +21,8 @@ namespace nil::gate
         IRunner& operator=(const IRunner&) = default;
 
         /**
-         * @param apply_changes - a callable that is intended to apply the changes on the edges.
-         *                      - the changes are mainly from Edge::set_value.
+         * @param apply_changes - a callable that is intended to apply the changes on the ports.
+         *                      - the changes are mainly from Port::set_value.
          * @param nodes - these nodes are alive as long as the Core object is alive.
          */
         virtual void run(

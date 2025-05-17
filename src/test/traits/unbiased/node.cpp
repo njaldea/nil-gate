@@ -27,17 +27,17 @@ TEST(gate, traits_empty)
     using type = SUT<TC<void()>>;
 
     ASSERT_EQ(type::inputs::size, 0);
-    ASSERT_TRUE((std::is_same_v<type::inputs::edges, nil::gate::inputs<>>));
+    ASSERT_TRUE((std::is_same_v<type::inputs::ports, nil::gate::inputs<>>));
 
     ASSERT_EQ(type::sync_outputs::size, 0);
-    ASSERT_TRUE((std::is_same_v<type::sync_outputs::edges, nil::gate::sync_outputs<>>));
+    ASSERT_TRUE((std::is_same_v<type::sync_outputs::ports, nil::gate::sync_outputs<>>));
 
     ASSERT_EQ(type::async_outputs::size, 0);
-    ASSERT_TRUE((std::is_same_v<type::async_outputs::edges, nil::gate::async_outputs<>>));
+    ASSERT_TRUE((std::is_same_v<type::async_outputs::ports, nil::gate::async_outputs<>>));
 
     ASSERT_EQ(type::outputs::size, 0);
     ASSERT_TRUE((std::is_same_v<
-                 type::outputs::edges,
+                 type::outputs::ports,
                  nil::gate::outputs<nil::gate::sync_outputs<>, nil::gate::async_outputs<>>>));
 
     ASSERT_TRUE(type::is_valid);
@@ -68,7 +68,7 @@ TEST(gate, traits_input)
         ASSERT_EQ(type::inputs::size, 13);
         ASSERT_TRUE( //
             (std::is_same_v<
-                type::inputs::edges,
+                type::inputs::ports,
                 nil::gate::inputs<
                     int,
                     int,
@@ -140,7 +140,7 @@ TEST(gate, traits_sync_output)
             std::unique_ptr<const int>,
             std::shared_ptr<const int>,
             std::optional<const int>>;
-        ASSERT_TRUE((std::is_same_v<expected_t, type::sync_outputs::edges>));
+        ASSERT_TRUE((std::is_same_v<expected_t, type::sync_outputs::ports>));
 
         ASSERT_TRUE(type::is_valid);
         ASSERT_FALSE(type::has_async);
@@ -187,7 +187,7 @@ TEST(gate, traits_async_output)
             std::unique_ptr<const int>,
             std::shared_ptr<const int>,
             std::optional<const int>>;
-        ASSERT_TRUE((std::is_same_v<expected_t, type::async_outputs::edges>));
+        ASSERT_TRUE((std::is_same_v<expected_t, type::async_outputs::ports>));
 
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::has_async);
@@ -240,7 +240,7 @@ TEST(gate, traits_async_output_with_core)
             std::unique_ptr<const int>,
             std::shared_ptr<const int>,
             std::optional<const int>>;
-        ASSERT_TRUE((std::is_same_v<expected_t, type::async_outputs::edges>));
+        ASSERT_TRUE((std::is_same_v<expected_t, type::async_outputs::ports>));
 
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::has_async);
@@ -273,7 +273,7 @@ TEST(gate, traits_output)
             ASSERT_EQ(type::outputs::size, 8);
             ASSERT_TRUE( //
                 (std::is_same_v<
-                    type::outputs::edges,
+                    type::outputs::ports,
                     nil::gate::outputs<
                         nil::gate::sync_outputs<
                             int,
@@ -308,7 +308,7 @@ TEST(gate, traits_output)
             ASSERT_EQ(type::outputs::size, 8);
             ASSERT_TRUE( //
                 (std::is_same_v<
-                    type::outputs::edges,
+                    type::outputs::ports,
                     nil::gate::outputs<
                         nil::gate::sync_outputs<
                             int,
@@ -343,7 +343,7 @@ TEST(gate, traits_output)
             ASSERT_EQ(type::outputs::size, 8);
             ASSERT_TRUE( //
                 (std::is_same_v<
-                    type::outputs::edges,
+                    type::outputs::ports,
                     nil::gate::outputs<
                         nil::gate::sync_outputs<
                             int,
@@ -381,7 +381,7 @@ TEST(gate, traits_output)
             ASSERT_EQ(type::outputs::size, 8);
             ASSERT_TRUE( //
                 (std::is_same_v<
-                    type::outputs::edges,
+                    type::outputs::ports,
                     nil::gate::outputs<
                         nil::gate::sync_outputs<
                             int,
@@ -406,7 +406,7 @@ TEST(gate, traits_output)
             ASSERT_EQ(type::outputs::size, 8);
             ASSERT_TRUE( //
                 (std::is_same_v<
-                    type::outputs::edges,
+                    type::outputs::ports,
                     nil::gate::outputs<
                         nil::gate::sync_outputs<
                             int,
@@ -431,7 +431,7 @@ TEST(gate, traits_output)
             ASSERT_EQ(type::outputs::size, 8);
             ASSERT_TRUE( //
                 (std::is_same_v<
-                    type::outputs::edges,
+                    type::outputs::ports,
                     nil::gate::outputs<
                         nil::gate::sync_outputs<
                             int,

@@ -25,7 +25,7 @@ namespace nil::gate::detail
         using output_t = typename detail::traits::node<T>::outputs;
 
     public:
-        Node(Diffs* init_diffs, T init_instance, typename input_t::edges init_inputs)
+        Node(Diffs* init_diffs, T init_instance, typename input_t::ports init_inputs)
             : instance(std::move(init_instance))
             , inputs(std::move(init_inputs))
         {
@@ -101,19 +101,19 @@ namespace nil::gate::detail
             }
         }
 
-        auto output_edges()
+        auto output_ports()
         {
             if constexpr (output_t::size > 0)
             {
-                return typename output_t::edges(
+                return typename output_t::ports(
                     std::apply(
                         [](auto&... s)
-                        { return typename sync_output_t::edges(std::addressof(s)...); },
+                        { return typename sync_output_t::ports(std::addressof(s)...); },
                         sync_outputs
                     ),
                     std::apply(
                         [](auto&... s)
-                        { return typename async_output_t::edges(std::addressof(s)...); },
+                        { return typename async_output_t::ports(std::addressof(s)...); },
                         async_outputs
                     )
                 );
@@ -171,7 +171,7 @@ namespace nil::gate::detail
                         *core,
                         std::apply(
                             [](auto&... a)
-                            { return typename async_output_t::edges(std::addressof(a)...); },
+                            { return typename async_output_t::ports(std::addressof(a)...); },
                             async_outputs
                         ),
                         get<i_indices>(inputs).value()...
@@ -182,7 +182,7 @@ namespace nil::gate::detail
                     return instance(
                         std::apply(
                             [](auto&... a)
-                            { return typename async_output_t::edges(std::addressof(a)...); },
+                            { return typename async_output_t::ports(std::addressof(a)...); },
                             async_outputs
                         ),
                         get<i_indices>(inputs).value()...
@@ -207,8 +207,8 @@ namespace nil::gate::detail
 
         T instance;
 
-        typename input_t::edges inputs;
-        typename sync_output_t::data_edges sync_outputs;
-        typename async_output_t::data_edges async_outputs;
+        typename input_t::ports inputs;
+        typename sync_output_t::data_ports sync_outputs;
+        typename async_output_t::data_ports async_outputs;
     };
 }

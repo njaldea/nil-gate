@@ -2,10 +2,10 @@
 
 #include "ReadOnly.hpp"
 
-namespace nil::gate::edges
+namespace nil::gate::ports
 {
     /**
-     * @brief Mutable/Readable Edge type returned by Core::edge.
+     * @brief Mutable/Readable Port type returned by Core::port.
      *
      * @tparam T
      */

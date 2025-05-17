@@ -1,8 +1,8 @@
 #pragma once
 
-#include "edges/Compatible.hpp"
-#include "edges/Mutable.hpp"
-#include "edges/ReadOnly.hpp"
+#include "ports/Compatible.hpp"
+#include "ports/Mutable.hpp"
+#include "ports/ReadOnly.hpp"
 
 #include <tuple>
 #include <type_traits>
@@ -10,11 +10,11 @@
 namespace nil::gate
 {
     template <typename... T>
-    using inputs = std::tuple<edges::Compatible<T>...>;
+    using inputs = std::tuple<ports::Compatible<T>...>;
     template <typename... T>
-    using async_outputs = std::tuple<edges::Mutable<T>*...>;
+    using async_outputs = std::tuple<ports::Mutable<T>*...>;
     template <typename... T>
-    using sync_outputs = std::tuple<edges::ReadOnly<T>*...>;
+    using sync_outputs = std::tuple<ports::ReadOnly<T>*...>;
 
     template <typename S, typename A>
     struct outputs;

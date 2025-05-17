@@ -9,25 +9,25 @@ set(
         publish/nil/gate/Core.hpp
         publish/nil/gate/Diffs.hpp
         publish/nil/gate/INode.hpp
-        publish/nil/gate/IEdge.hpp
+        publish/nil/gate/IPort.hpp
         publish/nil/gate/ICallable.hpp
         publish/nil/gate/types.hpp
         publish/nil/gate/api/uniform.hpp
         publish/nil/gate/bias/compatibility.hpp
-        publish/nil/gate/bias/edgify.hpp
-        publish/nil/gate/bias/is_edge_type_valid.hpp
+        publish/nil/gate/bias/portify.hpp
+        publish/nil/gate/bias/is_port_type_valid.hpp
         publish/nil/gate/bias/nil.hpp
         publish/nil/gate/runners/Immediate.hpp
         publish/nil/gate/traits/compatibility.hpp
-        publish/nil/gate/traits/edgify.hpp
-        publish/nil/gate/traits/is_edge_type_valid.hpp
-        publish/nil/gate/detail/DataEdge.hpp
+        publish/nil/gate/traits/portify.hpp
+        publish/nil/gate/traits/is_port_type_valid.hpp
+        publish/nil/gate/detail/DataPort.hpp
         publish/nil/gate/detail/Node.hpp
         publish/nil/gate/detail/traits/node.hpp
         publish/nil/gate/detail/validation.hpp
-        publish/nil/gate/edges/Batch.hpp
-        publish/nil/gate/edges/Mutable.hpp
-        publish/nil/gate/edges/ReadOnly.hpp
+        publish/nil/gate/ports/Batch.hpp
+        publish/nil/gate/ports/Mutable.hpp
+        publish/nil/gate/ports/ReadOnly.hpp
         publish/nil/gate/nodes/Scoped.hpp
 )
 

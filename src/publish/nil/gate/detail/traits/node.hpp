@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../../traits/edgify.hpp"
+#include "../../traits/portify.hpp"
 #include "../../types.hpp"
-#include "../DataEdge.hpp"
+#include "../DataPort.hpp"
 #include "../validation.hpp"
 #include "callable.hpp"
 
@@ -34,12 +34,12 @@ namespace nil::gate::detail::traits
     };
 
     template <typename... T>
-    struct is_async_arg<std::tuple<gate::edges::Mutable<T>*...>>: std::true_type
+    struct is_async_arg<std::tuple<gate::ports::Mutable<T>*...>>: std::true_type
     {
     };
 
     template <typename T>
-    using edgify_t = gate::traits::edgify_t<T>;
+    using portify_t = gate::traits::portify_t<T>;
 
     template <typename T>
     struct typify;
@@ -57,10 +57,10 @@ namespace nil::gate::detail::traits
     struct input_splitter;
 
     template <typename... I>
-    struct input_splitter<xalt::tlist_types<I...>> final
+    struct input_splitter<xalt::tlist<I...>> final
     {
-        using inputs = xalt::tlist_types<I...>;
-        using asyncs = xalt::tlist_types<>;
+        using inputs = xalt::tlist<I...>;
+        using asyncs = xalt::tlist<>;
         static constexpr bool has_core = false;
         static constexpr bool has_async = false;
         static constexpr bool is_core_valid = true;
@@ -69,10 +69,10 @@ namespace nil::gate::detail::traits
 
     template <typename First, typename... I>
         requires(is_async_arg<std::decay_t<First>>::value)
-    struct input_splitter<xalt::tlist_types<First, I...>> final
+    struct input_splitter<xalt::tlist<First, I...>> final
     {
-        using inputs = xalt::tlist_types<I...>;
-        using asyncs = xalt::to_tlist_types<std::decay_t<First>>::type::template apply<typify_t>;
+        using inputs = xalt::tlist<I...>;
+        using asyncs = xalt::to_tlist<std::decay_t<First>>::type::template apply<typify_t>;
         static constexpr bool has_core = false;
         static constexpr bool has_async = true;
         static constexpr bool is_core_valid = true;
@@ -81,10 +81,10 @@ namespace nil::gate::detail::traits
 
     template <typename First, typename... I>
         requires(std::is_same_v<Core, std::decay_t<First>>)
-    struct input_splitter<xalt::tlist_types<First, I...>> final
+    struct input_splitter<xalt::tlist<First, I...>> final
     {
-        using inputs = xalt::tlist_types<I...>;
-        using asyncs = xalt::tlist_types<>;
+        using inputs = xalt::tlist<I...>;
+        using asyncs = xalt::tlist<>;
         static constexpr bool has_core = true;
         static constexpr bool has_async = false;
         static constexpr bool is_core_valid = is_core_valid_v<First>;
@@ -94,10 +94,10 @@ namespace nil::gate::detail::traits
     template <typename First, typename Second, typename... I>
         requires std::is_same_v<Core, std::decay_t<First>>
         && (is_async_arg<std::decay_t<Second>>::value)
-    struct input_splitter<xalt::tlist_types<First, Second, I...>> final
+    struct input_splitter<xalt::tlist<First, Second, I...>> final
     {
-        using inputs = xalt::tlist_types<I...>;
-        using asyncs = xalt::to_tlist_types<std::decay_t<Second>>::type::template apply<typify_t>;
+        using inputs = xalt::tlist<I...>;
+        using asyncs = xalt::to_tlist<std::decay_t<Second>>::type::template apply<typify_t>;
         static constexpr bool has_core = true;
         static constexpr bool has_async = true;
         static constexpr bool is_core_valid = is_core_valid_v<First>;
@@ -108,10 +108,10 @@ namespace nil::gate::detail::traits
     struct node_inputs;
 
     template <typename... I>
-    struct node_inputs<xalt::tlist_types<I...>> final
+    struct node_inputs<xalt::tlist<I...>> final
     {
-        using types = xalt::tlist_types<I...>;
-        using edges = inputs<edgify_t<std::decay_t<I>>...>;
+        using types = xalt::tlist<I...>;
+        using ports = inputs<portify_t<std::decay_t<I>>...>;
         using make_index_sequence = std::index_sequence_for<I...>;
         static constexpr auto size = sizeof...(I);
         static constexpr bool is_valid = (true && ... && (input_validate_v<I>));
@@ -121,11 +121,11 @@ namespace nil::gate::detail::traits
     struct node_sync_outputs;
 
     template <typename... S>
-    struct node_sync_outputs<xalt::tlist_types<S...>> final
+    struct node_sync_outputs<xalt::tlist<S...>> final
     {
-        using types = xalt::tlist_types<S...>;
-        using edges = sync_outputs<edgify_t<std::decay_t<S>>...>;
-        using data_edges = std::tuple<detail::edges::Data<edgify_t<std::decay_t<S>>>...>;
+        using types = xalt::tlist<S...>;
+        using ports = sync_outputs<portify_t<std::decay_t<S>>...>;
+        using data_ports = std::tuple<detail::ports::Data<portify_t<std::decay_t<S>>>...>;
         using make_index_sequence = std::index_sequence_for<S...>;
         static constexpr auto size = sizeof...(S);
         static constexpr bool is_valid = (true && ... && (sync_output_validate_v<S>));
@@ -135,11 +135,11 @@ namespace nil::gate::detail::traits
     struct node_async_outputs;
 
     template <typename... A>
-    struct node_async_outputs<xalt::tlist_types<A...>> final
+    struct node_async_outputs<xalt::tlist<A...>> final
     {
-        using types = xalt::tlist_types<A...>;
-        using edges = async_outputs<edgify_t<std::decay_t<A>>...>;
-        using data_edges = std::tuple<detail::edges::Data<edgify_t<std::decay_t<A>>>...>;
+        using types = xalt::tlist<A...>;
+        using ports = async_outputs<portify_t<std::decay_t<A>>...>;
+        using data_ports = std::tuple<detail::ports::Data<portify_t<std::decay_t<A>>>...>;
         using make_index_sequence = std::index_sequence_for<A...>;
         static constexpr auto size = sizeof...(A);
         static constexpr bool is_valid = (true && ... && async_output_validate_v<A>);
@@ -151,8 +151,8 @@ namespace nil::gate::detail::traits
     template <typename... S, typename... A>
     struct node_outputs<sync_outputs<S...>, async_outputs<A...>> final
     {
-        using types = xalt::tlist_types<S..., A...>;
-        using edges = outputs<sync_outputs<S...>, async_outputs<A...>>;
+        using types = xalt::tlist<S..., A...>;
+        using ports = outputs<sync_outputs<S...>, async_outputs<A...>>;
         using make_index_sequence = std::index_sequence_for<S..., A...>;
         static constexpr auto size = sizeof...(S) + sizeof...(A);
     };
@@ -172,7 +172,7 @@ namespace nil::gate::detail::traits
         using inputs = node_inputs<final_i>;
         using sync_outputs = node_sync_outputs<final_s>;
         using async_outputs = node_async_outputs<final_a>;
-        using outputs = node_outputs<typename sync_outputs::edges, typename async_outputs::edges>;
+        using outputs = node_outputs<typename sync_outputs::ports, typename async_outputs::ports>;
 
         struct arg_async
         {

@@ -34,9 +34,9 @@ namespace nil::gate::nodes
             has_core,
             has_async,
             ReturnType,
-            xalt::tlist_types<I...>,
-            xalt::tlist_types<S...>,
-            xalt::tlist_types<A...>>
+            xalt::tlist<I...>,
+            xalt::tlist<S...>,
+            xalt::tlist<A...>>
         {
             void operator()(
                 const Core& core,

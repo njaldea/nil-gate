@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../detail/DataEdge.hpp"
+#include "../detail/DataPort.hpp"
 #include "../errors.hpp"
 #include "../traits/compatibility.hpp"
 
@@ -26,7 +26,7 @@ namespace nil::gate::errors
     };
 }
 
-namespace nil::gate::edges
+namespace nil::gate::ports
 {
     template <typename TO>
     class Compatible final
@@ -37,7 +37,7 @@ namespace nil::gate::edges
         template <typename FROM>
             requires(!concepts::is_compatible<TO, FROM> && !std::is_same_v<TO, FROM>)
         // NOLINTNEXTLINE(hicpp-explicit-conversions)
-        Compatible(edges::ReadOnly<FROM>* /*edge*/)
+        Compatible(ports::ReadOnly<FROM>* /*port*/)
             : Compatible(errors::Compatibility<TO, FROM>())
         {
         }
@@ -45,25 +45,25 @@ namespace nil::gate::edges
         template <typename FROM>
             requires(concepts::is_compatible<TO, FROM> && !std::is_same_v<TO, FROM>)
         // NOLINTNEXTLINE(hicpp-explicit-conversions)
-        Compatible(edges::ReadOnly<FROM>* edge)
-            : Compatible(static_cast<detail::edges::Data<FROM>*>(edge)->template adapt<TO>())
+        Compatible(ports::ReadOnly<FROM>* port)
+            : Compatible(static_cast<detail::ports::Data<FROM>*>(port)->template adapt<TO>())
         {
         }
 
         // NOLINTNEXTLINE(hicpp-explicit-conversions)
-        Compatible(edges::ReadOnly<TO>* edge)
-            : context(edge)
+        Compatible(ports::ReadOnly<TO>* port)
+            : context(port)
             , attach_impl( //
                   +[](void* p, INode* node)
-                  { static_cast<detail::edges::Data<TO>*>(p)->attach(node); }
+                  { static_cast<detail::ports::Data<TO>*>(p)->attach(node); }
               )
             , is_ready_impl( //
                   +[](const void* p)
-                  { return static_cast<const detail::edges::Data<TO>*>(p)->is_ready(); }
+                  { return static_cast<const detail::ports::Data<TO>*>(p)->is_ready(); }
               )
             , value_impl( //
                   +[](const void* p) -> const TO&
-                  { return static_cast<const detail::edges::Data<TO>*>(p)->value(); }
+                  { return static_cast<const detail::ports::Data<TO>*>(p)->value(); }
               )
         {
         }
@@ -98,7 +98,7 @@ namespace nil::gate::edges
         const TO& (*value_impl)(const void*) = nullptr;
 
         template <typename Adapter>
-            requires(!std::is_base_of_v<IEdge, Adapter>)
+            requires(!std::is_base_of_v<IPort, Adapter>)
         explicit Compatible(Adapter* adapter)
             : context(adapter)
             , attach_impl( //

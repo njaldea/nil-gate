@@ -11,7 +11,7 @@ template <typename... T>
 using inputs = nil::gate::inputs<T...>;
 
 template <typename... T>
-using types = nil::xalt::tlist_types<T...>;
+using types = nil::xalt::tlist<T...>;
 
 TEST(gate_node_inputs, traits)
 {
@@ -19,31 +19,31 @@ TEST(gate_node_inputs, traits)
         using type = SUT<types<>>;
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::size == 0);
-        ASSERT_TRUE((std::is_same_v<type::edges, inputs<>>));
+        ASSERT_TRUE((std::is_same_v<type::ports, inputs<>>));
     }
     {
         using type = SUT<types<int>>;
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::size == 1);
-        ASSERT_TRUE((std::is_same_v<type::edges, inputs<int>>));
+        ASSERT_TRUE((std::is_same_v<type::ports, inputs<int>>));
     }
     {
         using type = SUT<types<const int>>;
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::size == 1);
-        ASSERT_TRUE((std::is_same_v<type::edges, inputs<int>>));
+        ASSERT_TRUE((std::is_same_v<type::ports, inputs<int>>));
     }
     {
         using type = SUT<types<const int*>>;
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::size == 1);
-        ASSERT_TRUE((std::is_same_v<type::edges, inputs<const int*>>));
+        ASSERT_TRUE((std::is_same_v<type::ports, inputs<const int*>>));
     }
     {
         using type = SUT<types<const int&>>;
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::size == 1);
-        ASSERT_TRUE((std::is_same_v<type::edges, inputs<int>>));
+        ASSERT_TRUE((std::is_same_v<type::ports, inputs<int>>));
     }
     {
         ASSERT_FALSE(SUT<types<int*>>::is_valid);
@@ -76,13 +76,13 @@ TEST(gate_node_inputs, traits_unique_ptr)
         using type = SUT<types<const std::unique_ptr<const int>*>>;
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::size == 1);
-        ASSERT_TRUE((std::is_same_v<type::edges, inputs<const std::unique_ptr<const int>*>>));
+        ASSERT_TRUE((std::is_same_v<type::ports, inputs<const std::unique_ptr<const int>*>>));
     }
     {
         using type = SUT<types<const std::unique_ptr<const int>&>>;
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::size == 1);
-        ASSERT_TRUE((std::is_same_v<type::edges, inputs<std::unique_ptr<const int>>>));
+        ASSERT_TRUE((std::is_same_v<type::ports, inputs<std::unique_ptr<const int>>>));
     }
 }
 
@@ -107,25 +107,25 @@ TEST(gate_node_inputs, traits_shared_ptr)
         using type = SUT<types<std::shared_ptr<const int>>>;
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::size == 1);
-        ASSERT_TRUE((std::is_same_v<type::edges, inputs<std::shared_ptr<const int>>>));
+        ASSERT_TRUE((std::is_same_v<type::ports, inputs<std::shared_ptr<const int>>>));
     }
     {
         using type = SUT<types<const std::shared_ptr<const int>>>;
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::size == 1);
-        ASSERT_TRUE((std::is_same_v<type::edges, inputs<std::shared_ptr<const int>>>));
+        ASSERT_TRUE((std::is_same_v<type::ports, inputs<std::shared_ptr<const int>>>));
     }
     {
         using type = SUT<types<const std::shared_ptr<const int>*>>;
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::size == 1);
-        ASSERT_TRUE((std::is_same_v<type::edges, inputs<const std::shared_ptr<const int>*>>));
+        ASSERT_TRUE((std::is_same_v<type::ports, inputs<const std::shared_ptr<const int>*>>));
     }
     {
         using type = SUT<types<const std::shared_ptr<const int>&>>;
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::size == 1);
-        ASSERT_TRUE((std::is_same_v<type::edges, inputs<std::shared_ptr<const int>>>));
+        ASSERT_TRUE((std::is_same_v<type::ports, inputs<std::shared_ptr<const int>>>));
     }
 }
 
@@ -150,25 +150,25 @@ TEST(gate_node_inputs, traits_optional)
         using type = SUT<types<std::optional<const int>>>;
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::size == 1);
-        ASSERT_TRUE((std::is_same_v<type::edges, inputs<std::optional<const int>>>));
+        ASSERT_TRUE((std::is_same_v<type::ports, inputs<std::optional<const int>>>));
     }
     {
         using type = SUT<types<const std::optional<const int>>>;
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::size == 1);
-        ASSERT_TRUE((std::is_same_v<type::edges, inputs<std::optional<const int>>>));
+        ASSERT_TRUE((std::is_same_v<type::ports, inputs<std::optional<const int>>>));
     }
     {
         using type = SUT<types<const std::optional<const int>*>>;
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::size == 1);
-        ASSERT_TRUE((std::is_same_v<type::edges, inputs<const std::optional<const int>*>>));
+        ASSERT_TRUE((std::is_same_v<type::ports, inputs<const std::optional<const int>*>>));
     }
     {
         using type = SUT<types<const std::optional<const int>&>>;
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::size == 1);
-        ASSERT_TRUE((std::is_same_v<type::edges, inputs<std::optional<const int>>>));
+        ASSERT_TRUE((std::is_same_v<type::ports, inputs<std::optional<const int>>>));
     }
 }
 
@@ -193,25 +193,25 @@ TEST(gate_node_inputs, traits_ref_wrapper)
         using type = SUT<types<std::reference_wrapper<const int>>>;
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::size == 1);
-        ASSERT_TRUE((std::is_same_v<type::edges, inputs<std::reference_wrapper<const int>>>));
+        ASSERT_TRUE((std::is_same_v<type::ports, inputs<std::reference_wrapper<const int>>>));
     }
     {
         using type = SUT<types<const std::reference_wrapper<const int>>>;
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::size == 1);
-        ASSERT_TRUE((std::is_same_v<type::edges, inputs<std::reference_wrapper<const int>>>));
+        ASSERT_TRUE((std::is_same_v<type::ports, inputs<std::reference_wrapper<const int>>>));
     }
     {
         using type = SUT<types<const std::reference_wrapper<const int>*>>;
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::size == 1);
-        ASSERT_TRUE((std::is_same_v<type::edges, inputs<const std::reference_wrapper<const int>*>>)
+        ASSERT_TRUE((std::is_same_v<type::ports, inputs<const std::reference_wrapper<const int>*>>)
         );
     }
     {
         using type = SUT<types<const std::reference_wrapper<const int>&>>;
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::size == 1);
-        ASSERT_TRUE((std::is_same_v<type::edges, inputs<std::reference_wrapper<const int>>>));
+        ASSERT_TRUE((std::is_same_v<type::ports, inputs<std::reference_wrapper<const int>>>));
     }
 }

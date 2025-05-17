@@ -3,11 +3,11 @@
 namespace nil::gate::traits
 {
     template <typename T>
-    struct edgify
+    struct portify
     {
         using type = T;
     };
 
     template <typename T>
-    using edgify_t = typename edgify<T>::type;
+    using portify_t = typename portify<T>::type;
 }

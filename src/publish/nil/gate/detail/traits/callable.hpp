@@ -12,7 +12,7 @@ namespace nil::gate::detail::traits
     struct callable
     {
         using inputs = typename xalt::fn_sign<T>::arg_types;
-        using outputs = xalt::tlist_types<typename xalt::fn_sign<T>::return_type>;
+        using outputs = xalt::tlist<typename xalt::fn_sign<T>::return_type>;
     };
 
     template <typename T>
@@ -20,7 +20,7 @@ namespace nil::gate::detail::traits
     struct callable<T>
     {
         using inputs = typename xalt::fn_sign<T>::arg_types;
-        using outputs = typename xalt::to_tlist_types<typename xalt::fn_sign<T>::return_type>::type;
+        using outputs = typename xalt::to_tlist<typename xalt::fn_sign<T>::return_type>::type;
     };
 
     template <typename T>
@@ -28,6 +28,6 @@ namespace nil::gate::detail::traits
     struct callable<T>
     {
         using inputs = typename xalt::fn_sign<T>::arg_types;
-        using outputs = xalt::tlist_types<>;
+        using outputs = xalt::tlist<>;
     };
 }

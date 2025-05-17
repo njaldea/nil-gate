@@ -12,7 +12,7 @@ int main()
 {
     nil::gate::Core core;
 
-    auto* e1_i = core.edge(0);
+    auto* e1_i = core.port(0);
 
     auto [e2_i] = core.node(
         [](int v)

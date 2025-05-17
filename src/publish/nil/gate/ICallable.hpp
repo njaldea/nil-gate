@@ -29,7 +29,7 @@ namespace nil::gate
     template <typename CB>
     std::unique_ptr<ICallable<typename xalt::fn_sign<CB>::free_type>> make_callable(CB&& cb)
     {
-        return []<typename... Args>(CB&& c, xalt::tlist_types<Args...>)
+        return []<typename... Args>(CB&& c, xalt::tlist<Args...>)
         {
             struct Callable: ICallable<typename xalt::fn_sign<CB>::free_type>
             {

@@ -1,16 +1,16 @@
 #pragma once
 
-#include "../IEdge.hpp"
+#include "../IPort.hpp"
 
-namespace nil::gate::edges
+namespace nil::gate::ports
 {
     /**
-     * @brief Readable Edge type returned by Core::node.
+     * @brief Readable Port type returned by Core::node.
      *
      * @tparam T
      */
     template <typename T>
-    class ReadOnly: public IEdge
+    class ReadOnly: public IPort
     {
     public:
         ReadOnly() = default;
@@ -22,8 +22,8 @@ namespace nil::gate::edges
         ReadOnly(const ReadOnly&) = delete;
         ReadOnly& operator=(const ReadOnly&) = delete;
 
-        // For edges created for a Node, make sure to call core.run() before accessing value.
-        // For edges created on its own, it should always have a value due to Core's api.
+        // For ports created for a Node, make sure to call core.run() before accessing value.
+        // For ports created on its own, it should always have a value due to Core's api.
         virtual const T& value() const = 0;
     };
 }

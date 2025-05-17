@@ -13,7 +13,7 @@ namespace nil::gate::nodes
         struct ScopedCRTP;
 
         template <typename T, typename Return, typename... Inputs>
-        struct ScopedCRTP<T, Return, xalt::tlist_types<Inputs...>>
+        struct ScopedCRTP<T, Return, xalt::tlist<Inputs...>>
         {
             auto operator()(const Inputs&... args) const
             {

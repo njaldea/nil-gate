@@ -2,9 +2,9 @@
 
 #include "../ICallable.hpp"
 
-#include "../detail/DataEdge.hpp"
+#include "../detail/DataPort.hpp"
 
-namespace nil::gate::edges
+namespace nil::gate::ports
 {
     template <typename T>
     class Batch final
@@ -13,10 +13,10 @@ namespace nil::gate::edges
         Batch() = delete;
 
         Batch(
-            detail::edges::Data<T>* init_edge,
+            detail::ports::Data<T>* init_port,
             std::vector<std::unique_ptr<ICallable<void()>>>* init_diffs
         )
-            : edge(init_edge)
+            : port(init_port)
             , diffs(init_diffs)
         {
         }
@@ -31,13 +31,13 @@ namespace nil::gate::edges
 
         const T& value() const
         {
-            return edge->value();
+            return port->value();
         }
 
         void set_value(T new_data)
         {
             diffs->push_back(make_callable(
-                [e = edge, d = std::move(new_data)]() mutable
+                [e = port, d = std::move(new_data)]() mutable
                 {
                     if (!e->is_equal(d))
                     {
@@ -49,7 +49,7 @@ namespace nil::gate::edges
             ));
         }
 
-        detail::edges::Data<T>* edge = nullptr;
+        detail::ports::Data<T>* port = nullptr;
         std::vector<std::unique_ptr<ICallable<void()>>>* diffs = nullptr;
     };
 }

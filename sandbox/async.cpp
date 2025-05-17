@@ -1,6 +1,7 @@
 #include <nil/gate.hpp>
 #include <nil/gate/bias/nil.hpp>
 #include <nil/gate/runners/NonBlocking.hpp>
+#include <nil/gate/runners/Parallel.hpp>
 
 #include <iostream>
 
@@ -43,9 +44,9 @@ int main()
     const auto printer_f = [](float v) { std::cout << "printer<float>: " << v << std::endl; };
 
     auto ref = 100.f;
-    auto* a = core.edge(false);
-    auto* l = core.edge(std::cref(ref));
-    auto* r = core.edge(200.f);
+    auto* a = core.port(false);
+    auto* l = core.port(std::cref(ref));
+    auto* r = core.port(200.f);
 
     core.node(&bar, {a});
 
@@ -58,7 +59,7 @@ int main()
     core.node(printer_f, {fs});
     core.node(&foo, {x});
 
-    core.set_runner<nil::gate::runners::NonBlocking>();
+    core.set_runner<nil::gate::runners::Parallel>(5);
 
     while (true)
     {

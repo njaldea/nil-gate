@@ -2,12 +2,12 @@
 
 - [Supported Graph](#supported-graph)
 - [nil::gate::Core](#nilgatecore)
-    - [Edge](#edge)
-        - [edges::ReadOnly](#edgesreadonly)
-        - [edges::Mutable](#edgesmutable)
-        - [edges::Batch](#edgesbatch)
-        - [edges::Compatible](#edgescompatible)
-        - [nil::gate::Core::edge](#nilgatecoreedge)
+    - [Port](#port)
+        - [ports::ReadOnly](#portsreadonly)
+        - [ports::Mutable](#portsmutable)
+        - [ports::Batch](#portsbatch)
+        - [ports::Compatible](#portscompatible)
+        - [nil::gate::Core::port](#nilgatecoreport)
     - [Node](#node)
         - [Input](#input)
         - [Output](#output)
@@ -20,7 +20,7 @@
     - [Runners](#runners)
 - [nil::gate::traits](#traits)
     - [compatibility](#compatibility)
-    - [edgify](#edgify)
+    - [portify](#portify)
     - [bias](#bias)
     - [notes](#notes-personal-suggestions)
 - [Errors](#errors)
@@ -29,7 +29,7 @@
 
 **nil/gate** is a library to create a graph with nodes representing a functionality that needs to be executed as the graph is traversed.
 
-Imagine logic gates where edges/connections are not 0/1 (booleans) but can be any customizable types.
+Imagine logic gates where ports/connections are not 0/1 (booleans) but can be any customizable types.
 
 **nil/gate** currently only supports **Directed Acyclic Graph**.
 It is intended to be simple but easily extensible by creating the proper nodes to support more complex graph.
@@ -38,20 +38,20 @@ It is intended to be simple but easily extensible by creating the proper nodes t
 
 `nil::gate::Core` is the central object of the library.
 
-It owns and holds all of the nodes and edges registered to it through its API.
+It owns and holds all of the nodes and ports registered to it through its API.
 
-## Edge
+## Port
 
-Edges represents a Single Input - Multiple Output connection.
+Ports represents a Single Input - Multiple Output connection.
 
-Edges are only created through the following:
-- returned by `Core::edge`
+Ports are only created through the following:
+- returned by `Core::port`
 - output of the Node returned by `Core::node`
 - returned by `Core::batch`
 
-### `edges::ReadOnly`
+### `ports::ReadOnly`
 
-This base class provides an interface to access the value held by the edge.
+This base class provides an interface to access the value held by the port.
 
 NOTE: `ReadOnly<T>::value()` is only thread safe when accessed inside the node's call operator.
 
@@ -67,19 +67,19 @@ int main()
 {
     nil::gate::Core core;
 
-    auto [ edge ] = core.node();
-    //     ┗━━━ nil::gate::edges::ReadOnly<float>*
+    auto [ port ] = core.node();
+    //     ┗━━━ nil::gate::ports::ReadOnly<float>*
 
     // will return the current value.
-    // since the node is not yet ran, the edge does not have a value yet.
-    // accessing the value of an edge before running the node is undefined behavior.
-    edge->value();
+    // since the node is not yet ran, the port does not have a value yet.
+    // accessing the value of an port before running the node is undefined behavior.
+    port->value();
 }
 ```
 
-### `edges::Mutable`
+### `ports::Mutable`
 
-This type of edge is also an `edges::ReadOnly`.
+This type of port is also an `ports::ReadOnly`.
 
 NOTE: `set_value` will only take effect on next `Core::commit()`.
 
@@ -91,47 +91,47 @@ int main()
     nil::gate::Core core;
 
     int initial_value = 100;
-    auto edge = core.edge(initial_value);
-    //   ┗━━━ nil::gate::edges::Mutable<int>*
+    auto port = core.port(initial_value);
+    //   ┗━━━ nil::gate::ports::Mutable<int>*
 
-    edge->value(); // will return 100
+    port->value(); // will return 100
     // will request to set the value to 200 on next Core::commit()
-    edge->set_value(200);
-    edge->value(); // will return 100
+    port->set_value(200);
+    port->value(); // will return 100
 
     core.commit();
-    edge->value(); // will return 200
+    port->value(); // will return 200
 }
 ```
 
-### `edges::Batch`
+### `ports::Batch`
 
-This type of edge is similar to `edges::Mutable` with the exact same API. These are created when batches are created.
+This type of port is similar to `ports::Mutable` with the exact same API. These are created when batches are created.
 
 See [Batch](#batch) for more detail.
 
-### `edges::Compatible`
+### `ports::Compatible`
 
-This type of edge is used as a wrapper to `edges::ReadOnly` to be used as an input of a node.
+This type of port is used as a wrapper to `ports::ReadOnly` to be used as an input of a node.
 
-This is intended to be created from `edges::ReadOnly` and is not intended for users to instantiate by themselves.
+This is intended to be created from `ports::ReadOnly` and is not intended for users to instantiate by themselves.
 
-See [traits](#traits) for more detail how to create compatible edges
+See [traits](#traits) for more detail how to create compatible ports
 
-### `nil::gate::Core::edge`
+### `nil::gate::Core::port`
 
-Here are the list of available `edge()` signature available to `Core`:
+Here are the list of available `port()` signature available to `Core`:
 
 ```cpp
-// value will be moved to the data inside the edge
-nil::gate::edges::Mutable<T>* Core::edge(T value);
+// value will be moved to the data inside the port
+nil::gate::ports::Mutable<T>* Core::port(T value);
 
-// this will instantiate an edge without any value
-// Note that if an edge does not have a value, the node attached to it will not be invoked.
-nil::gate::edges::Mutable<T>* Core::edge();
+// this will instantiate an port without any value
+// Note that if an port does not have a value, the node attached to it will not be invoked.
+nil::gate::ports::Mutable<T>* Core::port();
 ```
 
-Requirements of the type for the edge:
+Requirements of the type for the port:
 - has `operator==`
 
 ## Node
@@ -152,12 +152,12 @@ void free_function_node(float);
 int main()
 {
     nil::gate::Core core;
-    auto edge_f = core.edge(200.f);
-    //   ┗━━━ nil::gate::edges::Mutable<float>*
+    auto port_f = core.port(200.f);
+    //   ┗━━━ nil::gate::ports::Mutable<float>*
 
-    core.node(&free_function_node, { edge_f });
+    core.node(&free_function_node, { port_f });
     //                             ┣━━━ nil::gate::inputs<float>
-    //                             ┗━━━ std::tuple<nil::gate::edges::Compatible<float>, ...>;
+    //                             ┗━━━ std::tuple<nil::gate::ports::Compatible<float>, ...>;
 }
 ```
 
@@ -186,15 +186,15 @@ int main()
     
     auto outputs = core.node(Node()).syncs; // Access syncs from the returned object
     //   ┣━━━ nil::gate::sync_outputs<float>
-    //   ┗━━━ std::tuple<nil::gate::edges::ReadOnly<float>*, ...>;
+    //   ┗━━━ std::tuple<nil::gate::ports::ReadOnly<float>*, ...>;
 
     {
-        auto edge_f = get<0>(outputs);
-        //   ┗━━━ nil::gate::edges::ReadOnly<float>*
+        auto port_f = get<0>(outputs);
+        //   ┗━━━ nil::gate::ports::ReadOnly<float>*
     }
     {
-        auto [ edge_f ] = outputs;
-        //     ┗━━━ nil::gate::edges::ReadOnly<float>*
+        auto [ port_f ] = outputs;
+        //     ┗━━━ nil::gate::ports::ReadOnly<float>*
     }
 }
 ```
@@ -209,7 +209,7 @@ Async outputs are those that are not returned by the node. These are intended to
 struct Node
 {
     void operator()(nil::gate::async_output<float> asyncs) const;
-    //              ┣━━━ this is equivalent to `std::tuple<nil::gate::edges::Mutable<T>*...>`
+    //              ┣━━━ this is equivalent to `std::tuple<nil::gate::ports::Mutable<T>*...>`
     //              ┗━━━ this is not treated as an input
 };
 
@@ -219,15 +219,15 @@ int main()
     
     auto outputs = core.node(Node()).asyncs; // Access asyncs from the returned object
     //   ┣━━━ nil::gate::async_outputs<float>
-    //   ┗━━━ std::tuple<nil::gate::edges::Mutable<float>*, ...>;
+    //   ┗━━━ std::tuple<nil::gate::ports::Mutable<float>*, ...>;
 
     {
-        auto edge_f = get<0>(outputs);
-        //   ┗━━━ nil::gate::edges::Mutable<float>*
+        auto port_f = get<0>(outputs);
+        //   ┗━━━ nil::gate::ports::Mutable<float>*
     }
     {
-        auto [ edge_f ] = outputs;
-        //   ┗━━━ nil::gate::edges::Mutable<float>*
+        auto [ port_f ] = outputs;
+        //   ┗━━━ nil::gate::ports::Mutable<float>*
     }
 }
 ```
@@ -248,7 +248,7 @@ You can also use `get<I>` (similar to std::tuple's std::get) where index will fo
 struct Node
 {
     int operator()(nil::gate::async_output<float> asyncs) const;
-    //             ┣━━━ this is equivalent to `std::tuple<nil::gate::edges::Mutable<T>*...>`
+    //             ┣━━━ this is equivalent to `std::tuple<nil::gate::ports::Mutable<T>*...>`
     //             ┗━━━ this is not treated as an input
 };
 
@@ -260,15 +260,15 @@ int main()
     //   ┣━━━ nil::gate::outputs<nil::gate::sync_outputs<int>, nil::gate::async_outputs<float>>
 
     {
-        auto edge_i = get<0>(outputs);
-        //   ┗━━━ nil::gate::edges::ReadOnly<int>*
-        auto edge_f = get<1>(outputs);
-        //   ┗━━━ nil::gate::edges::Mutable<float>*
+        auto port_i = get<0>(outputs);
+        //   ┗━━━ nil::gate::ports::ReadOnly<int>*
+        auto port_f = get<1>(outputs);
+        //   ┗━━━ nil::gate::ports::Mutable<float>*
     }
     {
-        auto [ edge_i, edge_f ] = outputs;
-        //     ┃       ┗━━━ nil::gate::edges::Mutable<float>*
-        //     ┗━━━ nil::gate::edges::ReadOnly<int>*
+        auto [ port_i, port_f ] = outputs;
+        //     ┃       ┗━━━ nil::gate::ports::Mutable<float>*
+        //     ┗━━━ nil::gate::ports::ReadOnly<int>*
     }
 }
 ```
@@ -277,7 +277,7 @@ int main()
 
 If the 1st argument is `const nil::gate::Core&`, the `Core` owner will be passed to it.
 
-This can be useful when using async edges, batching, and committing.
+This can be useful when using async ports, batching, and committing.
 
 See [Batch](#batch) section for more detail.
 
@@ -287,12 +287,12 @@ See [Batch](#batch) section for more detail.
 struct Node
 {
     void operator()(const nil::gate::Core& core, nil::gate::async_output<float> asyncs) const
-    //              ┃                            ┣━━━ this is equivalent to `std::tuple<edges::Mutable<T>*...>`
+    //              ┃                            ┣━━━ this is equivalent to `std::tuple<ports::Mutable<T>*...>`
     //              ┃                            ┗━━━ this is not treated as an input
     //              ┗━━━ this is not treated as an input
     {
-        auto [ edge_f ] = asyncs;
-        //     ┗━━━ nil::gate::edges::Mutable<float>*
+        auto [ port_f ] = asyncs;
+        //     ┗━━━ nil::gate::ports::Mutable<float>*
     }
 };
 
@@ -300,8 +300,8 @@ int main()
 {
     nil::gate::Core core;
 
-    auto [ edge_f ] = core.node(Node());
-    //     ┗━━━ nil::gate::edges::Mutable<float>*
+    auto [ port_f ] = core.node(Node());
+    //     ┗━━━ nil::gate::ports::Mutable<float>*
 }
 ```
 
@@ -317,7 +317,7 @@ Here are the list of available `node()` signature available to `Core`
 //
 // NOTES:
 //  1. `T instance` will be moved (or copied) inside the node
-//  3. `nil::gate::inputs<T...>` is simply an alias to `std::tuple<nil::gate::edges::Compatible<T>...>`
+//  3. `nil::gate::inputs<T...>` is simply an alias to `std::tuple<nil::gate::ports::Compatible<T>...>`
 
 // has input, no output
 void Core::node<T>(T instance, nil::gate::inputs<I...>);
@@ -332,7 +332,7 @@ nil::gate::outputs<
 
 ## Commit
 
-`Core::commit` applies all of the changes you want to do for the edges.
+`Core::commit` applies all of the changes you want to do for the ports.
 
 See [Runners](#runners) section for more detail on when and where this changes are done.
 
@@ -349,10 +349,10 @@ int main()
 {
     nil::gate::Core core;
 
-    auto ei = core.edge(100);
-    //   ┗━━━ nil::gate::edges::Mutable<int>*
-    auto ef = core.edge(200.0);
-    //   ┗━━━ nil::gate::edges::Mutable<float>*
+    auto ei = core.port(100);
+    //   ┗━━━ nil::gate::ports::Mutable<int>*
+    auto ef = core.port(200.0);
+    //   ┗━━━ nil::gate::ports::Mutable<float>*
 
     core.node(Node(), { ei, ef });
 
@@ -379,10 +379,10 @@ int main()
 {
     nil::gate::Core core;
 
-    auto ei = core.edge(100);
-    //   ┗━━━ nil::gate::edges::Mutable<int>*
-    auto ef = core.edge(200.0);
-    //   ┗━━━ nil::gate::edges::Mutable<float>*
+    auto ei = core.port(100);
+    //   ┗━━━ nil::gate::ports::Mutable<int>*
+    auto ef = core.port(200.0);
+    //   ┗━━━ nil::gate::ports::Mutable<float>*
 
     core.node(Node(), { ei, ef });
 
@@ -440,11 +440,11 @@ Make sure that flushing and running are done in a thread safe manner
 
 `nil/gate` provides an overridable traits to allow customization and add rules to graph creation.
 
-### edgify
+### portify
 
-This trait dictates how the type `T` is going to be interpreted for the edge creation.
+This trait dictates how the type `T` is going to be interpreted for the port creation.
 
-The default trait behavior is that `T` provided to edgify will be the same type for the edge type.
+The default trait behavior is that `T` provided to portify will be the same type for the port type.
 
 This also affects the type evaluation for the sync outputs of a node.
 
@@ -457,14 +457,14 @@ int main()
 {
     nil::gate::Core core;
 
-    auto edge_i = core.edge(100);
-    //   ┗━━━━━━━━ nil::gate::edges::Mutable<int>*
+    auto port_i = core.port(100);
+    //   ┗━━━━━━━━ nil::gate::ports::Mutable<int>*
 
-    auto edge_p1 = core.edge(std::unique_ptr<int>());
-    //   ┗━━━━━━━━ nil::gate::edges::Mutable<std::unique_ptr<int>>*
+    auto port_p1 = core.port(std::unique_ptr<int>());
+    //   ┗━━━━━━━━ nil::gate::ports::Mutable<std::unique_ptr<int>>*
     
-    auto edge_p2 = core.edge(std::unique_ptr<const int>());
-    //   ┗━━━━━━━━ nil::gate::edges::Mutable<std::unique_ptr<const int>>*
+    auto port_p2 = core.port(std::unique_ptr<const int>());
+    //   ┗━━━━━━━━ nil::gate::ports::Mutable<std::unique_ptr<const int>>*
 }
 ```
 
@@ -476,7 +476,7 @@ Here is an example of how to override the behavior:
 namespace nil::gate::traits
 {
     template <typename T>
-    struct edgify<std::unique_ptr<T>>
+    struct portify<std::unique_ptr<T>>
     {
         using type = std::unique_ptr<const T>;
     };
@@ -486,18 +486,18 @@ int main()
 {
     nil::gate::Core core;
 
-    auto edge_i = core.edge(100);
-    //   ┗━━━━━━━━ nil::gate::edges::Mutable<int>*
+    auto port_i = core.port(100);
+    //   ┗━━━━━━━━ nil::gate::ports::Mutable<int>*
 
-    auto edge_p1 = core.edge(std::unique_ptr<int>());
-    //   ┗━━━━━━━━ nil::gate::edges::Mutable<std::unique_ptr<const int>>*
+    auto port_p1 = core.port(std::unique_ptr<int>());
+    //   ┗━━━━━━━━ nil::gate::ports::Mutable<std::unique_ptr<const int>>*
 
-    auto edge_p2 = core.edge(std::unique_ptr<const int>());
-    //   ┗━━━━━━━━ nil::gate::edges::Mutable<std::unique_ptr<const int>>*
+    auto port_p2 = core.port(std::unique_ptr<const int>());
+    //   ┗━━━━━━━━ nil::gate::ports::Mutable<std::unique_ptr<const int>>*
 }
 ```
 
-When building a graph, it is ideal that the data owned by the edges is only be modified by the library (not the nodes).
+When building a graph, it is ideal that the data owned by the ports is only be modified by the library (not the nodes).
 Allowing the node to modify the object referred through indirection will make the graph execution non-deterministic.
 
 This feature is intended for users to opt-in as the library will not be able to cover all of the types that has indirection.
@@ -506,7 +506,7 @@ See [biased](#bias) section for more information of `nil/gate`'s suggested rules
 
 ### compatibility
 
-This trait dictates if an edge could be used even if the type of the edge does not match with the expected input edge of the node.
+This trait dictates if an port could be used even if the type of the port does not match with the expected input port of the node.
 
 Here is an example of when this is going to be used:
 
@@ -522,17 +522,17 @@ int main()
     nil::gate::Core core;
 
     bool ref = false;
-    auto* flag = core.edge(std::cref(false));
-    //    ┗━━━━━━━━ nil::gate::edges::Mutable<std::reference_wrapper<const bool>>*
-    auto* a = core.edge(1);
-    //    ┗━━━━━━━━ nil::gate::edges::Mutable<int>*
-    auto* b = core.edge(2);
-    //    ┗━━━━━━━━ nil::gate::edges::Mutable<int>*
+    auto* flag = core.port(std::cref(false));
+    //    ┗━━━━━━━━ nil::gate::ports::Mutable<std::reference_wrapper<const bool>>*
+    auto* a = core.port(1);
+    //    ┗━━━━━━━━ nil::gate::ports::Mutable<int>*
+    auto* b = core.port(2);
+    //    ┗━━━━━━━━ nil::gate::ports::Mutable<int>*
     const auto [ out ] = core.node(&switcher, {flag, a, b});
     //           ┃                             ┗━━━━━━━━ This will produce a compilation failure.
     //           ┃                                       ReadOnly<std::reference_wrapper<const bool>>
     //           ┃                                       is not convertible to ReadOnly<bool>
-    //           ┗━━━━━━━━ nil::gate::edges::ReadOnly<std::reference_wrapper<const int>>*
+    //           ┗━━━━━━━━ nil::gate::ports::ReadOnly<std::reference_wrapper<const int>>*
 
     core.node(&consumer, { out });
     //                     ┗━━━━━━━━ This will produce a compilation failure.
@@ -589,25 +589,25 @@ int main()
 {
     nil::gate::Core core;
 
-    auto* flag = core.edge(std::cref(false));
-    //    ┗━━━━━━━━ nil::gate::edges::Mutable<std::reference_wrapper<const bool>>*
-    auto* a = core.edge(1);
-    //    ┗━━━━━━━━ nil::gate::edges::Mutable<int>*
-    auto* b = core.edge(2);
-    //    ┗━━━━━━━━ nil::gate::edges::Mutable<int>*
+    auto* flag = core.port(std::cref(false));
+    //    ┗━━━━━━━━ nil::gate::ports::Mutable<std::reference_wrapper<const bool>>*
+    auto* a = core.port(1);
+    //    ┗━━━━━━━━ nil::gate::ports::Mutable<int>*
+    auto* b = core.port(2);
+    //    ┗━━━━━━━━ nil::gate::ports::Mutable<int>*
     const auto [ ref ] = core.node(&switcher, {flag, a, b});
-    //           ┗━━━━━━━━ nil::gate::edges::ReadOnly<std::reference_wrapper<const int>>*
+    //           ┗━━━━━━━━ nil::gate::ports::ReadOnly<std::reference_wrapper<const int>>*
 
     core.node(&consumer, { ref });
     //                     ┗━━━━━━━━ since `compatibility` is defined, this should be accepted by the compiler
 }
 ```
 
-### is_edge_type_valid
+### is_port_type_valid
 
-This trait is intended for cases where you want to detect and prevent creation of edges that should not be edges.
+This trait is intended for cases where you want to detect and prevent creation of ports that should not be ports.
 
-By default, all of the edge types are valid except for the following:
+By default, all of the port types are valid except for the following:
 - T is a pointer type
 
 ```cpp
@@ -616,18 +616,18 @@ By default, all of the edge types are valid except for the following:
 namespace nil::gate::traits
 {
     template <typename T>
-    struct is_edge_type_valid<std::reference_wrapper<T>>: std::false_type
+    struct is_port_type_valid<std::reference_wrapper<T>>: std::false_type
     {
     };
 
     template <typename T>
-    struct is_edge_type_valid<std::reference_wrapper<const T>>: std::true_type
+    struct is_port_type_valid<std::reference_wrapper<const T>>: std::true_type
     {
     };
 }
 ```
 
-With reference to `edgify`, if a type is converted from one type to another, it is a good idea to disable the original type.
+With reference to `portify`, if a type is converted from one type to another, it is a good idea to disable the original type.
 
 See [biased](#bias) section for more information of `nil/gate`'s suggested rules.
 
@@ -639,14 +639,14 @@ See [biased](#bias) section for more information of `nil/gate`'s suggested rules
      - covers conversion of `std::unique_ptr<const T>` to `const T*`
      - covers conversion of `std::shared_ptr<const T>` to `const T*`
      - covers conversion of `std::optional<const T>` to `const T*`
- - [`#include <nil/gate/bias/edgify.hpp>`](publish/nil/gate/bias/edgify.hpp)
+ - [`#include <nil/gate/bias/portify.hpp>`](publish/nil/gate/bias/portify.hpp)
      - covers the following types:
          - `std::unique_ptr<T>` to `std::unique_ptr<const T>`
          - `std::shared_ptr<T>` to `std::shared_ptr<const T>`
          - `std::optional<T>` to `std::optional<const T>`
          - `std::reference_wrapper<T>` to `std::reference_wrapper<const T>`
- - [`#include <nil/gate/bias/is_edge_type_valid.hpp>`](publish/nil/gate/bias/is_edge_type_valid.hpp)
-     - disables the original types converted by `bias/edgify.hpp`
+ - [`#include <nil/gate/bias/is_port_type_valid.hpp>`](publish/nil/gate/bias/is_port_type_valid.hpp)
+     - disables the original types converted by `bias/portify.hpp`
          - `std::unique_ptr<T>`
          - `std::shared_ptr<T>`
          - `std::optional<T>`
@@ -659,9 +659,9 @@ These are not included from `nil/gate.hpp` and users must opt-in to apply these 
 
 ### NOTES: personal suggestions
 
-- When implementing your own `edgify<T>` traits, avoid converting `T` to something different that is not related to `T`.
+- When implementing your own `portify<T>` traits, avoid converting `T` to something different that is not related to `T`.
     - This will produce weird behavior when defining nodes.
-    - `edgify<T>` is mainly intended for things with indirections like pointer-like objects.
+    - `portify<T>` is mainly intended for things with indirections like pointer-like objects.
 
 ## Errors
 
@@ -694,4 +694,4 @@ These are the errors detected with similar error message:
  -  any async output type is invalid
  -  async_outputs is invalid
  -  core argument is invalid
- -  input `edges::Readable<T>*` is not compatible to the expected input edge of the node
+ -  input `ports::Readable<T>*` is not compatible to the expected input port of the node

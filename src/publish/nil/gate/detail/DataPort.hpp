@@ -2,7 +2,7 @@
 
 #include "../Diffs.hpp"
 #include "../INode.hpp"
-#include "../edges/Mutable.hpp"
+#include "../ports/Mutable.hpp"
 #include "../traits/compatibility.hpp"
 
 #include <memory>
@@ -10,16 +10,16 @@
 #include <unordered_map>
 #include <vector>
 
-namespace nil::gate::detail::edges
+namespace nil::gate::detail::ports
 {
     /**
-     * @brief Edge type returned by Core::edge.
+     * @brief Port type returned by Core::port.
      *  For internal use.
      *
      * @tparam T
      */
     template <typename T>
-    class Data final: public gate::edges::Mutable<T>
+    class Data final: public gate::ports::Mutable<T>
     {
     public:
         Data()
@@ -125,13 +125,13 @@ namespace nil::gate::detail::edges
 
             struct Impl final: IAdapter
             {
-                explicit Impl(detail::edges::Data<FROM>* init_edge)
-                    : IAdapter(init_edge)
+                explicit Impl(detail::ports::Data<FROM>* init_port)
+                    : IAdapter(init_port)
                     , cache(nullptr)
                 {
-                    if (this->edge->state == EState::Stale)
+                    if (this->port->state == EState::Stale)
                     {
-                        set(this->edge->value());
+                        set(this->port->value());
                     }
                 }
 
@@ -167,12 +167,12 @@ namespace nil::gate::detail::edges
 
             struct Impl final: IAdapter
             {
-                explicit Impl(detail::edges::Data<FROM>* init_edge)
-                    : IAdapter(init_edge)
+                explicit Impl(detail::ports::Data<FROM>* init_port)
+                    : IAdapter(init_port)
                 {
-                    if (this->edge->state == EState::Stale)
+                    if (this->port->state == EState::Stale)
                     {
-                        set(this->edge->value());
+                        set(this->port->value());
                     }
                 }
 
@@ -213,8 +213,8 @@ namespace nil::gate::detail::edges
 
         struct IAdapter
         {
-            explicit IAdapter(detail::edges::Data<T>* init_edge)
-                : edge(init_edge)
+            explicit IAdapter(detail::ports::Data<T>* init_port)
+                : port(init_port)
             {
             }
 
@@ -227,17 +227,17 @@ namespace nil::gate::detail::edges
 
             void attach(INode* node)
             {
-                edge->attach(node);
+                port->attach(node);
             }
 
             bool is_ready() const
             {
-                return edge->is_ready();
+                return port->is_ready();
             }
 
             virtual void set(const T&) = 0;
 
-            detail::edges::Data<T>* edge;
+            detail::ports::Data<T>* port;
         };
 
         std::unordered_map<const void*, std::unique_ptr<IAdapter>> adapters;
