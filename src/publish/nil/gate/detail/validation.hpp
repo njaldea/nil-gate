@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../traits/compare.hpp"
 #include "../traits/is_port_type_valid.hpp"
 #include "../traits/portify.hpp"
 
@@ -10,7 +11,7 @@ namespace nil::gate::detail
 {
     template <typename T>
     concept is_equally_comparable = requires(T l, T r) {
-        { l == r } -> std::same_as<bool>;
+        { traits::compare<T>::match(l, r) } -> std::same_as<bool>;
     };
 
     template <typename T>

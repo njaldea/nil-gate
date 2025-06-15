@@ -22,54 +22,40 @@ struct T<R(A...)>
         std::cout << "constructing : " << tag << std::endl;
     }
 
-    R operator()(A... /*unused*/) const
+    R operator()(A... v) const
     {
         std::cout << "calling      : " << tag << std::endl;
-        return R();
+        return (v + ... + 10);
     }
 
     std::string tag;
 };
 
 int main()
+
 {
     nil::gate::Core core;
 
-    using A = T<void()>;
-    using B = T<std::tuple<std::string>(const bool*)>;
-    using C = T<std::tuple<double>(int)>;
-    using D = T<std::tuple<float>(const double)>;
-    using E = T<std::tuple<char>(const std::string&, float)>;
-    using F = T<bool(std::string, double)>;
-    using G = T<void(bool)>;
-    using H = T<void(bool, char)>;
-    using I = T<void(char, float)>;
+    using B = T<int(int, int)>;
+    using C = T<int(int, int)>;
+    using D = T<int(int, int)>;
 
-    auto* a1 = core.port(std::unique_ptr<bool>());
-    auto* a2 = core.port<int>(0);
-    auto* a3 = core.port(0.0);
-    auto* a4 = core.port(std::string());
+    auto* a1 = core.port(int(0));
+    auto* a2 = core.port(int(0));
 
-    core.node(A("a"));
-    const auto [b1] = core.node(B("b"), {a1});
-    const auto [c1] = core.node(C("c"), {a2});
-    const auto [d1] = core.node(D("d"), {a3});
-    const auto [e1] = core.node(E("e"), {a4, d1});
-    const auto [f1] = core.node(F("f"), {b1, c1});
-    core.node(G("g"), {f1});
-    core.node(H("h"), {f1, e1});
-    core.node(I("i"), {e1, d1});
-
-    {
-        auto [b_a2, b_a3] = core.batch(a2, a3);
-        b_a2->set_value(1111);
-        b_a3->set_value(1332.0);
-    }
+    const auto [b1] = core.node(B("b"), {a1, a2});
+    const auto [c1] = core.node(C("c"), {b1, a2});
+    core.node(D("d"), {c1, a2});
 
     std::cout << __FILE__ << ':' << __LINE__ << ':' << (const char*)(__FUNCTION__) << std::endl;
     core.commit();
 
     a2->set_value(2);
+
+    std::cout << __FILE__ << ':' << __LINE__ << ':' << (const char*)(__FUNCTION__) << std::endl;
+    core.commit();
+
+    a2->set_value(4);
 
     std::cout << __FILE__ << ':' << __LINE__ << ':' << (const char*)(__FUNCTION__) << std::endl;
     core.commit();

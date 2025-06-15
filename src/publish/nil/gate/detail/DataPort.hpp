@@ -3,6 +3,7 @@
 #include "../Diffs.hpp"
 #include "../INode.hpp"
 #include "../ports/Mutable.hpp"
+#include "../traits/compare.hpp"
 #include "../traits/compatibility.hpp"
 
 #include <memory>
@@ -66,7 +67,7 @@ namespace nil::gate::detail::ports
 
         bool is_equal(const T& value) const
         {
-            return data.has_value() && (data.value() == value);
+            return data.has_value() && traits::compare<T>::match(data.value(), value);
         }
 
         void exec(T new_data)

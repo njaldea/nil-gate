@@ -133,6 +133,7 @@ nil::gate::ports::Mutable<T>* Core::port();
 
 Requirements of the type for the port:
 - has `operator==`
+- or specialize `bool nil::gate::traits::compare<T>::match(const T&, const T&)`
 
 ## Node
 
@@ -431,7 +432,7 @@ core.set_runner<nil::gate::runners::boost_asio::Serial>();
 core.set_runner<nil::gate::runners::boost_asio::Parallel>(thread_count);
 ```
 
-Runners are expected to implement the following (WIP: to be revised):
+Runners are expected to implement the following:
 - `run(Core* core, std::function<void()> apply_changes, std::span<INode* const>)`
 
 Make sure that flushing and running are done in a thread safe manner
@@ -439,6 +440,25 @@ Make sure that flushing and running are done in a thread safe manner
 ## `nil::gate::traits`
 
 `nil/gate` provides an overridable traits to allow customization and add rules to graph creation.
+
+### compare
+
+This trait allows overriding the default port check if the new value being set on the port has changed.
+
+The default trait behavior is to use `T::operator==`.
+
+```cpp
+#include <nil/gate.hpp>
+
+namespace nil::gate::traits
+{
+    template <>
+    struct compare<CustomType>
+    {
+        static bool match(const CustomType& l, const CustomType& r);
+    };
+}
+```
 
 ### portify
 
