@@ -27,11 +27,10 @@ namespace nil::gate::runners
         Parallel& operator=(Parallel&&) = delete;
         Parallel& operator=(const Parallel&) = delete;
 
-        void run(Core* core, std::function<void()> apply_changes, std::span<INode* const> nodes)
-            override
+        void run(std::function<void()> apply_changes, std::span<INode* const> nodes) override
         {
             main_tasks.push(
-                [this, core, nodes, apply_changes = std::move(apply_changes)]() mutable
+                [this, nodes, apply_changes = std::move(apply_changes)]() mutable
                 {
                     all_diffs.emplace_back(std::move(apply_changes));
                     if (running_list.empty())
@@ -57,7 +56,7 @@ namespace nil::gate::runners
                         {
                             if (node->is_ready())
                             {
-                                run_node(core, node);
+                                run_node(node);
                             }
                             else
                             {
@@ -69,26 +68,26 @@ namespace nil::gate::runners
             );
         }
 
-        void run_node(Core* core, INode* node)
+        void run_node(INode* node)
         {
             if (node->is_input_changed())
             {
                 running_list.emplace(node);
                 exec_tasks.push(
-                    [this, core, node]()
+                    [this, node]()
                     {
-                        node->exec(core);
-                        main_tasks.push([this, core, node]() { mark_done(core, node); });
+                        node->exec();
+                        main_tasks.push([this, node]() { mark_done(node); });
                     }
                 );
             }
             else
             {
-                mark_done(core, node);
+                mark_done(node);
             }
         }
 
-        void mark_done(Core* core, INode* node)
+        void mark_done(INode* node)
         {
             node->done();
             running_list.erase(node);
@@ -98,7 +97,7 @@ namespace nil::gate::runners
                 if (running_list.empty())
                 {
                     waiting_list.clear();
-                    run(core, {}, deferred_nodes);
+                    run({}, deferred_nodes);
                     deferred_nodes = {};
                 }
             }
@@ -106,11 +105,11 @@ namespace nil::gate::runners
             {
                 std::erase_if(
                     waiting_list,
-                    [this, core](auto* n)
+                    [this](auto* n)
                     {
                         if (n->is_ready())
                         {
-                            run_node(core, n);
+                            run_node(n);
                             return true;
                         }
                         return false;

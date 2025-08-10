@@ -91,6 +91,7 @@ namespace nil::gate
         outputs_t<T> node(T instance, inputs_t<T> input_ports)
         {
             auto n = std::make_unique<detail::Node<T>>(
+                this,
                 diffs.get(),
                 std::move(instance),
                 std::move(input_ports)
@@ -104,6 +105,7 @@ namespace nil::gate
         outputs_t<T> node(T instance)
         {
             auto n = std::make_unique<detail::Node<T>>(
+                this,
                 diffs.get(),
                 std::move(instance),
                 inputs_t<T>()
@@ -173,7 +175,6 @@ namespace nil::gate
         void commit() const
         {
             runner->run(
-                self,
                 [d = std::shared_ptr(diffs->flush())]()
                 {
                     if (d)

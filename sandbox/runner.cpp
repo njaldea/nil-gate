@@ -1,5 +1,6 @@
 #include <nil/gate.hpp>
 #include <nil/gate/runners/NonBlocking.hpp>
+#include <nil/gate/runners/Parallel.hpp>
 #include <nil/gate/runners/boost_asio/Parallel.hpp>
 #include <nil/gate/runners/boost_asio/Serial.hpp>
 
@@ -42,6 +43,7 @@ int main()
     core.node([](int i) { std::printf("printer: %d\n", i); }, {r});
 
     core.set_runner<nil::gate::runners::NonBlocking>();
+    core.set_runner<nil::gate::runners::Parallel>(10);
     core.set_runner<nil::gate::runners::boost_asio::Serial>();
     core.set_runner<nil::gate::runners::boost_asio::Parallel>(10);
 

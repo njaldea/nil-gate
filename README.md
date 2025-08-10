@@ -1,717 +1,334 @@
 # nil/gate
 
-- [Supported Graph](#supported-graph)
-- [nil::gate::Core](#nilgatecore)
-    - [Port](#port)
-        - [ports::ReadOnly](#portsreadonly)
-        - [ports::Mutable](#portsmutable)
-        - [ports::Batch](#portsbatch)
-        - [ports::Compatible](#portscompatible)
-        - [nil::gate::Core::port](#nilgatecoreport)
-    - [Node](#node)
-        - [Input](#input)
-        - [Output](#output)
-            - [Sync Output](#sync-output)
-            - [Async Output](#async-output)
-        - [Special Arguments](#special-arguments)
-        - [nil::gate::Core::node](#nilgatecorenode)
-    - [Commit](#commit)
-    - [Batch](#batch)
-    - [Runners](#runners)
-- [nil::gate::traits](#traits)
-    - [compatibility](#compatibility)
-    - [portify](#portify)
-    - [bias](#bias)
-    - [notes](#notes-personal-suggestions)
-- [Errors](#errors)
+Minimal, header‑only, change‑driven DAG execution library for modern C++20.
 
-## Supported Graph
+Focus areas:
+- Deterministic change propagation (run only when inputs changed)
+- Separation of state vs. event style outputs (sync vs. async)
+- Zero dynamic allocation in hot path (user controlled lifetime via `Core`)
+- Extensible via light traits (compare, portify, compatibility)
+- Pluggable runners (sync, non‑blocking, custom, Boost.Asio)
 
-**nil/gate** is a library to create a graph with nodes representing a functionality that needs to be executed as the graph is traversed.
+> If you just want to try it: jump to [Quick Start](#quick-start) or browse the [Examples](#examples). The rest of the document dives deeper into concepts & customization.
 
-Imagine logic gates where ports/connections are not 0/1 (booleans) but can be any customizable types.
+## Core Idea
+- Build a directed acyclic graph of callables (nodes).
+- Data flows through ports.
+- A node runs only when at least one of its input values changed since its previous run.
+- All user mutations are applied on Core::commit().
 
-**nil/gate** currently only supports **Directed Acyclic Graph**.
-It is intended to be simple but easily extensible by creating the proper nodes to support more complex graph.
+## Why?
+Many reactive / data‑flow systems either:
+- Recompute everything (wasteful), or
+- Provide coarse dirty flags that are manually maintained.
 
-## `nil::gate::Core`
+`nil/gate` infers minimal re-execution strictly from input value changes and support for *event* style emissions (async outputs) without polluting dependency gating.
 
-`nil::gate::Core` is the central object of the library.
-
-It owns and holds all of the nodes and ports registered to it through its API.
-
-## Port
-
-Ports represents a Single Input - Multiple Output connection.
-
-Ports are only created through the following:
-- returned by `Core::port`
-- output of the Node returned by `Core::node`
-- returned by `Core::batch`
-
-### `ports::ReadOnly`
-
-This base class provides an interface to access the value held by the port.
-
-NOTE: `ReadOnly<T>::value()` is only thread safe when accessed inside the node's call operator.
+## Quick Start
 
 ```cpp
-#include <nil/gate.hpp>
+#include <nil/gate/gate.hpp>
+using namespace nil::gate;
 
-class Node
+struct Adder { int operator()(int a, int b) const { return a + b; } };
+
+int main() {
+    Core core;
+    auto* a = core.port(1);       // Mutable<int>*
+    auto* b = core.port(2);       // Mutable<int>*
+    auto [sum] = core.node(Adder{}, {a, b}); // ReadOnly<int>*
+    core.commit();                // first run; sum=3
+    a->set_value(10);
+    core.commit();                // sum=12 (only runs once)
+}
+```
+
+Rule: `set_value()` only queues; `commit()` applies & schedules propagation.
+
+## Ownership & Lifetime
+All ports and nodes are owned by nil::gate::Core.
+Pointers you receive are non‑owning, never delete.
+Stable until Core::clear() or Core destruction.
+
+## Port Types
+| Type | What it represents | Writable by user? | Created by |
+| ---- | ------------------ | ----------------- | ---------- |
+| `ports::Mutable<T>` | External / upstream mutable input OR async emission target | Yes (`set_value()`) | `core.port()` and async outputs from `core.node(...)` |
+| `ports::ReadOnly<T>` | Sync output of a node | No | `core.node(...)` (return values) |
+| `ports::Batch<T>` | Scoped writer during batching | Yes (scoped) | `core.batch(...)` |
+| `ports::Compatible<T>` | Internal adaptation wrapper | No | Internal only |
+
+Readiness: a port is "ready" after it has *ever* held a value (initial value, first `set_value()`, or first sync output write). A node will not run until all its input ports are ready.
+
+Note: Async outputs return `ports::Mutable<T>*` as well. They behave like other mutable ports (you call `set_value()`), but changes to them do NOT retrigger their producing node; they only propagate to downstream consumers after the next commit.
+
+Change detection: default is `operator==` (equal -> suppressed). Customize via `traits::compare<T>::match(l,r)` returning `true` when values should be treated as *different*.
+
+Deferred semantics: `set_value()` queues; visible state updates on the next `Core::commit()`.
+
+## Creating Ports
+```cpp
+auto* a = core.port(int{1});   // initialized
+auto* b = core.port<float>();  // uninitialized (not ready)
+```
+A node will not run until every input port is ready (has a value at least once).
+
+## Batching
+`core.batch(...)` lets multiple `set_value()` calls appear atomically (no intermediate partial states enter the graph).
+```cpp
 {
-    std::tuple<float> operator()() const;
+  auto [pa, pb] = core.batch(a, b); // pa/pb are ports::Batch<T>* (Mutable API)
+  pa->set_value(10);
+  pb->set_value(20.f);
+} // destruction queues both changes as one diff set
+core.commit();
+```
+Rules:
+- Do not hold batch ports beyond the scope.
+- Nested batches are allowed; outer destruction just queues accumulated changes.
+- If you forget to destroy (e.g. static), changes never flush.
+
+## Nodes
+A node is any callable object (struct with operator(), lambda, function pointer) matching one of the supported shapes.
+Instead of abstract signatures, here are concrete examples:
+
+```cpp
+struct NodeWithInputs
+{
+    void operator()(int a, float b) const
+    {
+        (void)a;
+        (void)b;
+    }
 };
 
-int main()
+struct NodeWithSyncOutputs
 {
-    nil::gate::Core core;
+    int operator()(int a, int b) const { return a + b; }
+};
 
-    auto [ port ] = core.node();
-    //     ┗━━━ nil::gate::ports::ReadOnly<float>*
-
-    // will return the current value.
-    // since the node is not yet ran, the port does not have a value yet.
-    // accessing the value of an port before running the node is undefined behavior.
-    port->value();
-}
-```
-
-### `ports::Mutable`
-
-This type of port is also an `ports::ReadOnly`.
-
-NOTE: `set_value` will only take effect on next `Core::commit()`.
-
-```cpp
-#include <nil/gate.hpp>
-
-int main()
+struct NodeWithAsyncOutputs
 {
-    nil::gate::Core core;
+    void operator()(nil::gate::async_output<int> outs) const
+    {
+        auto [pulse] = outs;
+        pulse->set_value(1);
+    }
+};
 
-    int initial_value = 100;
-    auto port = core.port(initial_value);
-    //   ┗━━━ nil::gate::ports::Mutable<int>*
-
-    port->value(); // will return 100
-    // will request to set the value to 200 on next Core::commit()
-    port->set_value(200);
-    port->value(); // will return 100
-
-    core.commit();
-    port->value(); // will return 200
-}
-```
-
-### `ports::Batch`
-
-This type of port is similar to `ports::Mutable` with the exact same API. These are created when batches are created.
-
-See [Batch](#batch) for more detail.
-
-### `ports::Compatible`
-
-This type of port is used as a wrapper to `ports::ReadOnly` to be used as an input of a node.
-
-This is intended to be created from `ports::ReadOnly` and is not intended for users to instantiate by themselves.
-
-See [traits](#traits) for more detail how to create compatible ports
-
-### `nil::gate::Core::port`
-
-Here are the list of available `port()` signature available to `Core`:
-
-```cpp
-// value will be moved to the data inside the port
-nil::gate::ports::Mutable<T>* Core::port(T value);
-
-// this will instantiate an port without any value
-// Note that if an port does not have a value, the node attached to it will not be invoked.
-nil::gate::ports::Mutable<T>* Core::port();
-```
-
-Requirements of the type for the port:
-- has `operator==`
-- or specialize `bool nil::gate::traits::compare<T>::match(const T&, const T&)`
-
-## Node
-
-A Node is just an object that is Callable (with `operator()`).
-Its signature represents the Inputs and Outputs of the Node with some optional special arguments.
-
-NOTE: currently only free function and `T::operator() const` is supported.
-
-### Input
-
-```cpp
-#include <nil/gate.hpp>
-
-void free_function_node(float);
-//                      ┗━━━ all arguments are treated as an input
-
-int main()
+struct NodeWithAsyncOutputsAndCore
 {
-    nil::gate::Core core;
-    auto port_f = core.port(200.f);
-    //   ┗━━━ nil::gate::ports::Mutable<float>*
-
-    core.node(&free_function_node, { port_f });
-    //                             ┣━━━ nil::gate::inputs<float>
-    //                             ┗━━━ std::tuple<nil::gate::ports::Compatible<float>, ...>;
-}
-```
-
-### Output
-
-Outputs are separateed into two. Sync and Async.
-
-#### Sync Output
-
-Sync outputs are those that are returned by the node. These are intended to be modified by the node itself by returning the value through the call operator, thus, the returned type during registration is a `nil::gate::ReadOnly<T>*`.
-
-```cpp
-#include <nil/gate.hpp>
+    void operator()(
+        const nil::gate::Core& core,
+        nil::gate::async_output<int,float> outs
+    ) const
+    {
+        // direct call of set_value is also allowed.
+        {
+            auto [oi, of] = core.batch(outs);
+            oi->set_value(42);
+            of->set_value(0.5f);
+        }
+        // optional core.commit() to apply the batch changes.
+        // needs to make sure batch has already been destroyed.
+    }
+};
 
 struct Node
 {
-    std::tuple<float> operator()() const;
-    //         ┗━━━ all tuple types are treated as the sync output
-    // returning void is also allowed
-    // if non-tuple, it will be treated as one return
-};
-
-int main()
-{
-    nil::gate::Core core;
-    
-    auto outputs = core.node(Node()).syncs; // Access syncs from the returned object
-    //   ┣━━━ nil::gate::sync_outputs<float>
-    //   ┗━━━ std::tuple<nil::gate::ports::ReadOnly<float>*, ...>;
-
+    std::tuple<int,int> operator()(
+        const nil::gate::Core& core,
+        nil::gate::async_output<float> outs,
+        int a, int b
+    ) const
     {
-        auto port_f = get<0>(outputs);
-        //   ┗━━━ nil::gate::ports::ReadOnly<float>*
-    }
-    {
-        auto [ port_f ] = outputs;
-        //     ┗━━━ nil::gate::ports::ReadOnly<float>*
-    }
-}
-```
-
-#### Async Output
-
-Async outputs are those that are not returned by the node. These are intended to represent optional output when the node is ran.
-
-```cpp
-#include <nil/gate.hpp>
-
-struct Node
-{
-    void operator()(nil::gate::async_output<float> asyncs) const;
-    //              ┣━━━ this is equivalent to `std::tuple<nil::gate::ports::Mutable<T>*...>`
-    //              ┗━━━ this is not treated as an input
-};
-
-int main()
-{
-    nil::gate::Core core;
-    
-    auto outputs = core.node(Node()).asyncs; // Access asyncs from the returned object
-    //   ┣━━━ nil::gate::async_outputs<float>
-    //   ┗━━━ std::tuple<nil::gate::ports::Mutable<float>*, ...>;
-
-    {
-        auto port_f = get<0>(outputs);
-        //   ┗━━━ nil::gate::ports::Mutable<float>*
-    }
-    {
-        auto [ port_f ] = outputs;
-        //   ┗━━━ nil::gate::ports::Mutable<float>*
-    }
-}
-```
-
-#### Inline Structured Bindings For Mixed Outputs
-
-When you have sync and async outputs at the same time, you can directly access them from the `syncs` and `asyncs` tuple returned by the node registration method.
-
-In case you want to destructure them on the spot, you can do so but take note that the order would be:
-- all sync outputs
-- all async outputs
-
-You can also use `get<I>` (similar to std::tuple's std::get) where index will follow sync outputs first, then asyncs.
-
-```cpp
-#include <nil/gate.hpp>
-
-struct Node
-{
-    int operator()(nil::gate::async_output<float> asyncs) const;
-    //             ┣━━━ this is equivalent to `std::tuple<nil::gate::ports::Mutable<T>*...>`
-    //             ┗━━━ this is not treated as an input
-};
-
-int main()
-{
-    nil::gate::Core core;
-    
-    auto outputs = core.node(Node());
-    //   ┣━━━ nil::gate::outputs<nil::gate::sync_outputs<int>, nil::gate::async_outputs<float>>
-
-    {
-        auto port_i = get<0>(outputs);
-        //   ┗━━━ nil::gate::ports::ReadOnly<int>*
-        auto port_f = get<1>(outputs);
-        //   ┗━━━ nil::gate::ports::Mutable<float>*
-    }
-    {
-        auto [ port_i, port_f ] = outputs;
-        //     ┃       ┗━━━ nil::gate::ports::Mutable<float>*
-        //     ┗━━━ nil::gate::ports::ReadOnly<int>*
-    }
-}
-```
-
-### Special Arguments
-
-If the 1st argument is `const nil::gate::Core&`, the `Core` owner will be passed to it.
-
-This can be useful when using async ports, batching, and committing.
-
-See [Batch](#batch) section for more detail.
-
-```cpp
-#include <nil/gate.hpp>
-
-struct Node
-{
-    void operator()(const nil::gate::Core& core, nil::gate::async_output<float> asyncs) const
-    //              ┃                            ┣━━━ this is equivalent to `std::tuple<ports::Mutable<T>*...>`
-    //              ┃                            ┗━━━ this is not treated as an input
-    //              ┗━━━ this is not treated as an input
-    {
-        auto [ port_f ] = asyncs;
-        //     ┗━━━ nil::gate::ports::Mutable<float>*
+        {
+            auto [af] = core.batch(outs);
+            if (a > b) 
+            {
+                af->set_value(static_cast<float>(a));
+            }
+        }
+        // optional core.commit() to apply the batch changes.
+        return {a, a + b}; // two sync outputs
     }
 };
 
-int main()
-{
-    nil::gate::Core core;
+// ...
 
-    auto [ port_f ] = core.node(Node());
-    //     ┗━━━ nil::gate::ports::Mutable<float>*
-}
+auto* p1 = core.port(int());
+auto* p2 = core.port(int());
+core.node(NodeWithInputs{}, {p1, p2});
+const auto [sync_out]     = core.node(NodeWithSyncOutputs{}, {p1, p2});
+const auto [async_a]      = core.node(NodeWithAsyncOutputs{}, {p1, p2});
+const auto [async_b]      = core.node(NodeWithAsyncOutputsAndCore{}, {p1, p2});
+const auto [sync2, async2]= core.node(Node{}, {p1, p2});
 ```
 
-### `nil::gate::Core::node`
+### Node Anatomy (inputs vs. sync outputs vs. async outputs)
 
-Here are the list of available `node()` signature available to `Core`
+Correct signature order:
+1. Optional leading `const Core&`.
+2. Optional single `async_output<A...>` parameter.
+3. Zero or more input value parameters.
+4. Return: `void`, single `T`, or `std::tuple<T...>` (sync outputs).
 
-```cpp
-//  Legend:
-//   -  I -- Input
-//   -  S -- Sync Output
-//   -  A -- Async Output
-//
-// NOTES:
-//  1. `T instance` will be moved (or copied) inside the node
-//  3. `nil::gate::inputs<T...>` is simply an alias to `std::tuple<nil::gate::ports::Compatible<T>...>`
+Notes:
+- The `async_output` (if present) must come after an optional Core and before any inputs.
+- There is at most one `async_output` parameter.
+- Inputs follow afterward and are the only parameters considered for gating (readiness + change detection).
 
-// has input, no output
-void Core::node<T>(T instance, nil::gate::inputs<I...>);
+Zones explained:
+1. Inputs: upstream values. Node runs only if all inputs ready and at least one changed since last execution.
+2. Sync outputs: returned values; forwarded only on change (`traits::compare`).
+3. Async outputs: event emissions; queued and applied next commit (unless flushed early after batch scope).
 
-// has input, has output
-nil::gate::outputs<
-    nil::gate::sync_outputs<S...>,
-    nil::gate::async_outputs<A...>
->
-    Core::node<T>(T instance, nil::gate::inputs<I...>);
-```
+Guidelines:
+- Place `async_output` early (before inputs) for readability.
+- Keep inputs minimal (derive upstream when possible).
+- Return always-derived deterministic state via sync outputs.
+- Use async for sparse / conditional / transient emissions.
 
-## Commit
+### Choosing Sync vs Async Outputs
+| Characteristic | Sync (return) | Async (`async_output`) |
+| -------------- | ------------- | ---------------------- |
+| Stored last value? | Yes | Only if emitted (Mutable semantics) |
+| Triggers rerun of producer? | On input change only | Never (async change alone doesn't cause re-run) |
+| Good for | Derived state | Events / pulses / optional emissions |
 
-`Core::commit` applies all of the changes you want to do for the ports.
+### Error Diagnostics
+Signature validation happens at compile-time by selecting/deleting overloads. Most diagnostics originate in `Core::node(...)` template instantiations—scroll up the error trace to first invalid candidate note for root cause (e.g. invalid port type / unsupported parameter ordering).
 
-See [Runners](#runners) section for more detail on when and where this changes are done.
-
-```cpp
-#include <nil/gate.hpp>
-#include <functional>
-
-struct Node
-{
-    void operator()(int, float) const;
-};
-
-int main()
-{
-    nil::gate::Core core;
-
-    auto ei = core.port(100);
-    //   ┗━━━ nil::gate::ports::Mutable<int>*
-    auto ef = core.port(200.0);
-    //   ┗━━━ nil::gate::ports::Mutable<float>*
-
-    core.node(Node(), { ei, ef });
-
-    ei->set_value(101);
-    ef->set_value(201.0);
-    core.commit();
-}
-```
-
-## Batch
-
-Use `Core::batch` for cases that you need guarantee that changes are done in one go.
-
-```cpp
-#include <nil/gate.hpp>
-#include <functional>
-
-struct Node
-{
-    void operator()(int, float) const;
-};
-
-int main()
-{
-    nil::gate::Core core;
-
-    auto ei = core.port(100);
-    //   ┗━━━ nil::gate::ports::Mutable<int>*
-    auto ef = core.port(200.0);
-    //   ┗━━━ nil::gate::ports::Mutable<float>*
-
-    core.node(Node(), { ei, ef });
-
-    {
-        auto [ bei, bef ] = core.batch(ei, ef);
-        // or
-        // auto [ bei, bef ] = core.batch({ei, ef});
-        bei->set_value(102);
-        bef->set_value(202.0);
-    } // make sure that a batch is destroyed to queue the changes
-    core.commit();
-}
-```
+## Execution & Change Propagation
+1. `set_value()` queues mutation diffs.
+2. `commit()` applies all queued diffs atomically & marks changed ports.
+3. Nodes with all inputs ready & ≥1 changed input become pending.
+4. Runner executes pending nodes (once per cycle).
+5. Sync outputs compare old vs new; changed ones propagate and mark downstream ports for next cycle.
+6. Async emissions become visible at the *next* commit (unless manually committed earlier after batch scope).
 
 ## Runners
+Define execution strategy during commit.
+Provided:
+- runners::Immediate (default, same thread, registration order)
+- runners::NonBlocking (background thread)
+- runners::boost_asio::Serial
+- runners::boost_asio::Parallel(thread_count)
 
-The behavior how the nodes are executed during `Core::commit()` is defined by a `runner`.
-
-By default, these are the behavior of the library:
-- nodes are executed inside the same thread where `Core::commit()` is invoked.
-- nodes are executed in order of registration.
-
-Use `Core::set_runner` to override this behavior.
-
-The library provides a runner that can run the nodes in a different thread.
-
+Custom runner contract:
 ```cpp
-// This is the default runner used
-#include <nil/gate/runners/Immediate.hpp>
-// This will run the graph in a separate thread
-#include <nil/gate/runners/NonBlockking.hpp>
-
-// The following runners requires boost dependency
-
-// This is similar to NonBlocking but using boost asio
-#include <nil/gate/runners/boost_asio/Serial.hpp>
-// will run everyting in a dedicated thread + each node will be ran in a thread pool
-#include <nil/gate/runners/boost_asio/Parallel.hpp>
-
-...
-
-nil::gate::Core core;
-core.set_runner<nil::gate::runners::Immediate>();
-core.set_runner<nil::gate::runners::NonBlocking>();
-core.set_runner<nil::gate::runners::boost_asio::Serial>();
-core.set_runner<nil::gate::runners::boost_asio::Parallel>(thread_count);
-```
-
-Runners are expected to implement the following:
-- `run(Core* core, std::function<void()> apply_changes, std::span<INode* const>)`
-
-Make sure that flushing and running are done in a thread safe manner
-
-## `nil::gate::traits`
-
-`nil/gate` provides an overridable traits to allow customization and add rules to graph creation.
-
-### compare
-
-This trait allows overriding the default port check if the new value being set on the port has changed.
-
-The default trait behavior is to use `T::operator==`.
-
-```cpp
-#include <nil/gate.hpp>
-
-namespace nil::gate::traits
+struct MyRunner : IRunner
 {
-    template <>
-    struct compare<CustomType>
+    void run(std::function<void()> apply_changes, std::span<INode* const> nodes) override
     {
-        static bool match(const CustomType& l, const CustomType& r);
-    };
-}
+        apply_changes();
+        for (auto* n: nodes) n->run();
+    }
+};
 ```
 
-### portify
+Swap runner:
+```cpp
+core.set_runner(std::make_unique<MyRunner>());
+```
 
-This trait dictates how the type `T` is going to be interpreted for the port creation.
-
-The default trait behavior is that `T` provided to portify will be the same type for the port type.
-
-This also affects the type evaluation for the sync outputs of a node.
-
-Here is an example of the default behavior:
+Custom runner must implement:
 
 ```cpp
-#include <nil/gate.hpp>
-
-int main()
-{
-    nil::gate::Core core;
-
-    auto port_i = core.port(100);
-    //   ┗━━━━━━━━ nil::gate::ports::Mutable<int>*
-
-    auto port_p1 = core.port(std::unique_ptr<int>());
-    //   ┗━━━━━━━━ nil::gate::ports::Mutable<std::unique_ptr<int>>*
-    
-    auto port_p2 = core.port(std::unique_ptr<const int>());
-    //   ┗━━━━━━━━ nil::gate::ports::Mutable<std::unique_ptr<const int>>*
-}
+void run(std::function<void()> apply_changes, std::span<INode* const> nodes);
 ```
 
-Here is an example of how to override the behavior:
+Call apply_changes() exactly once (thread-safe) before or at a controlled point prior to node executions.
 
-```cpp
-#include <nil/gate.hpp>
+## Traits (Customization)
+- traits::compare<T>::match(l, r) -> bool (change detection)
+- traits::portify<T>::type (normalize stored type)
+- traits::compatibility<To, From>::convert(const From&) (input adaptation)
+- traits::is_port_type_valid<T>::value (gate invalid types)
 
-namespace nil::gate::traits
-{
-    template <typename T>
-    struct portify<std::unique_ptr<T>>
-    {
-        using type = std::unique_ptr<const T>;
-    };
-}
-
-int main()
-{
-    nil::gate::Core core;
-
-    auto port_i = core.port(100);
-    //   ┗━━━━━━━━ nil::gate::ports::Mutable<int>*
-
-    auto port_p1 = core.port(std::unique_ptr<int>());
-    //   ┗━━━━━━━━ nil::gate::ports::Mutable<std::unique_ptr<const int>>*
-
-    auto port_p2 = core.port(std::unique_ptr<const int>());
-    //   ┗━━━━━━━━ nil::gate::ports::Mutable<std::unique_ptr<const int>>*
-}
-```
-
-When building a graph, it is ideal that the data owned by the ports is only be modified by the library (not the nodes).
-Allowing the node to modify the object referred through indirection will make the graph execution non-deterministic.
-
-This feature is intended for users to opt-in as the library will not be able to cover all of the types that has indirection.
-
-See [biased](#bias) section for more information of `nil/gate`'s suggested rules.
-
-### compatibility
-
-This trait dictates if an port could be used even if the type of the port does not match with the expected input port of the node.
-
-Here is an example of when this is going to be used:
-
-```cpp
-#include <nil/gate.hpp>
-
-std::reference_wrapper<const int> switcher(bool flag, int a, int b);
-
-void consumer(int);
-
-int main()
-{
-    nil::gate::Core core;
-
-    bool ref = false;
-    auto* flag = core.port(std::cref(false));
-    //    ┗━━━━━━━━ nil::gate::ports::Mutable<std::reference_wrapper<const bool>>*
-    auto* a = core.port(1);
-    //    ┗━━━━━━━━ nil::gate::ports::Mutable<int>*
-    auto* b = core.port(2);
-    //    ┗━━━━━━━━ nil::gate::ports::Mutable<int>*
-    const auto [ out ] = core.node(&switcher, {flag, a, b});
-    //           ┃                             ┗━━━━━━━━ This will produce a compilation failure.
-    //           ┃                                       ReadOnly<std::reference_wrapper<const bool>>
-    //           ┃                                       is not convertible to ReadOnly<bool>
-    //           ┗━━━━━━━━ nil::gate::ports::ReadOnly<std::reference_wrapper<const int>>*
-
-    core.node(&consumer, { out });
-    //                     ┗━━━━━━━━ This will produce a compilation failure.
-    //                               ReadOnly<std::reference_wrapper<const int>>
-    //                               is not compatible to ReadOnly<int>
-}
-```
-
-to allow compatibility, users must define how to convert the data by doing the following:
-
-```cpp
-
-#include <nil/gate.hpp>
-
-#include <functional>
-
-namespace nil::gate::traits
-{
-    template <typename To>
-    struct compatibility<
-        T
-    //  ┣━━━━━━━━ first template type is the type to convert to
-    //  ┗━━━━━━━━ this is normally the type expected by the node
-        std::reference_wrapper<const T>,
-    //  ┗━━━━━━━━ second template type is the type to convert from
-    >
-    {
-        static const T& convert(const std::reference_wrapper<const T>& u)
-        {
-            return u.get();
-        }
-    };
-    template <typename To>
-    struct compatibility<
-        std::reference_wrapper<const T>,
-    //  ┣━━━━━━━━ first template type is the type to convert to
-    //  ┗━━━━━━━━ this is normally the type expected by the node
-        T
-    //  ┗━━━━━━━━ second template type is the type to convert from
-    >
-    {
-        static std::reference_wrapper<const T> convert(const T& u)
-        {
-            return u;
-        }
-    };
-}
-
-std::reference_wrapper<const int> switcher(bool flag, int a, int b);
-
-void consumer(int);
-
-int main()
-{
-    nil::gate::Core core;
-
-    auto* flag = core.port(std::cref(false));
-    //    ┗━━━━━━━━ nil::gate::ports::Mutable<std::reference_wrapper<const bool>>*
-    auto* a = core.port(1);
-    //    ┗━━━━━━━━ nil::gate::ports::Mutable<int>*
-    auto* b = core.port(2);
-    //    ┗━━━━━━━━ nil::gate::ports::Mutable<int>*
-    const auto [ ref ] = core.node(&switcher, {flag, a, b});
-    //           ┗━━━━━━━━ nil::gate::ports::ReadOnly<std::reference_wrapper<const int>>*
-
-    core.node(&consumer, { ref });
-    //                     ┗━━━━━━━━ since `compatibility` is defined, this should be accepted by the compiler
-}
-```
-
-### is_port_type_valid
-
-This trait is intended for cases where you want to detect and prevent creation of ports that should not be ports.
-
-By default, all of the port types are valid except for the following:
-- T is a pointer type
-
-```cpp
-#include <nil/gate.hpp>
-
-namespace nil::gate::traits
-{
-    template <typename T>
-    struct is_port_type_valid<std::reference_wrapper<T>>: std::false_type
-    {
-    };
-
-    template <typename T>
-    struct is_port_type_valid<std::reference_wrapper<const T>>: std::true_type
-    {
-    };
-}
-```
-
-With reference to `portify`, if a type is converted from one type to another, it is a good idea to disable the original type.
-
-See [biased](#bias) section for more information of `nil/gate`'s suggested rules.
-
-### bias
-
-`nil/gate` provides a very opinionated setup from these header:
- - [`#include <nil/gate/bias/compatibility.hpp>`](publish/nil/gate/bias/compatibility.hpp)
-     - covers conversion between `T` and `std::reference_wrapper<const T>`
-     - covers conversion of `std::unique_ptr<const T>` to `const T*`
-     - covers conversion of `std::shared_ptr<const T>` to `const T*`
-     - covers conversion of `std::optional<const T>` to `const T*`
- - [`#include <nil/gate/bias/portify.hpp>`](publish/nil/gate/bias/portify.hpp)
-     - covers the following types:
-         - `std::unique_ptr<T>` to `std::unique_ptr<const T>`
-         - `std::shared_ptr<T>` to `std::shared_ptr<const T>`
-         - `std::optional<T>` to `std::optional<const T>`
-         - `std::reference_wrapper<T>` to `std::reference_wrapper<const T>`
- - [`#include <nil/gate/bias/is_port_type_valid.hpp>`](publish/nil/gate/bias/is_port_type_valid.hpp)
-     - disables the original types converted by `bias/portify.hpp`
-         - `std::unique_ptr<T>`
-         - `std::shared_ptr<T>`
-         - `std::optional<T>`
-         - `std::reference_wrapper<T>`
- - [`#include <nil/gate/bias/nil.hpp>`](publish/nil/gate/bias/nil.hpp)
-     - this is a helper header to conform with the author's suggested setup
-     - applies all of the author's biases
-
-These are not included from `nil/gate.hpp` and users must opt-in to apply these rules to their graphs.
-
-### NOTES: personal suggestions
-
-- When implementing your own `portify<T>` traits, avoid converting `T` to something different that is not related to `T`.
-    - This will produce weird behavior when defining nodes.
-    - `portify<T>` is mainly intended for things with indirections like pointer-like objects.
+## Bias Headers (Opt-in)
+`#include <nil/gate/bias/nil.hpp>` applies recommended:
+- Indirection const-qualification via portify.
+- Compatibility for reference_wrapper, smart/optional -> pointer-like reads.
+- Disables original mutable-indirection forms (is_port_type_valid).
 
 ## Errors
+Compile-time static checks reject:
+- Invalid Core argument (must be const Core& first if present).
+- Invalid port / output types.
+- Unsupported signature forms.
+- Incompatible input conversions (missing compatibility trait).
 
-The library tries its best to provide undestandable error messages as much as possible.
+Messages originate in Core.hpp via deleted overload patterns.
 
-The example below is a result of having and invalid `Core` signature. `Core` should always be `const Core&`.
-
+## Example
 ```cpp
-float deferred(const nil::gate::Core core, nil::gate::async_outputs<int> z, bool a);
-//             ┗━━━━━━━━ this should always be `const nil::gate::Core&`
+struct Mixer
+{
+    int operator()(int a, float b, nil::gate::async_output<int> asyncs) const
+    {
+        auto [opt] = asyncs;
+        if (a > 10) opt->set_value(a); // optional emission
+        return a + static_cast<int>(b);
+    }
+};
+
+nil::gate::Core core;
+auto* ai = core.port(1);
+auto* bf = core.port(2.f);
+auto [
+    sum,        // ReadOnly<int>*
+    optional    // Mutable<int>* (async)
+] = core.node(Mixer(), {ai, bf});
+
+core.commit();    // runs (bf ready, ai ready) sum=3, no async
+
+ai->set_value(15);
+core.commit();    // runs, sum=17, async emits 15
 ```
 
-### gcc
-
-```bash
-./nil/gate/Core.hpp:50:26: error: use of deleted function ‘nil::gate::errors::Error::Error(nil::gate::errors::Check<false>)’
-   50 |             Error core = Check<traits::arg_core::is_valid>();
+## Custom compare Example
+```cpp
+template<> struct nil::gate::traits::compare<float> final
+{
+    static bool match(float l, float r) {
+        return std::fabs(l - r) > 0.0001f;
+    }
+};
 ```
 
-### clang
+## Common Pitfalls
+- Accessing value() of a ReadOnly port before its producer ran: undefined.
+- Equal set_value suppressed (no downstream run).
+- Forgetting commit(): nothing propagates.
+- Holding port pointer after Core::clear(): dangling.
+- Assuming async output is input (it is not; changing it alone will NOT retrigger its own node).
 
-```bash
-./nil/gate/Core.hpp:50:26: fatal error: conversion function from 'Check<traits::arg_core::is_valid>' to 'Error' invokes a deleted function
-   50 |             Error core = Check<traits::arg_core::is_valid>();
-```
+## Examples
 
-These are the errors detected with similar error message:
- -  any input type is invalid
- -  any sync output type is invalid
- -  any async output type is invalid
- -  async_outputs is invalid
- -  core argument is invalid
- -  input `ports::Readable<T>*` is not compatible to the expected input port of the node
+| Target | File | Purpose |
+| ------ | ---- | ------- |
+| sandbox_basic | `sandbox/basic.cpp` | Minimal creation & propagation |
+| sandbox_async | `sandbox/async.cpp` | Boost.Asio runner usage |
+| sandbox_runner | `sandbox/runner.cpp` | Custom runner showcase |
+
+## FAQ
+**Q: Are ports thread safe?**
+A: Mutations (`set_value`) are queued; call them from threads only if your chosen runner and batching strategy guarantee consistent visibility before `commit()`. The default usage assumes single‑threaded mutation followed by commit.
+
+**Q: Can a node depend on its own async output?**
+A: No. Async outputs are not inputs; they do not form cycles nor gate execution.
+
+**Q: How do I force a node to re-run even if inputs unchanged?**
+A: Use a dedicated tick input (increment each cycle) or wrap the value in a type whose `traits::compare` always returns true. Avoid breaking global `operator==` semantics.
+
+**Q: How do I emit multiple async values in one pass?**
+A: Use batching (`core.batch(...)`) over async outputs then `commit()` (optional) or let the outer commit flush queued diffs.
+
+**Q: Does an unchanged returned value short‑circuit downstream?**
+A: Yes—comparison uses `traits::compare` (defaults to `operator==`). No diff => no downstream change flag.
+
+## Roadmap
+- More runner strategies (work stealing pool)
+- Optional instrumentation hooks (timing, counts)
+- Stronger diagnostics & concept constraints

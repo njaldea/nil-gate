@@ -33,11 +33,10 @@ namespace nil::gate::runners
         NonBlocking& operator=(NonBlocking&&) = delete;
         NonBlocking& operator=(const NonBlocking&) = delete;
 
-        void run(Core* core, std::function<void()> apply_changes, std::span<INode* const> nodes)
-            override
+        void run(std::function<void()> apply_changes, std::span<INode* const> nodes) override
         {
             auto _ = std::unique_lock(mutex);
-            tasks.emplace_back(core, std::move(apply_changes), nodes);
+            tasks.emplace_back(std::move(apply_changes), nodes);
             cv.notify_one();
         }
 
@@ -49,7 +48,6 @@ namespace nil::gate::runners
 
         struct Task // NOLINT
         {
-            Core* core;
             std::function<void()> apply_changes;
             std::span<INode* const> nodes;
         };
@@ -87,7 +85,7 @@ namespace nil::gate::runners
                     {
                         if (nullptr != node)
                         {
-                            node->run(t.core);
+                            node->run();
                         }
                     }
                 }

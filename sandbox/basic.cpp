@@ -24,7 +24,7 @@ struct T<R(A...)>
 
     R operator()(A... v) const
     {
-        std::cout << "calling      : " << tag << std::endl;
+        std::cout << "calling      : " << tag << " " << (v + ... + 10) << std::endl;
         return (v + ... + 10);
     }
 
@@ -50,12 +50,12 @@ int main()
     std::cout << __FILE__ << ':' << __LINE__ << ':' << (const char*)(__FUNCTION__) << std::endl;
     core.commit();
 
-    a2->set_value(2);
+    a1->set_value(2);
 
     std::cout << __FILE__ << ':' << __LINE__ << ':' << (const char*)(__FUNCTION__) << std::endl;
     core.commit();
 
-    a2->set_value(4);
+    a1->set_value(4);
 
     std::cout << __FILE__ << ':' << __LINE__ << ':' << (const char*)(__FUNCTION__) << std::endl;
     core.commit();

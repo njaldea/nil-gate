@@ -70,18 +70,21 @@ namespace nil::gate::detail::ports
             return data.has_value() && traits::compare<T>::match(data.value(), value);
         }
 
-        void exec(T new_data)
+        void exec(T&& new_data)
         {
-            data.emplace(std::move(new_data));
-
-            for (auto& a : adapters)
+            if (!is_equal(new_data))
             {
-                a.second->set(*data);
-            }
+                data.emplace(std::move(new_data));
 
-            for (auto* n : this->node_out)
-            {
-                n->input_changed();
+                for (auto& a : adapters)
+                {
+                    a.second->set(*data);
+                }
+
+                for (auto* n : this->node_out)
+                {
+                    n->input_changed();
+                }
             }
         }
 
@@ -97,6 +100,8 @@ namespace nil::gate::detail::ports
             }
         }
 
+        // split to allow finalization to be done
+        // in the main thread if using parallel runner
         void done()
         {
             state = EState::Stale;

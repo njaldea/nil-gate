@@ -19,8 +19,8 @@ namespace nil::gate
         INode(const INode&) = delete;
         INode& operator=(const INode&) = delete;
 
-        virtual void run(Core* core) = 0;
-        virtual void exec(Core* core) = 0;
+        virtual void run() = 0;
+        virtual void exec() = 0;
         virtual void done() = 0;
 
         virtual bool is_input_changed() const = 0;

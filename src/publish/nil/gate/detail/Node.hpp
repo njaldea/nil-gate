@@ -25,8 +25,14 @@ namespace nil::gate::detail
         using output_t = typename detail::traits::node<T>::outputs;
 
     public:
-        Node(Diffs* init_diffs, T init_instance, typename input_t::ports init_inputs)
-            : instance(std::move(init_instance))
+        Node(
+            Core* init_core,
+            Diffs* init_diffs,
+            T init_instance,
+            typename input_t::ports init_inputs
+        )
+            : core(init_core)
+            , instance(std::move(init_instance))
             , inputs(std::move(init_inputs))
         {
             std::apply([this](auto&... i) { (i.attach(this), ...); }, inputs);
@@ -42,23 +48,23 @@ namespace nil::gate::detail
         Node(const Node&) = delete;
         Node& operator=(const Node&) = delete;
 
-        void exec(Core* core) override
+        void exec() override
         {
             using return_type = xalt::fn_sign<T>::return_type;
             if constexpr (std::is_same_v<return_type, void>)
             {
-                call(core, typename input_t::make_index_sequence());
+                call(typename input_t::make_index_sequence());
             }
             else if constexpr (xalt::is_of_template_v<return_type, std::tuple>)
             {
                 forward_to_output(
-                    call(core, typename input_t::make_index_sequence()),
+                    call(typename input_t::make_index_sequence()),
                     typename sync_output_t::make_index_sequence()
                 );
             }
             else
             {
-                auto result = call(core, typename input_t::make_index_sequence());
+                auto result = call(typename input_t::make_index_sequence());
                 if constexpr (sync_output_t::size == 1)
                 {
                     auto& o = get<0>(sync_outputs);
@@ -89,13 +95,13 @@ namespace nil::gate::detail
             }
         }
 
-        void run(Core* core) override
+        void run() override
         {
             if (is_pending() && is_ready())
             {
                 if (is_input_changed())
                 {
-                    exec(core);
+                    exec();
                 }
                 done();
             }
@@ -161,7 +167,7 @@ namespace nil::gate::detail
         }
 
         template <std::size_t... i_indices>
-        auto call(Core* core, std::index_sequence<i_indices...> /* unused */)
+        auto call(std::index_sequence<i_indices...> /* unused */)
         {
             if constexpr (traits::node<T>::has_async)
             {
@@ -205,6 +211,7 @@ namespace nil::gate::detail
         ENodeState node_state = ENodeState::Pending;
         EInputState input_state = EInputState::Changed;
 
+        const Core* core;
         T instance;
 
         typename input_t::ports inputs;

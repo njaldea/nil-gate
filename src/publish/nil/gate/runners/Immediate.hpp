@@ -7,8 +7,7 @@ namespace nil::gate::runners
     class Immediate final: public IRunner
     {
     public:
-        void run(Core* core, std::function<void()> apply_changes, std::span<INode* const> nodes)
-            override
+        void run(std::function<void()> apply_changes, std::span<INode* const> nodes) override
         {
             if (apply_changes)
             {
@@ -18,7 +17,7 @@ namespace nil::gate::runners
             {
                 if (nullptr != node)
                 {
-                    node->run(core);
+                    node->run();
                 }
             }
         }
