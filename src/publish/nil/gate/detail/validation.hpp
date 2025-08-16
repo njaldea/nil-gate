@@ -70,13 +70,13 @@ namespace nil::gate::detail
         input_validate<T>::value;
 
     template <typename T>
-    concept sync_output_validate_v =                                //
+    concept req_output_validate_v =                                 //
         std::is_same_v<T, std::decay_t<T>>                          //
         && gate::traits::is_port_type_valid_v<traits::portify_t<T>> //
         && is_equally_comparable<T>;
 
     template <typename T>
-    concept async_output_validate_v              //
+    concept opt_output_validate_v                //
         = std::is_same_v<T, std::decay_t<T>>     //
         && gate::traits::is_port_type_valid_v<T> //
         && is_equally_comparable<T>;

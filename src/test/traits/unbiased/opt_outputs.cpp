@@ -5,27 +5,27 @@
 #include <gtest/gtest.h>
 
 template <typename T>
-using SUT = nil::gate::detail::traits::node_sync_outputs<T>;
+using SUT = nil::gate::detail::traits::node_opt_outputs<T>;
 
 template <typename... T>
-using sync_outputs = nil::gate::sync_outputs<T...>;
+using opt_outputs = nil::gate::opt_outputs<T...>;
 
 template <typename... T>
 using types = nil::xalt::tlist<T...>;
 
-TEST(gate_node_sync_outputs, traits)
+TEST(gate_node_opt_outputs, traits)
 {
     {
         using type = SUT<types<>>;
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::size == 0);
-        ASSERT_TRUE((std::is_same_v<type::ports, sync_outputs<>>));
+        ASSERT_TRUE((std::is_same_v<type::ports, opt_outputs<>>));
     }
     {
         using type = SUT<types<int>>;
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::size == 1);
-        ASSERT_TRUE((std::is_same_v<type::ports, sync_outputs<int>>));
+        ASSERT_TRUE((std::is_same_v<type::ports, opt_outputs<int>>));
     }
     {
         ASSERT_FALSE(SUT<types<int*>>::is_valid);
@@ -38,7 +38,7 @@ TEST(gate_node_sync_outputs, traits)
     }
 }
 
-TEST(gate_node_sync_outputs, traits_unique_ptr)
+TEST(gate_node_opt_outputs, traits_unique_ptr)
 {
     {
         ASSERT_FALSE(SUT<types<std::unique_ptr<int>&>>::is_valid);
@@ -57,17 +57,17 @@ TEST(gate_node_sync_outputs, traits_unique_ptr)
         using type = SUT<types<std::unique_ptr<int>>>;
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::size == 1);
-        ASSERT_TRUE((std::is_same_v<type::ports, sync_outputs<std::unique_ptr<int>>>));
+        ASSERT_TRUE((std::is_same_v<type::ports, opt_outputs<std::unique_ptr<int>>>));
     }
     {
         using type = SUT<types<std::unique_ptr<const int>>>;
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::size == 1);
-        ASSERT_TRUE((std::is_same_v<type::ports, sync_outputs<std::unique_ptr<const int>>>));
+        ASSERT_TRUE((std::is_same_v<type::ports, opt_outputs<std::unique_ptr<const int>>>));
     }
 }
 
-TEST(gate_node_sync_outputs, traits_shared_ptr)
+TEST(gate_node_opt_outputs, traits_shared_ptr)
 {
     {
         ASSERT_FALSE(SUT<types<std::shared_ptr<int>&>>::is_valid);
@@ -86,17 +86,17 @@ TEST(gate_node_sync_outputs, traits_shared_ptr)
         using type = SUT<types<std::shared_ptr<int>>>;
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::size == 1);
-        ASSERT_TRUE((std::is_same_v<type::ports, sync_outputs<std::shared_ptr<int>>>));
+        ASSERT_TRUE((std::is_same_v<type::ports, opt_outputs<std::shared_ptr<int>>>));
     }
     {
         using type = SUT<types<std::shared_ptr<const int>>>;
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::size == 1);
-        ASSERT_TRUE((std::is_same_v<type::ports, sync_outputs<std::shared_ptr<const int>>>));
+        ASSERT_TRUE((std::is_same_v<type::ports, opt_outputs<std::shared_ptr<const int>>>));
     }
 }
 
-TEST(gate_node_sync_outputs, traits_optional)
+TEST(gate_node_opt_outputs, traits_optional)
 {
     {
         ASSERT_FALSE(SUT<types<std::optional<int>&>>::is_valid);
@@ -115,17 +115,17 @@ TEST(gate_node_sync_outputs, traits_optional)
         using type = SUT<types<std::optional<int>>>;
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::size == 1);
-        ASSERT_TRUE((std::is_same_v<type::ports, sync_outputs<std::optional<int>>>));
+        ASSERT_TRUE((std::is_same_v<type::ports, opt_outputs<std::optional<int>>>));
     }
     {
         using type = SUT<types<std::optional<const int>>>;
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::size == 1);
-        ASSERT_TRUE((std::is_same_v<type::ports, sync_outputs<std::optional<const int>>>));
+        ASSERT_TRUE((std::is_same_v<type::ports, opt_outputs<std::optional<const int>>>));
     }
 }
 
-TEST(gate_node_sync_outputs, traits_ref_wrapper)
+TEST(gate_node_opt_outputs, traits_ref_wrapper)
 {
     {
         ASSERT_FALSE(SUT<types<std::reference_wrapper<int>&>>::is_valid);
@@ -144,12 +144,12 @@ TEST(gate_node_sync_outputs, traits_ref_wrapper)
         using type = SUT<types<std::reference_wrapper<int>>>;
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::size == 1);
-        ASSERT_TRUE((std::is_same_v<type::ports, sync_outputs<std::reference_wrapper<int>>>));
+        ASSERT_TRUE((std::is_same_v<type::ports, opt_outputs<std::reference_wrapper<int>>>));
     }
     {
         using type = SUT<types<std::reference_wrapper<const int>>>;
         ASSERT_TRUE(type::is_valid);
         ASSERT_TRUE(type::size == 1);
-        ASSERT_TRUE((std::is_same_v<type::ports, sync_outputs<std::reference_wrapper<const int>>>));
+        ASSERT_TRUE((std::is_same_v<type::ports, opt_outputs<std::reference_wrapper<const int>>>));
     }
 }

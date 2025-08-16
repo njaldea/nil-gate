@@ -10,9 +10,9 @@ find_package(Boost REQUIRED)
 add_executable(${PROJECT_NAME}_basic basic.cpp)
 target_link_libraries(${PROJECT_NAME}_basic PRIVATE gate)
 
-add_executable(${PROJECT_NAME}_async async.cpp)
-target_link_libraries(${PROJECT_NAME}_async PRIVATE gate)
-target_link_libraries(${PROJECT_NAME}_async PRIVATE Boost::boost)
+add_executable(${PROJECT_NAME}_opt opt.cpp)
+target_link_libraries(${PROJECT_NAME}_opt PRIVATE gate)
+target_link_libraries(${PROJECT_NAME}_opt PRIVATE Boost::boost)
 
 add_executable(${PROJECT_NAME}_runner runner.cpp)
 target_link_libraries(${PROJECT_NAME}_runner PRIVATE gate)

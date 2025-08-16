@@ -22,8 +22,21 @@ namespace nil::gate::ports
         ReadOnly(const ReadOnly&) = delete;
         ReadOnly& operator=(const ReadOnly&) = delete;
 
-        // For ports created for a Node, make sure to call core.run() before accessing value.
-        // For ports created on its own, it should always have a value due to Core's api.
-        virtual const T& value() const = 0;
+        /**
+         * @brief Get the value held by the port.
+         *  Ensure that this is called inside the
+         *  runner's thread or that the runner is
+         *  not running. Ensure to check `has_value`
+         *  before calling this method.
+         */
+        [[nodiscard]] virtual const T& value() const noexcept = 0;
+
+        /**
+         * @brief Check if port is initialized.
+         *  Ensure that this is called inside the
+         *  runner's thread or that the runner is
+         *  not running.
+         */
+        [[nodiscard]] virtual bool has_value() const noexcept = 0;
     };
 }

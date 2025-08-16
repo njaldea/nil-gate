@@ -31,7 +31,7 @@ TEST(nodes, scoped_blank)
     core.commit();
 }
 
-TEST(nodes, scoped_with_sync_out)
+TEST(nodes, scoped_with_req_out)
 {
     const testing::InSequence seq;
     testing::StrictMock<testing::MockFunction<void(std::string)>> mocked_fn;

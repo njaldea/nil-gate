@@ -8,6 +8,7 @@
 #include <nil/xalt/fn_sign.hpp>
 
 #include <memory>
+#include <utility>
 
 namespace nil::gate
 {
@@ -19,10 +20,11 @@ namespace nil::gate::detail
     template <typename T>
     class Node final: public INode
     {
-        using input_t = typename detail::traits::node<T>::inputs;
-        using sync_output_t = typename detail::traits::node<T>::sync_outputs;
-        using async_output_t = typename detail::traits::node<T>::async_outputs;
-        using output_t = typename detail::traits::node<T>::outputs;
+        using node_t = detail::traits::node<T>;
+        using input_t = typename node_t::inputs;
+        using req_output_t = typename node_t::req_outputs;
+        using opt_output_t = typename node_t::opt_outputs;
+        using output_t = typename node_t::outputs;
 
     public:
         Node(
@@ -36,8 +38,8 @@ namespace nil::gate::detail
             , inputs(std::move(init_inputs))
         {
             std::apply([this](auto&... i) { (i.attach(this), ...); }, inputs);
-            std::apply([init_diffs](auto&... o) { (o.attach(init_diffs), ...); }, sync_outputs);
-            std::apply([init_diffs](auto&... o) { (o.attach(init_diffs), ...); }, async_outputs);
+            std::apply([init_diffs](auto&... o) { (o.attach(init_diffs), ...); }, req_outputs);
+            std::apply([init_diffs](auto&... o) { (o.attach(init_diffs), ...); }, opt_outputs);
         }
 
         ~Node() noexcept override = default;
@@ -50,6 +52,13 @@ namespace nil::gate::detail
 
         void exec() override
         {
+            static constexpr auto setter = []<typename U>(auto& o, U&& v)
+            {
+                if (!o.is_equal(v))
+                {
+                    o.set(std::forward<U>(v));
+                }
+            };
             using return_type = xalt::fn_sign<T>::return_type;
             if constexpr (std::is_same_v<return_type, void>)
             {
@@ -57,22 +66,14 @@ namespace nil::gate::detail
             }
             else if constexpr (xalt::is_of_template_v<return_type, std::tuple>)
             {
-                forward_to_output(
-                    call(typename input_t::make_index_sequence()),
-                    typename sync_output_t::make_index_sequence()
-                );
+                auto result = call(typename input_t::make_index_sequence());
+                [&]<std::size_t... i>(std::index_sequence<i...>) {
+                    (setter(get<i>(req_outputs), std::move(get<i>(result))), ...);
+                }(typename req_output_t::make_index_sequence());
             }
             else
             {
-                auto result = call(typename input_t::make_index_sequence());
-                if constexpr (sync_output_t::size == 1)
-                {
-                    auto& o = get<0>(sync_outputs);
-                    if (!o.is_equal(result))
-                    {
-                        o.exec(std::move(result));
-                    }
-                }
+                setter(get<0>(req_outputs), call(typename input_t::make_index_sequence()));
             }
         }
 
@@ -81,7 +82,7 @@ namespace nil::gate::detail
             if (node_state != ENodeState::Pending)
             {
                 node_state = ENodeState::Pending;
-                std::apply([](auto&... syncs) { (syncs.pend(), ...); }, sync_outputs);
+                std::apply([](auto&... outs) { (outs.pend(), ...); }, req_outputs);
             }
         }
 
@@ -91,7 +92,7 @@ namespace nil::gate::detail
             {
                 node_state = ENodeState::Done;
                 input_state = EInputState::Stale;
-                std::apply([](auto&... syncs) { (syncs.done(), ...); }, sync_outputs);
+                std::apply([](auto&... outs) { (outs.done(), ...); }, req_outputs);
             }
         }
 
@@ -111,18 +112,15 @@ namespace nil::gate::detail
         {
             if constexpr (output_t::size > 0)
             {
-                return typename output_t::ports(
-                    std::apply(
-                        [](auto&... s)
-                        { return typename sync_output_t::ports(std::addressof(s)...); },
-                        sync_outputs
-                    ),
-                    std::apply(
-                        [](auto&... s)
-                        { return typename async_output_t::ports(std::addressof(s)...); },
-                        async_outputs
-                    )
-                );
+                return [&]<std::size_t... F, std::size_t... O> //
+                    (std::index_sequence<F...>, std::index_sequence<O...>)
+                {
+                    return typename output_t::ports(
+                        std::addressof(get<F>(req_outputs))...,
+                        std::addressof(get<O>(opt_outputs))...
+                    );
+                }(std::make_index_sequence<req_output_t::size>(),
+                  std::make_index_sequence<opt_output_t::size>());
             }
         }
 
@@ -150,61 +148,39 @@ namespace nil::gate::detail
         }
 
     private:
-        template <std::size_t... s_indices>
-        void forward_to_output(
-            [[maybe_unused]] auto result,
-            std::index_sequence<s_indices...> /* unused */
-        )
+        template <std::size_t... i>
+        auto call(std::index_sequence<i...> /* indices */)
         {
-            [[maybe_unused]] constexpr auto setter = [](auto& o, auto&& v)
+            if constexpr (traits::node<T>::has_opt && traits::node<T>::has_core)
             {
-                if (!o.is_equal(v))
-                {
-                    o.exec(std::forward<decltype(v)>(v));
-                }
-            };
-            (setter(get<s_indices>(sync_outputs), std::move(get<s_indices>(result))), ...);
-        }
-
-        template <std::size_t... i_indices>
-        auto call(std::index_sequence<i_indices...> /* unused */)
-        {
-            if constexpr (traits::node<T>::has_async)
-            {
-                if constexpr (traits::node<T>::has_core)
-                {
-                    return instance(
-                        *core,
-                        std::apply(
-                            [](auto&... a)
-                            { return typename async_output_t::ports(std::addressof(a)...); },
-                            async_outputs
-                        ),
-                        get<i_indices>(inputs).value()...
-                    );
-                }
-                else
-                {
-                    return instance(
-                        std::apply(
-                            [](auto&... a)
-                            { return typename async_output_t::ports(std::addressof(a)...); },
-                            async_outputs
-                        ),
-                        get<i_indices>(inputs).value()...
-                    );
-                }
+                return instance(
+                    *core,
+                    std::apply(
+                        [](auto&... a)
+                        { return typename opt_output_t::ports(std::addressof(a)...); },
+                        opt_outputs
+                    ),
+                    get<i>(inputs).value()...
+                );
             }
-            else
+            else if constexpr (traits::node<T>::has_opt && !traits::node<T>::has_core)
             {
-                if constexpr (traits::node<T>::has_core)
-                {
-                    return instance(*core, get<i_indices>(inputs).value()...);
-                }
-                else
-                {
-                    return instance(get<i_indices>(inputs).value()...);
-                }
+                return instance(
+                    std::apply(
+                        [](auto&... a)
+                        { return typename opt_output_t::ports(std::addressof(a)...); },
+                        opt_outputs
+                    ),
+                    get<i>(inputs).value()...
+                );
+            }
+            else if constexpr (!traits::node<T>::has_opt && traits::node<T>::has_core)
+            {
+                return instance(*core, get<i>(inputs).value()...);
+            }
+            else if constexpr (!traits::node<T>::has_opt && !traits::node<T>::has_core)
+            {
+                return instance(get<i>(inputs).value()...);
             }
         }
 
@@ -215,7 +191,7 @@ namespace nil::gate::detail
         T instance;
 
         typename input_t::ports inputs;
-        typename sync_output_t::data_ports sync_outputs;
-        typename async_output_t::data_ports async_outputs;
+        typename req_output_t::data_ports req_outputs;
+        typename opt_output_t::data_ports opt_outputs;
     };
 }

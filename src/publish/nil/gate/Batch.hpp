@@ -21,7 +21,11 @@ namespace nil::gate
     public:
         Batch(Diffs* init_diffs, const std::tuple<ports::Mutable<T>*...>& init_ports)
             : diffs(init_diffs)
-            , ports(transform_ports(init_ports, std::index_sequence_for<T...>()))
+            , ports(std::apply(
+                  [this](ports::Mutable<T>*... port) -> std::tuple<ports::Batch<T>...>
+                  { return {ports::Batch(static_cast<detail::Port<T>*>(port), &batch_diffs)...}; },
+                  init_ports
+              ))
         {
         }
 
@@ -63,21 +67,6 @@ namespace nil::gate
         }
 
     private:
-        template <std::size_t... I>
-        std::tuple<ports::Batch<T>...> transform_ports(
-            const std::tuple<ports::Mutable<T>*...>& init_ports,
-            std::index_sequence<I...> /* indexes */
-        )
-        {
-            return {transform_port(std::get<I>(init_ports))...};
-        }
-
-        template <typename U>
-        ports::Batch<U> transform_port(ports::Mutable<U>* init_port)
-        {
-            return ports::Batch(static_cast<detail::Port<U>*>(init_port), &batch_diffs);
-        }
-
         std::vector<std::unique_ptr<ICallable<void()>>> batch_diffs;
         Diffs* diffs = nullptr;
         std::tuple<ports::Batch<T>...> ports;

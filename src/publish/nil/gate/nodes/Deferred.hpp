@@ -1,0 +1,116 @@
+#pragma once
+
+#include "../Core.hpp"
+
+#include <nil/xalt/checks.hpp>
+#include <nil/xalt/tlist.hpp>
+
+#include <utility>
+
+namespace nil::gate::nodes
+{
+    template <typename T>
+    struct Deferred;
+
+    namespace detail
+    {
+        template <typename T, typename Inputs, typename ReqOutput, typename OptOutput>
+        struct DeferredCRTP;
+
+        template <typename T, typename... I, typename... F, typename... O>
+        struct DeferredCRTP<T, xalt::tlist<I...>, xalt::tlist<F...>, xalt::tlist<O...>>
+        {
+            void operator()(
+                const Core& core,
+                const nil::gate::opt_outputs<F..., O...>& opts,
+                const I&... args
+            )
+            {
+                using ReturnType = typename xalt::fn_sign<T>::return_type;
+                if constexpr (sizeof...(F) == 0)
+                {
+                    call(opts, std::index_sequence_for<O...>(), core, args...);
+                }
+                else if constexpr (xalt::is_of_template_v<ReturnType, std::tuple>)
+                {
+                    auto res = call(opts, std::index_sequence_for<O...>(), core, args...);
+
+                    {
+                        auto batch = core.batch(opts);
+                        [&]<std::size_t... indices>() {
+                            (..., get<indices>(batch)->set_value(std::move(get<indices>(res))));
+                        }(std::index_sequence_for<F...>());
+                    }
+                    core.commit();
+                }
+                else
+                {
+                    auto res = call(opts, std::index_sequence_for<O...>(), core, args...);
+
+                    get<0>(opts)->set_value(std::move(res));
+                    core.commit();
+                }
+            }
+
+            template <std::size_t... indices>
+            auto call(
+                const nil::gate::opt_outputs<F..., O...>& opts,
+                std::index_sequence<indices...> /* unused */,
+                const Core& core,
+                const I&... args
+            )
+            {
+                constexpr auto has_core = gate::detail::traits::node<T>::has_core;
+                constexpr auto has_opt = gate::detail::traits::node<T>::has_opt;
+                auto* self = static_cast<Deferred<T>*>(this);
+                if constexpr (!has_core && !has_opt)
+                {
+                    return std::invoke(self->node, args...);
+                }
+                else if constexpr (has_core && !has_opt)
+                {
+                    return std::invoke(self->node, core, args...);
+                }
+                else if constexpr (!has_core && has_opt)
+                {
+                    return std::invoke(
+                        self->node,
+                        std::make_tuple(get<indices + sizeof...(F)>(opts)...),
+                        args...
+                    );
+                }
+                else if constexpr (has_core && has_opt)
+                {
+                    return std::invoke(
+                        self->node,
+                        core,
+                        std::make_tuple(get<indices + sizeof...(F)>(opts)...),
+                        args...
+                    );
+                }
+            }
+        };
+    }
+
+    template <typename T>
+    struct Deferred
+        : detail::DeferredCRTP<
+              T,
+              typename gate::detail::traits::node<T>::inputs::types,
+              typename gate::detail::traits::node<T>::req_outputs::types,
+              typename gate::detail::traits::node<T>::opt_outputs::types>
+    {
+        explicit Deferred(T init_node)
+            : node(std::move(init_node))
+        {
+        }
+
+        using detail::DeferredCRTP<
+            T,
+            typename gate::detail::traits::node<T>::inputs::types,
+            typename gate::detail::traits::node<T>::req_outputs::types,
+            typename gate::detail::traits::node<T>::opt_outputs::types>::operator();
+
+        T node;
+    };
+}

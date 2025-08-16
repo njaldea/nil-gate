@@ -26,8 +26,8 @@ int main()
 
     core.node([](int b1, int b2) { std::printf("First: %d : %d\n", b1, b2); }, {e1_i, e2_i});
 
-    auto [r] = core.node(
-        [](const nil::gate::Core& c, nil::gate::async_outputs<int> a, int b1, int b2)
+    const auto [r] = core.node(
+        [](const nil::gate::Core& c, nil::gate::opt_outputs<int> a, int b1, int b2)
         {
             std::printf("Second: %d : %d\n", b1, b2);
             if (b1 % 2 == 0)
@@ -38,7 +38,6 @@ int main()
         },
         {e1_i, e2_i}
     );
-    r->set_value(3000);
 
     core.node([](int i) { std::printf("printer: %d\n", i); }, {r});
 

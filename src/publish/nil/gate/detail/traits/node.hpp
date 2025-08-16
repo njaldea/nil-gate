@@ -24,17 +24,17 @@ namespace nil::gate::detail::traits
         = (std::is_reference_v<T> && std::is_const_v<std::remove_reference_t<T>>);
 
     template <typename T>
-    concept is_async_valid_v //
+    concept is_opt_valid_v //
         = std::is_same_v<T, std::decay_t<T>>
         || (std::is_reference_v<T> && std::is_const_v<std::remove_reference_t<T>>);
 
     template <typename T>
-    struct is_async_arg: std::false_type
+    struct is_opt_arg: std::false_type
     {
     };
 
     template <typename... T>
-    struct is_async_arg<std::tuple<gate::ports::Mutable<T>*...>>: std::true_type
+    struct is_opt_arg<std::tuple<gate::ports::Mutable<T>*...>>: std::true_type
     {
     };
 
@@ -60,23 +60,23 @@ namespace nil::gate::detail::traits
     struct input_splitter<xalt::tlist<I...>> final
     {
         using inputs = xalt::tlist<I...>;
-        using asyncs = xalt::tlist<>;
+        using opts = xalt::tlist<>;
         static constexpr bool has_core = false;
-        static constexpr bool has_async = false;
+        static constexpr bool has_opt = false;
         static constexpr bool is_core_valid = true;
-        static constexpr bool is_async_valid = true;
+        static constexpr bool is_opt_valid = true;
     };
 
     template <typename First, typename... I>
-        requires(is_async_arg<std::decay_t<First>>::value)
+        requires(is_opt_arg<std::decay_t<First>>::value)
     struct input_splitter<xalt::tlist<First, I...>> final
     {
         using inputs = xalt::tlist<I...>;
-        using asyncs = xalt::to_tlist<std::decay_t<First>>::type::template apply<typify_t>;
+        using opts = xalt::to_tlist<std::decay_t<First>>::type::template apply<typify_t>;
         static constexpr bool has_core = false;
-        static constexpr bool has_async = true;
+        static constexpr bool has_opt = true;
         static constexpr bool is_core_valid = true;
-        static constexpr bool is_async_valid = is_async_valid_v<First>;
+        static constexpr bool is_opt_valid = is_opt_valid_v<First>;
     };
 
     template <typename First, typename... I>
@@ -84,24 +84,24 @@ namespace nil::gate::detail::traits
     struct input_splitter<xalt::tlist<First, I...>> final
     {
         using inputs = xalt::tlist<I...>;
-        using asyncs = xalt::tlist<>;
+        using opts = xalt::tlist<>;
         static constexpr bool has_core = true;
-        static constexpr bool has_async = false;
+        static constexpr bool has_opt = false;
         static constexpr bool is_core_valid = is_core_valid_v<First>;
-        static constexpr bool is_async_valid = true;
+        static constexpr bool is_opt_valid = true;
     };
 
     template <typename First, typename Second, typename... I>
         requires std::is_same_v<Core, std::decay_t<First>>
-        && (is_async_arg<std::decay_t<Second>>::value)
+        && (is_opt_arg<std::decay_t<Second>>::value)
     struct input_splitter<xalt::tlist<First, Second, I...>> final
     {
         using inputs = xalt::tlist<I...>;
-        using asyncs = xalt::to_tlist<std::decay_t<Second>>::type::template apply<typify_t>;
+        using opts = xalt::to_tlist<std::decay_t<Second>>::type::template apply<typify_t>;
         static constexpr bool has_core = true;
-        static constexpr bool has_async = true;
+        static constexpr bool has_opt = true;
         static constexpr bool is_core_valid = is_core_valid_v<First>;
-        static constexpr bool is_async_valid = is_async_valid_v<Second>;
+        static constexpr bool is_opt_valid = is_opt_valid_v<Second>;
     };
 
     template <typename T>
@@ -118,43 +118,43 @@ namespace nil::gate::detail::traits
     };
 
     template <typename T>
-    struct node_sync_outputs;
+    struct node_req_outputs;
 
-    template <typename... S>
-    struct node_sync_outputs<xalt::tlist<S...>> final
+    template <typename... F>
+    struct node_req_outputs<xalt::tlist<F...>> final
     {
-        using types = xalt::tlist<S...>;
-        using ports = sync_outputs<portify_t<std::decay_t<S>>...>;
-        using data_ports = std::tuple<detail::Port<portify_t<std::decay_t<S>>>...>;
-        using make_index_sequence = std::index_sequence_for<S...>;
-        static constexpr auto size = sizeof...(S);
-        static constexpr bool is_valid = (true && ... && (sync_output_validate_v<S>));
+        using types = xalt::tlist<F...>;
+        using ports = req_outputs<portify_t<std::decay_t<F>>...>;
+        using data_ports = std::tuple<detail::Port<portify_t<std::decay_t<F>>>...>;
+        using make_index_sequence = std::index_sequence_for<F...>;
+        static constexpr auto size = sizeof...(F);
+        static constexpr bool is_valid = (true && ... && (req_output_validate_v<F>));
     };
 
     template <typename T>
-    struct node_async_outputs;
+    struct node_opt_outputs;
 
-    template <typename... A>
-    struct node_async_outputs<xalt::tlist<A...>> final
+    template <typename... O>
+    struct node_opt_outputs<xalt::tlist<O...>> final
     {
-        using types = xalt::tlist<A...>;
-        using ports = async_outputs<portify_t<std::decay_t<A>>...>;
-        using data_ports = std::tuple<detail::Port<portify_t<std::decay_t<A>>>...>;
-        using make_index_sequence = std::index_sequence_for<A...>;
-        static constexpr auto size = sizeof...(A);
-        static constexpr bool is_valid = (true && ... && async_output_validate_v<A>);
+        using types = xalt::tlist<O...>;
+        using ports = opt_outputs<portify_t<std::decay_t<O>>...>;
+        using data_ports = std::tuple<detail::Port<portify_t<std::decay_t<O>>>...>;
+        using make_index_sequence = std::index_sequence_for<O...>;
+        static constexpr auto size = sizeof...(O);
+        static constexpr bool is_valid = (true && ... && opt_output_validate_v<O>);
     };
 
-    template <typename S, typename A>
+    template <typename F, typename O>
     struct node_outputs;
 
-    template <typename... S, typename... A>
-    struct node_outputs<sync_outputs<S...>, async_outputs<A...>> final
+    template <typename... F, typename... O>
+    struct node_outputs<req_outputs<F...>, opt_outputs<O...>> final
     {
-        using types = xalt::tlist<S..., A...>;
-        using ports = outputs<sync_outputs<S...>, async_outputs<A...>>;
-        using make_index_sequence = std::index_sequence_for<S..., A...>;
-        static constexpr auto size = sizeof...(S) + sizeof...(A);
+        using types = xalt::tlist<F..., O...>;
+        using ports = outputs<F..., O...>;
+        using make_index_sequence = std::index_sequence_for<F..., O...>;
+        static constexpr auto size = sizeof...(F) + sizeof...(O);
     };
 
     template <typename T>
@@ -165,18 +165,18 @@ namespace nil::gate::detail::traits
         using split_i = input_splitter<full_i>;
 
         using final_s = typename callable<T>::outputs;
-        using final_a = typename split_i::asyncs;
+        using final_a = typename split_i::opts;
         using final_i = typename split_i::inputs;
 
     public:
         using inputs = node_inputs<final_i>;
-        using sync_outputs = node_sync_outputs<final_s>;
-        using async_outputs = node_async_outputs<final_a>;
-        using outputs = node_outputs<typename sync_outputs::ports, typename async_outputs::ports>;
+        using req_outputs = node_req_outputs<final_s>;
+        using opt_outputs = node_opt_outputs<final_a>;
+        using outputs = node_outputs<typename req_outputs::ports, typename opt_outputs::ports>;
 
-        struct arg_async
+        struct arg_opt
         {
-            static constexpr bool is_valid = split_i::is_async_valid;
+            static constexpr bool is_valid = split_i::is_opt_valid;
         };
 
         struct arg_core
@@ -184,13 +184,13 @@ namespace nil::gate::detail::traits
             static constexpr bool is_valid = split_i::is_core_valid;
         };
 
-        static constexpr bool has_async = split_i::has_async;
+        static constexpr bool has_opt = split_i::has_opt;
         static constexpr bool has_core = split_i::has_core;
-        static constexpr bool is_valid  //
-            = arg_async::is_valid       //
-            && arg_core::is_valid       //
-            && inputs::is_valid         //
-            && sync_outputs::is_valid   //
-            && async_outputs::is_valid; //
+        static constexpr bool is_valid //
+            = arg_opt::is_valid        //
+            && arg_core::is_valid      //
+            && inputs::is_valid        //
+            && req_outputs::is_valid   //
+            && opt_outputs::is_valid;  //
     };
 }

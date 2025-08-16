@@ -13,16 +13,17 @@ namespace nil::gate
      *  - node with outputs & no inputs
      *  - node with neither inputs nor outputs
      *
-     * Always returns a std::tuple of sync + async output ports when the callable declares outputs;
+     * Always returns a std::tuple of fix + opt output ports when the callable declares outputs;
      * otherwise returns an empty std::tuple<>.
      *
      * Requirements (validated by underlying traits):
      *  - Optional first parameter: const Core&
-     *  - Optional second parameter: async_output<...>
+     *  - Optional second parameter: opt_output<...>
      *  - Remaining parameters: inputs (zero or more)
      *  - Return: void, T, or std::tuple<T...>
      *
-     * NOTE: For nodes with zero inputs you may pass an empty tuple, or call the raw Core::node overload directly.
+     * NOTE: For nodes with zero inputs you may pass an empty tuple, or call the raw Core::node
+     * overload directly.
      */
     template <typename T>
     auto add_node(Core& core, T&& instance, typename detail::traits::node<T>::inputs::ports inputs)
@@ -102,7 +103,7 @@ namespace nil::gate
      * Replace current runner with a new instance of T constructed in-place with Args.
      */
     template <typename T, typename... Args>
-    void set_runner(Core& core, Args&&... args) noexcept
+    void set_runner(Core& core, Args&&... args)
     {
         core.set_runner<T>(std::forward<Args>(args)...);
     }

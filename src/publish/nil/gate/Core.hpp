@@ -35,11 +35,11 @@ namespace nil::gate::errors
     {
         using traits = detail::traits::node<T>;
         // clang-format off
-        Error arg_asyncs = Check<traits::arg_async::is_valid>("invalid async arg type detected, must be by copy or by const ref");
+        Error arg_opt = Check<traits::arg_opt::is_valid>("invalid opt arg type detected, must be by copy or by const ref");
         Error arg_core = Check<traits::arg_core::is_valid>("invalid core type, must be `const Core&`");
         Error inputs = Check<traits::inputs::is_valid>("invalid input type detected");
-        Error sync_outputs = Check<traits::sync_outputs::is_valid>("invalid sync output type detected");
-        Error async_outputs = Check<traits::async_outputs::is_valid>("invalid async output type detected");
+        Error req_outputs = Check<traits::req_outputs::is_valid>("invalid req output type detected");
+        Error opt_outputs = Check<traits::opt_outputs::is_valid>("invalid opt output type detected");
         // clang-format on
     };
 
@@ -117,11 +117,9 @@ namespace nil::gate
         /// starting from this point - link
 
         template <typename TO, typename FROM>
-            requires requires(TO to, FROM from) {
-                { traits::compatibility<TO, FROM>::convert(to) };
-            }
         void link(ports::ReadOnly<FROM>* from, ports::Mutable<TO>* to)
         {
+            static_assert(concepts::is_compatible<TO, FROM>, "Not Compatible");
             this->node([to](const TO& v) { to->set_value(v); }, {from});
         }
 
@@ -190,10 +188,20 @@ namespace nil::gate
          * Use a custom runner. By default uses `nil::gate:runner::Immediate`.
          */
         template <typename Runner, typename... Args>
-        void set_runner(Args&&... args) noexcept
+        void set_runner(Args&&... args)
         {
             runner.reset();
             runner = std::make_unique<Runner>(std::forward<Args>(args)...);
+        }
+
+        /**
+         * Use a custom runner. By default uses `nil::gate:runner::Immediate`.
+         */
+        template <typename Runner>
+        void set_runner(Runner&& new_runner)
+        {
+            runner.reset();
+            runner = std::make_unique<Runner>(std::forward<Runner>(new_runner));
         }
 
         void clear()
@@ -213,10 +221,6 @@ namespace nil::gate
         }
 
     private:
-        Core* self = this; // This is to be used for commit since executing the runner requires a
-                           // non-const version of this. This is done this way to only allow users
-                           // to add nodes/ports on the non-const version while still allowing them
-                           // to commit on the const version.
         std::unique_ptr<Diffs> diffs = std::make_unique<Diffs>();
         std::vector<INode*> owned_nodes;
         std::vector<IPort*> independent_ports;
