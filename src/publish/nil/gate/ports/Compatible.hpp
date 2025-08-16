@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../detail/DataPort.hpp"
+#include "../detail/Port.hpp"
 #include "../errors.hpp"
 #include "../traits/compatibility.hpp"
 
@@ -46,25 +46,16 @@ namespace nil::gate::ports
             requires(concepts::is_compatible<TO, FROM> && !std::is_same_v<TO, FROM>)
         // NOLINTNEXTLINE(hicpp-explicit-conversions)
         Compatible(ports::ReadOnly<FROM>* port)
-            : Compatible(static_cast<detail::ports::Data<FROM>*>(port)->template adapt<TO>())
+            : Compatible(static_cast<detail::Port<FROM>*>(port)->template adapt<TO>())
         {
         }
 
         // NOLINTNEXTLINE(hicpp-explicit-conversions)
         Compatible(ports::ReadOnly<TO>* port)
             : context(port)
-            , attach_impl( //
-                  +[](void* p, INode* node)
-                  { static_cast<detail::ports::Data<TO>*>(p)->attach(node); }
-              )
-            , is_ready_impl( //
-                  +[](const void* p)
-                  { return static_cast<const detail::ports::Data<TO>*>(p)->is_ready(); }
-              )
-            , value_impl( //
-                  +[](const void* p) -> const TO&
-                  { return static_cast<const detail::ports::Data<TO>*>(p)->value(); }
-              )
+            , ptr_attach(&impl_attach<detail::Port<TO>>)
+            , ptr_is_ready(&impl_is_ready<detail::Port<TO>>)
+            , ptr_value(&impl_value<detail::Port<TO>>)
         {
         }
 
@@ -78,39 +69,50 @@ namespace nil::gate::ports
 
         const TO& value() const
         {
-            return value_impl(context);
+            return ptr_value(context);
         }
 
         void attach(INode* node)
         {
-            attach_impl(context, node);
+            ptr_attach(context, node);
         }
 
         bool is_ready() const
         {
-            return is_ready_impl(context);
+            return ptr_is_ready(context);
         }
 
     private:
         void* context = nullptr;
-        void (*attach_impl)(void*, INode*) = nullptr;
-        bool (*is_ready_impl)(const void*) = nullptr;
-        const TO& (*value_impl)(const void*) = nullptr;
+        void (*ptr_attach)(void*, INode*) = nullptr;
+        bool (*ptr_is_ready)(const void*) = nullptr;
+        const TO& (*ptr_value)(const void*) = nullptr;
+
+        template <typename T>
+        static void impl_attach(void* port, INode* node)
+        {
+            static_cast<T*>(port)->attach(node);
+        }
+
+        template <typename T>
+        static bool impl_is_ready(const void* port)
+        {
+            return static_cast<const T*>(port)->is_ready();
+        }
+
+        template <typename T>
+        static const TO& impl_value(const void* port)
+        {
+            return static_cast<const T*>(port)->value();
+        }
 
         template <typename Adapter>
             requires(!std::is_base_of_v<IPort, Adapter>)
         explicit Compatible(Adapter* adapter)
             : context(adapter)
-            , attach_impl( //
-                  +[](void* p, INode* node) { static_cast<Adapter*>(p)->attach(node); }
-              )
-            , is_ready_impl( //
-                  +[](const void* p) { return static_cast<const Adapter*>(p)->is_ready(); }
-              )
-            , value_impl( //
-                  +[](const void* p) -> const TO&
-                  { return static_cast<const Adapter*>(p)->value(); }
-              )
+            , ptr_attach(&impl_attach<Adapter>)
+            , ptr_is_ready(&impl_is_ready<Adapter>)
+            , ptr_value(&impl_value<Adapter>)
         {
         }
     };

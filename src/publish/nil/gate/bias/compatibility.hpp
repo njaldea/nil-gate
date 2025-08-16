@@ -26,6 +26,10 @@ namespace nil::gate::traits
         }
     };
 
+    // NO pointer to ref since pointers can't guarantee that there is always a value
+    // This compatibility layer is to allow a port to be adapted to a
+    // different type of port for input of a node
+
     template <typename T>
     struct compatibility<const T*, std::unique_ptr<const T>>
     {

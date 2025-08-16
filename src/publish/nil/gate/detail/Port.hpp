@@ -11,7 +11,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace nil::gate::detail::ports
+namespace nil::gate::detail
 {
     /**
      * @brief Port type returned by Core::port.
@@ -20,30 +20,30 @@ namespace nil::gate::detail::ports
      * @tparam T
      */
     template <typename T>
-    class Data final: public gate::ports::Mutable<T>
+    class Port final: public gate::ports::Mutable<T>
     {
     public:
-        Data()
+        Port()
             : state(EState::Pending)
             , data(std::nullopt)
             , diffs(nullptr)
         {
         }
 
-        explicit Data(T init_data)
+        explicit Port(T init_data)
             : state(EState::Stale)
             , data(std::make_optional<T>(std::move(init_data)))
             , diffs(nullptr)
         {
         }
 
-        ~Data() noexcept override = default;
+        ~Port() noexcept override = default;
 
-        Data(Data&&) noexcept = delete;
-        Data& operator=(Data&&) noexcept = delete;
+        Port(Port&&) noexcept = delete;
+        Port& operator=(Port&&) noexcept = delete;
 
-        Data(const Data&) = delete;
-        Data& operator=(const Data&) = delete;
+        Port(const Port&) = delete;
+        Port& operator=(const Port&) = delete;
 
         const T& value() const override
         {
@@ -131,7 +131,7 @@ namespace nil::gate::detail::ports
 
             struct Impl final: IAdapter
             {
-                explicit Impl(detail::ports::Data<FROM>* init_port)
+                explicit Impl(Port<FROM>* init_port)
                     : IAdapter(init_port)
                     , cache(nullptr)
                 {
@@ -173,7 +173,7 @@ namespace nil::gate::detail::ports
 
             struct Impl final: IAdapter
             {
-                explicit Impl(detail::ports::Data<FROM>* init_port)
+                explicit Impl(Port<FROM>* init_port)
                     : IAdapter(init_port)
                 {
                     if (this->port->state == EState::Stale)
@@ -184,6 +184,8 @@ namespace nil::gate::detail::ports
 
                 const TO& value() const
                 {
+                    // set should be called before this
+                    // so cache should have been available
                     return cache.value();
                 }
 
@@ -219,7 +221,7 @@ namespace nil::gate::detail::ports
 
         struct IAdapter
         {
-            explicit IAdapter(detail::ports::Data<T>* init_port)
+            explicit IAdapter(Port<T>* init_port)
                 : port(init_port)
             {
             }
@@ -243,7 +245,7 @@ namespace nil::gate::detail::ports
 
             virtual void set(const T&) = 0;
 
-            detail::ports::Data<T>* port;
+            Port<T>* port;
         };
 
         std::unordered_map<const void*, std::unique_ptr<IAdapter>> adapters;

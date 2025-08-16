@@ -12,7 +12,7 @@ set(
         publish/nil/gate/IPort.hpp
         publish/nil/gate/ICallable.hpp
         publish/nil/gate/types.hpp
-        publish/nil/gate/api/uniform.hpp
+        publish/nil/gate/uniform_api.hpp
         publish/nil/gate/bias/compatibility.hpp
         publish/nil/gate/bias/portify.hpp
         publish/nil/gate/bias/is_port_type_valid.hpp
@@ -21,7 +21,7 @@ set(
         publish/nil/gate/traits/compatibility.hpp
         publish/nil/gate/traits/portify.hpp
         publish/nil/gate/traits/is_port_type_valid.hpp
-        publish/nil/gate/detail/DataPort.hpp
+        publish/nil/gate/detail/Port.hpp
         publish/nil/gate/detail/Node.hpp
         publish/nil/gate/detail/traits/node.hpp
         publish/nil/gate/detail/validation.hpp

@@ -3,7 +3,7 @@
 #include "Diffs.hpp"
 #include "ICallable.hpp"
 
-#include "detail/DataPort.hpp"
+#include "detail/Port.hpp"
 #include "ports/Batch.hpp"
 
 #include <cstddef>
@@ -75,7 +75,7 @@ namespace nil::gate
         template <typename U>
         ports::Batch<U> transform_port(ports::Mutable<U>* init_port)
         {
-            return ports::Batch(static_cast<detail::ports::Data<U>*>(init_port), &batch_diffs);
+            return ports::Batch(static_cast<detail::Port<U>*>(init_port), &batch_diffs);
         }
 
         std::vector<std::unique_ptr<ICallable<void()>>> batch_diffs;

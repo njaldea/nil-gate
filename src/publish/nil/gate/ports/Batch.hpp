@@ -2,7 +2,7 @@
 
 #include "../ICallable.hpp"
 
-#include "../detail/DataPort.hpp"
+#include "../detail/Port.hpp"
 
 namespace nil::gate::ports
 {
@@ -13,7 +13,7 @@ namespace nil::gate::ports
         Batch() = delete;
 
         Batch(
-            detail::ports::Data<T>* init_port,
+            detail::Port<T>* init_port,
             std::vector<std::unique_ptr<ICallable<void()>>>* init_diffs
         )
             : port(init_port)
@@ -49,7 +49,7 @@ namespace nil::gate::ports
             ));
         }
 
-        detail::ports::Data<T>* port = nullptr;
+        detail::Port<T>* port = nullptr;
         std::vector<std::unique_ptr<ICallable<void()>>>* diffs = nullptr;
     };
 }

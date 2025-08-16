@@ -51,12 +51,12 @@ Pointers you receive are non‑owning, never delete.
 Stable until Core::clear() or Core destruction.
 
 ## Port Types
-| Type | What it represents | Writable by user? | Created by |
-| ---- | ------------------ | ----------------- | ---------- |
-| `ports::Mutable<T>` | External / upstream mutable input OR async emission target | Yes (`set_value()`) | `core.port()` and async outputs from `core.node(...)` |
-| `ports::ReadOnly<T>` | Sync output of a node | No | `core.node(...)` (return values) |
-| `ports::Batch<T>` | Scoped writer during batching | Yes (scoped) | `core.batch(...)` |
-| `ports::Compatible<T>` | Internal adaptation wrapper | No | Internal only |
+| Type                   | Represents                                          | Writable | Created by                                         |
+|------------------------|------------------------------------------------------|----------|----------------------------------------------------|
+| `ports::Mutable<T>`    | External / upstream mutable input or async target    | yes      | `core.port()`, async outputs of `core.node(...)`   |
+| `ports::ReadOnly<T>`   | Sync output of a node (returned value)               | no       | `core.node(...)` (return values)                   |
+| `ports::Batch<T>`      | Scoped mutable proxy during batching                 | yes      | `core.batch(...)`                                  |
+| `ports::Compatible<T>` | Internal adaptation wrapper                          | no       | internal only                                      |
 
 Readiness: a port is "ready" after it has *ever* held a value (initial value, first `set_value()`, or first sync output write). A node will not run until all its input ports are ready.
 
@@ -189,12 +189,35 @@ Guidelines:
 - Return always-derived deterministic state via sync outputs.
 - Use async for sparse / conditional / transient emissions.
 
+### Uniform Helper API
+For generic tooling or higher-level builders, a set of thin helper functions mirrors core operations while normalizing return shapes under ADL (`#include <nil/gate/uniform_api.hpp>`):
+
+| Helper                                   | Purpose                                   | Notes                                                                                      |
+|------------------------------------------|-------------------------------------------|--------------------------------------------------------------------------------------------|
+| `add_node(core, callable, inputs_tuple)` | Register node with provided inputs        | Returns tuple of output ports (sync + async) or empty tuple if none. Inputs tuple must match traits. |
+| `add_port<T>(core)`                      | Create uninitialized mutable port         | Not ready until first set.                                                                 |
+| `add_port(core, value)`                  | Create initialized mutable port           | Ready immediately.                                                                         |
+| `link(core, from_ro, to_mut)`            | Connect ReadOnly->Mutable                 | Uses compatibility traits for type adaptation.                                             |
+| `batch(core, p1, p2, ...)`               | Begin batch scope (variadic)              | Returns `Batch<T...>`; commit applies atomically.                                          |
+| `batch(core, tuple_of_ports)`            | Begin batch from tuple                    | Same semantics; accepts pre-collected ports.                                               |
+| `set_runner<R>(core, args...)`           | Replace runner with R                     | Args forwarded to R ctor.                                                                  |
+| `clear(core)`                            | Clear graph                               | Invalidates existing port/node pointers.                                                   |
+
+`add_node` selection logic:
+1. Detects presence of inputs & outputs at compile time.
+2. For nodes without outputs returns `std::tuple<>` (enables uniform generic code).
+3. For nodes with outputs returns exactly what `core.node` would return (tuple of ports).
+
+Why use it? Simplifies meta-programming / code generation producing nodes of unknown arity / output set without branching. Overhead is optimized away (`if constexpr`).
+
+If you prefer direct control or specialized error messages, calling `core.node` directly remains fully supported.
+
 ### Choosing Sync vs Async Outputs
-| Characteristic | Sync (return) | Async (`async_output`) |
-| -------------- | ------------- | ---------------------- |
-| Stored last value? | Yes | Only if emitted (Mutable semantics) |
-| Triggers rerun of producer? | On input change only | Never (async change alone doesn't cause re-run) |
-| Good for | Derived state | Events / pulses / optional emissions |
+| Characteristic             | Sync (return)                          | Async (`async_output`)                          |
+|----------------------------|----------------------------------------|-------------------------------------------------|
+| Stored last value?         | yes                                    | only if emitted (mutable semantics)             |
+| Triggers producer re-run?  | only when an input changed             | never (emission alone doesn't re-run)           |
+| Good for                   | derived deterministic state            | events / pulses / optional / sparse emissions   |
 
 ### Error Diagnostics
 Signature validation happens at compile-time by selecting/deleting overloads. Most diagnostics originate in `Core::node(...)` template instantiations—scroll up the error trace to first invalid candidate note for root cause (e.g. invalid port type / unsupported parameter ordering).
@@ -243,7 +266,7 @@ Call apply_changes() exactly once (thread-safe) before or at a controlled point 
 ## Traits (Customization)
 - traits::compare<T>::match(l, r) -> bool (change detection)
 - traits::portify<T>::type (normalize stored type)
-- traits::compatibility<To, From>::convert(const From&) (input adaptation)
+- traits::compatibility<TO, FROM>::convert(const From&) (input adaptation)
 - traits::is_port_type_valid<T>::value (gate invalid types)
 
 ## Bias Headers (Opt-in)
@@ -259,17 +282,15 @@ Compile-time static checks reject:
 - Unsupported signature forms.
 - Incompatible input conversions (missing compatibility trait).
 
-Messages originate in Core.hpp via deleted overload patterns.
-
 ## Example
 ```cpp
 struct Mixer
 {
     int operator()(int a, float b, nil::gate::async_output<int> asyncs) const
     {
-        auto [opt] = asyncs;
+        auto [opt] = asyncs;           // async Mutable<int>*
         if (a > 10) opt->set_value(a); // optional emission
-        return a + static_cast<int>(b);
+        return a + static_cast<int>(b); // sync output
     }
 };
 
@@ -281,10 +302,9 @@ auto [
     optional    // Mutable<int>* (async)
 ] = core.node(Mixer(), {ai, bf});
 
-core.commit();    // runs (bf ready, ai ready) sum=3, no async
-
+core.commit();    // first run: sum=3, no async emission
 ai->set_value(15);
-core.commit();    // runs, sum=17, async emits 15
+core.commit();    // sum=17, async emits 15
 ```
 
 ## Custom compare Example

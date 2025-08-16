@@ -136,7 +136,7 @@ namespace nil::gate
         auto* port()
         {
             using type = traits::portify_t<T>;
-            auto e = std::make_unique<detail::ports::Data<traits::portify_t<T>>>();
+            auto e = std::make_unique<detail::Port<traits::portify_t<T>>>();
             e->attach(diffs.get());
             auto* r = independent_ports.emplace_back(e.release());
             return static_cast<ports::Mutable<type>*>(r);
@@ -146,7 +146,7 @@ namespace nil::gate
         auto* port(T value)
         {
             using type = traits::portify_t<T>;
-            auto e = std::make_unique<detail::ports::Data<type>>(std::move(value));
+            auto e = std::make_unique<detail::Port<type>>(std::move(value));
             e->attach(diffs.get());
             auto* r = independent_ports.emplace_back(e.release());
             return static_cast<ports::Mutable<type>*>(r);

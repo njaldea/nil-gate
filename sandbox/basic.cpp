@@ -32,7 +32,6 @@ struct T<R(A...)>
 };
 
 int main()
-
 {
     nil::gate::Core core;
 
@@ -40,8 +39,8 @@ int main()
     using C = T<int(int, int)>;
     using D = T<int(int, int)>;
 
-    auto* a1 = core.port(int(0));
-    auto* a2 = core.port(int(0));
+    auto* a1 = core.port(0);
+    auto* a2 = core.port(0);
 
     const auto [b1] = core.node(B("b"), {a1, a2});
     const auto [c1] = core.node(C("c"), {b1, a2});

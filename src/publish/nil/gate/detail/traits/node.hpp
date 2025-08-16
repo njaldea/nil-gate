@@ -2,7 +2,7 @@
 
 #include "../../traits/portify.hpp"
 #include "../../types.hpp"
-#include "../DataPort.hpp"
+#include "../Port.hpp"
 #include "../validation.hpp"
 #include "callable.hpp"
 
@@ -125,7 +125,7 @@ namespace nil::gate::detail::traits
     {
         using types = xalt::tlist<S...>;
         using ports = sync_outputs<portify_t<std::decay_t<S>>...>;
-        using data_ports = std::tuple<detail::ports::Data<portify_t<std::decay_t<S>>>...>;
+        using data_ports = std::tuple<detail::Port<portify_t<std::decay_t<S>>>...>;
         using make_index_sequence = std::index_sequence_for<S...>;
         static constexpr auto size = sizeof...(S);
         static constexpr bool is_valid = (true && ... && (sync_output_validate_v<S>));
@@ -139,7 +139,7 @@ namespace nil::gate::detail::traits
     {
         using types = xalt::tlist<A...>;
         using ports = async_outputs<portify_t<std::decay_t<A>>...>;
-        using data_ports = std::tuple<detail::ports::Data<portify_t<std::decay_t<A>>>...>;
+        using data_ports = std::tuple<detail::Port<portify_t<std::decay_t<A>>>...>;
         using make_index_sequence = std::index_sequence_for<A...>;
         static constexpr auto size = sizeof...(A);
         static constexpr bool is_valid = (true && ... && async_output_validate_v<A>);
