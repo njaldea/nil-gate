@@ -5,16 +5,11 @@
 
 #include <iostream>
 
-float deferred(const nil::gate::Core& core, nil::gate::async_outputs<int> z, bool a)
+float deferred(const nil::gate::Core& core, nil::gate::opt_outputs<> /* z */, bool a)
 {
     std::cout << "deferred: " << a << std::endl;
     if (a)
     {
-        {
-            auto [zz] = core.batch(z);
-            // this will be triggered on next core.run()
-            zz->set_value(zz->value() + 100);
-        }
         core.commit();
         return 321.0f;
     }
@@ -31,7 +26,7 @@ void bar(std::reference_wrapper<const bool> a)
     std::cout << a.get() << std::endl;
 }
 
-void foo(int v)
+void foo(float v)
 {
     std::cout << "foo: " << v << std::endl;
 }
@@ -40,7 +35,7 @@ int main()
 {
     nil::gate::Core core;
 
-    const auto printer_i = [](int v) { std::cout << "printer<int>: " << v << std::endl; };
+    const auto printer_i = [](float v) { std::cout << "printer<int>: " << v << std::endl; };
     const auto printer_f = [](float v) { std::cout << "printer<float>: " << v << std::endl; };
 
     auto ref = 100.f;
@@ -50,14 +45,12 @@ int main()
 
     core.node(&bar, {a});
 
-    const auto [f, x] = core.node(&deferred, {a});
-    x->set_value(9000);
-
+    const auto [f] = core.node(&deferred, {a});
     const auto [fs] = core.node(&switcher, {a, l, r});
-    core.node(printer_i, {x});
+    core.node(printer_i, {f});
 
     core.node(printer_f, {fs});
-    core.node(&foo, {x});
+    core.node(&foo, {f});
 
     core.set_runner<nil::gate::runners::Parallel>(5);
 

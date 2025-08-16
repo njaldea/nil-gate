@@ -6,7 +6,7 @@
 
 #include <iostream>
 
-float deferred(const nil::gate::Core& core, nil::gate::async_outputs<int> z, bool a)
+float deferred(const nil::gate::Core& core, nil::gate::opt_outputs<int> z, bool a)
 {
     std::cout << "deferred: " << a << std::endl;
     if (a)
@@ -52,8 +52,6 @@ int main()
     add_node(core, &bar, {a});
 
     const auto [f, x] = add_node(core, &deferred, {a});
-    x->set_value(9000);
-
     const auto [fs] = add_node(core, &switcher, {a, l, r});
     core.node(printer_i, {x});
 

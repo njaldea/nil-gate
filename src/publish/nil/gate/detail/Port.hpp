@@ -45,9 +45,14 @@ namespace nil::gate::detail
         Port(const Port&) = delete;
         Port& operator=(const Port&) = delete;
 
-        const T& value() const override
+        const T& value() const noexcept override
         {
             return *data;
+        }
+
+        bool has_value() const noexcept override
+        {
+            return data.has_value();
         }
 
         void set_value(T new_data) override
@@ -58,7 +63,22 @@ namespace nil::gate::detail
                     if (!is_equal(new_data))
                     {
                         pend();
-                        exec(std::move(new_data));
+                        set(std::move(new_data));
+                        done();
+                    }
+                }
+            ));
+        }
+
+        void unset_value() override
+        {
+            diffs->push(make_callable(
+                [this]() mutable
+                {
+                    if (has_value())
+                    {
+                        pend();
+                        unset();
                         done();
                     }
                 }
@@ -70,7 +90,7 @@ namespace nil::gate::detail
             return data.has_value() && traits::compare<T>::match(data.value(), value);
         }
 
-        void exec(T&& new_data)
+        void set(T&& new_data)
         {
             if (!is_equal(new_data))
             {
@@ -81,6 +101,23 @@ namespace nil::gate::detail
                     a.second->set(*data);
                 }
 
+                for (auto* n : this->node_out)
+                {
+                    n->input_changed();
+                }
+            }
+        }
+
+        void unset()
+        {
+            if (data.has_value())
+            {
+                data = {};
+
+                for (auto& a : adapters)
+                {
+                    a.second->unset();
+                }
                 for (auto* n : this->node_out)
                 {
                     n->input_changed();
@@ -151,6 +188,11 @@ namespace nil::gate::detail
                     cache = &traits::compatibility<TO, FROM>::convert(new_value);
                 }
 
+                void unset() override
+                {
+                    cache = nullptr;
+                }
+
                 const TO* cache;
             };
 
@@ -192,6 +234,11 @@ namespace nil::gate::detail
                 void set(const FROM& new_value) override
                 {
                     cache = traits::compatibility<TO, FROM>::convert(new_value);
+                }
+
+                void unset() override
+                {
+                    cache = {};
                 }
 
                 std::optional<TO> cache;
@@ -244,6 +291,8 @@ namespace nil::gate::detail
             }
 
             virtual void set(const T&) = 0;
+
+            virtual void unset() = 0;
 
             Port<T>* port;
         };

@@ -1,6 +1,6 @@
 #include <nil/gate.hpp>
 
-#include <nil/gate/nodes/Asynced.hpp>
+#include <nil/gate/nodes/Deferred.hpp>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -12,7 +12,7 @@ TEST(nodes, asynced_blank)
 
     nil::gate::Core core;
 
-    core.node(nil::gate::nodes::Asynced([&]() { mocked_fn.Call("NODE"); }));
+    core.node(nil::gate::nodes::Deferred([&]() { mocked_fn.Call("NODE"); }));
 
     EXPECT_CALL(mocked_fn, Call("NODE")) //
         .Times(1)
@@ -31,7 +31,7 @@ TEST(nodes, asynced_input)
     auto* e = core.port(std::string("value"));
 
     core.node(
-        nil::gate::nodes::Asynced(
+        nil::gate::nodes::Deferred(
             [&](const std::string& v)
             {
                 mocked_fn.Call("NODE");
@@ -58,7 +58,7 @@ TEST(nodes, asynced_sync_output)
 
     nil::gate::Core core;
 
-    const auto [e] = core.node(nil::gate::nodes::Asynced(
+    const auto [e] = core.node(nil::gate::nodes::Deferred(
         [&]()
         {
             mocked_fn.Call("NODE");
@@ -80,15 +80,15 @@ TEST(nodes, asynced_sync_output)
     ASSERT_EQ(e->value(), "value");
 }
 
-TEST(nodes, asynced_async_output)
+TEST(nodes, asynced_opt_output)
 {
     const testing::InSequence seq;
     testing::StrictMock<testing::MockFunction<void(std::string)>> mocked_fn;
 
     nil::gate::Core core;
 
-    const auto [e] = core.node(nil::gate::nodes::Asynced(
-        [&](nil::gate::async_outputs<std::string> s)
+    const auto [e] = core.node(nil::gate::nodes::Deferred(
+        [&](nil::gate::opt_outputs<std::string> s)
         {
             mocked_fn.Call("NODE");
             get<0>(s)->set_value("value");
@@ -116,8 +116,8 @@ TEST(nodes, asynced_outputs)
 
     nil::gate::Core core;
 
-    const auto [se, ae] = core.node(nil::gate::nodes::Asynced(
-        [&](nil::gate::async_outputs<std::string> s)
+    const auto [se, ae] = core.node(nil::gate::nodes::Deferred(
+        [&](nil::gate::opt_outputs<std::string> s)
         {
             mocked_fn.Call("NODE");
             get<0>(s)->set_value("value");
