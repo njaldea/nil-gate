@@ -48,3 +48,25 @@ add_test_subdirectory()
 
 nil_install_headers()
 nil_install_targets(${PROJECT_NAME})
+
+set(ENABLE_C_API OFF CACHE BOOL "[0 | OFF - 1 | ON]: build c api?")
+if(ENABLE_C_API)
+    add_library(
+        ${PROJECT_NAME}-c-api
+        publish/nil/gate.h
+        src/gate.cpp
+        src/PortType.cpp
+        src/PortType.hpp
+    )
+
+    target_link_libraries(${PROJECT_NAME}-c-api PRIVATE ${PROJECT_NAME})
+    target_link_libraries(${PROJECT_NAME}-c-api PUBLIC nil::xalt)
+    target_include_directories(
+        ${PROJECT_NAME}-c-api
+        INTERFACE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/publish>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    )
+    
+    nil_install_targets(${PROJECT_NAME}-c-api)
+endif()

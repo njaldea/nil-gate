@@ -1,6 +1,9 @@
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(CMAKE_C_STANDARD 17)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -14,8 +17,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "[0 | OFF - 1 | ON]: Build using shared libraries?")
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    add_compile_options(-fno-rtti)
-    add_compile_options(-flto)
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>)
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-flto>)
     add_compile_options(-Wfatal-errors)
     add_compile_options(-Wshadow)
     add_compile_options(-Werror)

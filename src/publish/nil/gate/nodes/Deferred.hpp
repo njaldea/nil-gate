@@ -20,6 +20,11 @@ namespace nil::gate::nodes
         template <typename T, typename... I, typename... F, typename... O>
         struct DeferredCRTP<T, xalt::tlist<I...>, xalt::tlist<F...>, xalt::tlist<O...>>
         {
+            explicit DeferredCRTP(T init_node)
+                : node(std::move(init_node))
+            {
+            }
+
             void operator()(
                 const Core& core,
                 const nil::gate::opt_outputs<F..., O...>& opts,
@@ -46,7 +51,6 @@ namespace nil::gate::nodes
                 else
                 {
                     auto res = call(opts, std::index_sequence_for<O...>(), core, args...);
-
                     get<0>(opts)->set_value(std::move(res));
                     core.commit();
                 }
@@ -62,19 +66,18 @@ namespace nil::gate::nodes
             {
                 constexpr auto has_core = gate::detail::traits::node<T>::has_core;
                 constexpr auto has_opt = gate::detail::traits::node<T>::has_opt;
-                auto* self = static_cast<Deferred<T>*>(this);
                 if constexpr (!has_core && !has_opt)
                 {
-                    return std::invoke(self->node, args...);
+                    return std::invoke(node, args...);
                 }
                 else if constexpr (has_core && !has_opt)
                 {
-                    return std::invoke(self->node, core, args...);
+                    return std::invoke(node, core, args...);
                 }
                 else if constexpr (!has_core && has_opt)
                 {
                     return std::invoke(
-                        self->node,
+                        node,
                         std::make_tuple(get<indices + sizeof...(F)>(opts)...),
                         args...
                     );
@@ -82,13 +85,15 @@ namespace nil::gate::nodes
                 else if constexpr (has_core && has_opt)
                 {
                     return std::invoke(
-                        self->node,
+                        node,
                         core,
                         std::make_tuple(get<indices + sizeof...(F)>(opts)...),
                         args...
                     );
                 }
             }
+
+            T node;
         };
     }
 
@@ -101,7 +106,11 @@ namespace nil::gate::nodes
               typename gate::detail::traits::node<T>::opt_outputs::types>
     {
         explicit Deferred(T init_node)
-            : node(std::move(init_node))
+            : detail::DeferredCRTP<
+                  T,
+                  typename gate::detail::traits::node<T>::inputs::types,
+                  typename gate::detail::traits::node<T>::req_outputs::types,
+                  typename gate::detail::traits::node<T>::opt_outputs::types>(std::move(init_node))
         {
         }
 
@@ -110,7 +119,5 @@ namespace nil::gate::nodes
             typename gate::detail::traits::node<T>::inputs::types,
             typename gate::detail::traits::node<T>::req_outputs::types,
             typename gate::detail::traits::node<T>::opt_outputs::types>::operator();
-
-        T node;
     };
 }

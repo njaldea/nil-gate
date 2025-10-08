@@ -46,6 +46,22 @@ int main()
     const auto [c1] = core.node(C("c"), {b1, a2});
     core.node(D("d"), {c1, a2});
 
+    auto outs = core.uniform_node<int>({
+        .inputs = {c1},
+        .req_output_size = 1,
+        .opt_output_size = 1,
+        .fn = [](const nil::gate::UNode<int>::Arg& v) -> std::vector<int>
+        {
+            std::cout << __FILE__ << ':' << __LINE__ << std::endl;
+            std::cout << v.inputs.size() << ','      //
+                      << v.opt_outputs.size() << ',' //
+                      << v.req_outputs << std::endl;
+            return {100}; //
+        } //
+    });
+    std::cout << __FILE__ << ':' << __LINE__ << std::endl;
+    std::cout << outs.size() << std::endl;
+
     std::cout << __FILE__ << ':' << __LINE__ << ':' << (const char*)(__FUNCTION__) << std::endl;
     core.commit();
 

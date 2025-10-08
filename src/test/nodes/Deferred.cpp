@@ -1,4 +1,5 @@
 #include <nil/gate.hpp>
+#include <nil/gate/runners/SoftBlocking.hpp>
 
 #include <nil/gate/nodes/Deferred.hpp>
 
@@ -27,6 +28,7 @@ TEST(nodes, asynced_input)
     testing::StrictMock<testing::MockFunction<void(std::string)>> mocked_fn;
 
     nil::gate::Core core;
+    core.set_runner<nil::gate::runners::SoftBlocking>();
 
     auto* e = core.port(std::string("value"));
 
@@ -51,12 +53,13 @@ TEST(nodes, asynced_input)
     core.commit();
 }
 
-TEST(nodes, asynced_sync_output)
+TEST(nodes, asynced_req_output) // failing
 {
     const testing::InSequence seq;
     testing::StrictMock<testing::MockFunction<void(std::string)>> mocked_fn;
 
     nil::gate::Core core;
+    core.set_runner<nil::gate::runners::SoftBlocking>();
 
     const auto [e] = core.node(nil::gate::nodes::Deferred(
         [&]()
@@ -86,6 +89,7 @@ TEST(nodes, asynced_opt_output)
     testing::StrictMock<testing::MockFunction<void(std::string)>> mocked_fn;
 
     nil::gate::Core core;
+    core.set_runner<nil::gate::runners::SoftBlocking>();
 
     const auto [e] = core.node(nil::gate::nodes::Deferred(
         [&](nil::gate::opt_outputs<std::string> s)
@@ -115,6 +119,7 @@ TEST(nodes, asynced_outputs)
     testing::StrictMock<testing::MockFunction<void(std::string)>> mocked_fn;
 
     nil::gate::Core core;
+    core.set_runner<nil::gate::runners::SoftBlocking>();
 
     const auto [se, ae] = core.node(nil::gate::nodes::Deferred(
         [&](nil::gate::opt_outputs<std::string> s)

@@ -3,8 +3,8 @@
 #include "../Diffs.hpp"
 #include "../INode.hpp"
 #include "../ports/Mutable.hpp"
-#include "../traits/compare.hpp"
 #include "../traits/compatibility.hpp"
+#include "../traits/port_override.hpp"
 
 #include <memory>
 #include <optional>
@@ -52,7 +52,7 @@ namespace nil::gate::detail
 
         bool has_value() const noexcept override
         {
-            return data.has_value();
+            return data.has_value() && nil::gate::traits::port::has_value(*data);
         }
 
         void set_value(T new_data) override
@@ -87,14 +87,21 @@ namespace nil::gate::detail
 
         bool is_equal(const T& value) const
         {
-            return data.has_value() && traits::compare<T>::match(data.value(), value);
+            return has_value() && nil::gate::traits::port::is_eq(data.value(), value);
         }
 
         void set(T&& new_data)
         {
             if (!is_equal(new_data))
             {
-                data.emplace(std::move(new_data));
+                if (data.has_value())
+                {
+                    *data = std::move(new_data);
+                }
+                else
+                {
+                    data.emplace(std::move(new_data));
+                }
 
                 for (auto& a : adapters)
                 {
@@ -110,9 +117,9 @@ namespace nil::gate::detail
 
         void unset()
         {
-            if (data.has_value())
+            if (has_value())
             {
-                data = {};
+                nil::gate::traits::port::unset(data);
 
                 for (auto& a : adapters)
                 {
@@ -156,7 +163,7 @@ namespace nil::gate::detail
 
         bool is_ready() const
         {
-            return state != EState::Pending && data.has_value();
+            return state != EState::Pending && has_value();
         }
 
         template <typename U>

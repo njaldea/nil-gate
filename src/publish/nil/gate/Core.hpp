@@ -9,6 +9,7 @@
 #include "traits/portify.hpp"
 
 #include "detail/Node.hpp"
+#include "detail/UNode.hpp"
 #include "detail/traits/node.hpp"
 
 #include <vector>
@@ -112,6 +113,13 @@ namespace nil::gate
             );
             return static_cast<detail::Node<T>*>(owned_nodes.emplace_back(n.release()))
                 ->output_ports();
+        }
+
+        template <typename T>
+        auto uniform_node(UNode<T>::Info info)
+        {
+            auto n = std::make_unique<UNode<T>>(this, diffs.get(), std::move(info));
+            return static_cast<UNode<T>*>(owned_nodes.emplace_back(n.release()))->output_ports();
         }
 
         /// starting from this point - link
