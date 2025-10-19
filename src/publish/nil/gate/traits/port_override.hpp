@@ -28,10 +28,33 @@ namespace nil::gate::traits::port
     {
         value = {};
     }
+}
+
+namespace nil::gate::traits
+{
+    template <typename T>
+    struct Port
+    {
+        static bool has_value(const T& value);
+        static bool is_eq(const T& current_value, const T& new_value);
+        static void unset(std::optional<T>& value);
+    };
 
     template <typename T>
-    bool is_compatible(const T& /* current_port */, const T& /* incoming_port */)
+    bool Port<T>::has_value(const T& value)
     {
-        return true;
+        return port::has_value(value);
+    }
+
+    template <typename T>
+    bool Port<T>::is_eq(const T& current_value, const T& new_value)
+    {
+        return port::is_eq(current_value, new_value);
+    }
+
+    template <typename T>
+    void Port<T>::unset(std::optional<T>& value)
+    {
+        port::unset(value);
     }
 }
