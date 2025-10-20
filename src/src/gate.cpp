@@ -65,15 +65,55 @@ extern "C"
         };
     }
 
-    void nil_gate_port_set_value(nil_gate_mport port, void* new_value)
+    void nil_gate_mport_set_value(nil_gate_mport port, void* new_value)
     {
         static_cast<nil::gate::ports::Mutable<nil::gate::c::PortType>*>(port.handle)
             ->set_value(nil::gate::c::PortType(new_value, port.info.eq, port.info.destroy));
     }
 
-    void nil_gate_port_unset_value(nil_gate_mport port)
+    void nil_gate_mport_unset_value(nil_gate_mport port)
     {
         static_cast<nil::gate::ports::Mutable<nil::gate::c::PortType>*>(port.handle)->unset_value();
+    }
+
+    void nil_gate_bport_set_value(struct nil_gate_bport port, void* new_value)
+    {
+        static_cast<nil::gate::ports::Batch<nil::gate::c::PortType>*>(port.handle)
+            ->set_value(nil::gate::c::PortType(new_value, port.info.eq, port.info.destroy));
+    }
+
+    void nil_gate_bport_unset_value(struct nil_gate_bport port)
+    {
+        static_cast<nil::gate::ports::Batch<nil::gate::c::PortType>*>(port.handle)->unset_value();
+    }
+
+    void nil_gate_core_batch(
+        struct nil_gate_core const* core,
+        struct nil_gate_mports mports,
+        struct nil_gate_bports* batch_ports
+    )
+    {
+        auto ports = std::vector<nil::gate::ports::Mutable<nil::gate::c::PortType>*>();
+        ports.reserve(mports.size);
+        for (auto i = 0; i < batch_ports->size; ++i)
+        {
+            ports.emplace_back(static_cast<nil::gate::ports::Mutable<nil::gate::c::PortType>*>(
+                mports.ports[i].handle
+            ));
+        }
+        auto batch = core->handle->make_ubatch(std::move(ports));
+        batch_ports->size = mports.size;
+        for (auto i = 0; i < batch_ports->size; ++i)
+        {
+            batch_ports->ports[i].handle = (*batch)[std::size_t(i)];
+            batch_ports->ports[i].info = mports.ports[i].info;
+        }
+        batch_ports->handle = batch.release();
+    }
+
+    void nil_gate_core_batch_release(struct nil_gate_bports* batch)
+    {
+        delete static_cast<nil::gate::UBatch<nil::gate::c::PortType>*>(batch->handle); // NOLINT
     }
 
     void nil_gate_add_node(
@@ -199,7 +239,7 @@ extern "C"
 
         for (auto i = 0U; i < node_info.opt_outputs.size; ++i)
         {
-            const auto ii = i + node_info.opt_outputs.size;
+            const auto ii = i + node_info.req_outputs.size;
             output_ports->ports[ii].info = node_info.opt_outputs.infos[i];
             output_ports->ports[ii].handle = node_result[i];
         }
