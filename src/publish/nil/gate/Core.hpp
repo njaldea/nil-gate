@@ -172,6 +172,24 @@ namespace nil::gate
             return Batch<T...>(diffs.get(), ports);
         }
 
+        template <typename... T>
+        std::unique_ptr<Batch<T...>> make_batch(std::tuple<ports::Mutable<T>*...> ports) const
+        {
+            return std::make_unique<Batch<T...>>(diffs.get(), ports);
+        }
+
+        template <typename T>
+        UBatch<T> ubatch(std::vector<ports::Mutable<T>*> ports) const
+        {
+            return UBatch<T>(diffs.get(), std::move(ports));
+        }
+
+        template <typename T>
+        std::unique_ptr<UBatch<T>> make_ubatch(std::vector<ports::Mutable<T>*> ports) const
+        {
+            return std::make_unique<UBatch<T>>(diffs.get(), std::move(ports));
+        }
+
         /// starting from this point - misc
 
         /**
