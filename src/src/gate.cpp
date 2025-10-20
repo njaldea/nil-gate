@@ -116,52 +116,55 @@ extern "C"
         delete static_cast<nil::gate::UBatch<nil::gate::c::PortType>*>(batch->handle); // NOLINT
     }
 
-    void nil_gate_add_node(
+    void nil_gate_core_node(
         const nil_gate_core* core,
-        nil_gate_node_info node_info,
-        nil_gate_output_ports* output_ports
+        void (*fn)(struct nil_gate_node_args* args),
+        struct nil_gate_rports inputs,
+        struct nil_gate_port_infos req_outputs,
+        struct nil_gate_port_infos opt_outputs,
+        nil_gate_rports* output_ports
     )
     {
         namespace ng = nil::gate;
-        auto inputs = [node_info]()
+        auto ng_inputs = [&inputs]()
         {
             std::vector<ng::ports::Compatible<ng::c::PortType>> object;
-            object.reserve(node_info.inputs.size);
-            for (auto i = 0U; i < node_info.inputs.size; ++i)
+            object.reserve(inputs.size);
+            for (auto i = 0U; i < inputs.size; ++i)
             {
-                object.emplace_back(static_cast<ng::ports::ReadOnly<ng::c::PortType>*>(
-                    node_info.inputs.ports[i].handle
-                ));
+                object.emplace_back(
+                    static_cast<ng::ports::ReadOnly<ng::c::PortType>*>(inputs.ports[i].handle)
+                );
             }
             return object;
         }();
 
-        auto req_output_info = [node_info]()
+        auto ng_req_output_info = [&req_outputs]()
         {
             std::vector<nil_gate_port_info> object;
-            object.reserve(node_info.req_outputs.size);
-            for (auto i = 0U; i < node_info.req_outputs.size; ++i)
+            object.reserve(req_outputs.size);
+            for (auto i = 0U; i < req_outputs.size; ++i)
             {
-                object.push_back(node_info.req_outputs.infos[i]);
+                object.push_back(req_outputs.infos[i]);
             }
             return object;
         }();
 
-        auto opt_output_info = [node_info]()
+        auto ng_opt_output_info = [&opt_outputs]()
         {
             std::vector<nil_gate_port_info> object;
-            object.reserve(node_info.opt_outputs.size);
-            for (auto i = 0U; i < node_info.opt_outputs.size; ++i)
+            object.reserve(opt_outputs.size);
+            for (auto i = 0U; i < opt_outputs.size; ++i)
             {
-                object.push_back(node_info.opt_outputs.infos[i]);
+                object.push_back(opt_outputs.infos[i]);
             }
             return object;
         }();
 
-        auto fn = [core = core,
-                   fn = node_info.fn,
-                   req_output_info = std::move(req_output_info),
-                   opt_output_info = std::move(opt_output_info)] //
+        auto ng_fn = [core = core,
+                      fn = fn,
+                      ng_req_output_info = std::move(ng_req_output_info),
+                      ng_opt_output_info = std::move(ng_opt_output_info)] //
             (const ng::UNode<ng::c::PortType>::Arg& arg) -> std::vector<ng::c::PortType>
         {
             auto arg_inputs = [&]()
@@ -184,7 +187,7 @@ extern "C"
                 for (auto i = 0U; i < arg.opt_outputs.size(); ++i)
                 {
                     object.push_back(
-                        nil_gate_mport{.handle = arg.opt_outputs[i], .info = opt_output_info[i]}
+                        nil_gate_mport{.handle = arg.opt_outputs[i], .info = ng_opt_output_info[i]}
                     );
                 }
                 return object;
@@ -216,8 +219,8 @@ extern "C"
                 {
                     final_req_outputs.emplace_back(
                         arg_req_outputs[i],
-                        req_output_info[i].eq,
-                        req_output_info[i].destroy
+                        ng_req_output_info[i].eq,
+                        ng_req_output_info[i].destroy
                     );
                 }
                 return final_req_outputs;
@@ -225,22 +228,22 @@ extern "C"
         };
 
         auto node_result = core->handle->uniform_node<ng::c::PortType>(
-            {.inputs = std::move(inputs),
-             .req_output_size = node_info.req_outputs.size,
-             .opt_output_size = node_info.opt_outputs.size,
-             .fn = std::move(fn)}
+            {.inputs = std::move(ng_inputs),
+             .req_output_size = req_outputs.size,
+             .opt_output_size = opt_outputs.size,
+             .fn = std::move(ng_fn)}
         );
 
-        for (auto i = 0U; i < node_info.req_outputs.size; ++i)
+        for (auto i = 0U; i < req_outputs.size; ++i)
         {
-            output_ports->ports[i].info = node_info.req_outputs.infos[i];
+            output_ports->ports[i].info = req_outputs.infos[i];
             output_ports->ports[i].handle = node_result[i];
         }
 
-        for (auto i = 0U; i < node_info.opt_outputs.size; ++i)
+        for (auto i = 0U; i < opt_outputs.size; ++i)
         {
-            const auto ii = i + node_info.req_outputs.size;
-            output_ports->ports[ii].info = node_info.opt_outputs.infos[i];
+            const auto ii = i + req_outputs.size;
+            output_ports->ports[ii].info = opt_outputs.infos[i];
             output_ports->ports[ii].handle = node_result[i];
         }
     }
@@ -251,6 +254,11 @@ extern "C"
     }
 
     nil_gate_rport nil_gate_rport_to_rport(nil_gate_rport port)
+    {
+        return port;
+    }
+
+    nil_gate_mport nil_gate_mport_to_mport(nil_gate_mport port)
     {
         return port;
     }

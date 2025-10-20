@@ -1,0 +1,5 @@
+set(CPACK_PACKAGE_NAME "nil-gate-dev")
+set(CPACK_PACKAGE_CONTACT "njaldea@gmail.com")
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Neil Aldea <njaldea@gmail.com>")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "nil-xalt-dev (>= 1.3.1)")
+include(CPack)
