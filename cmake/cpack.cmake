@@ -1,0 +1,6 @@
+set(CPACK_PACKAGE_NAME "nil-gate-dev")
+set(CPACK_PACKAGE_CONTACT "njaldea@gmail.com")
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Neil Aldea <njaldea@gmail.com>")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "nil-xalt-dev (>= 1.3.1)")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Tiny, header‑only, change‑driven DAG library (C++20) with C-API")
+include(CPack)

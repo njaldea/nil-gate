@@ -55,26 +55,22 @@ int main(void)
     *value = 11;
     struct nil_gate_mport port2 = nil_gate_core_port(core, NIL_GATE_PORT_INFO(int), value);
 
-    struct nil_gate_output_ports node_outputs_1 = NIL_GATE_NODE_OUTPUT(1);
-    nil_gate_add_node(
+    struct nil_gate_rports node_outputs_1 = NIL_GATE_NODE_OUTPUTS(1);
+    nil_gate_core_node(
         core,
-        NIL_GATE_NODE_INFO(
-            &bar,
-            NIL_GATE_NODE_INPUT(port1, port2),
-            NIL_GATE_NODE_NO_OUTPUT_PORT(),
-            NIL_GATE_NODE_OUTPUT_PORT(int)
-        ),
+        bar,
+        NIL_GATE_RPORTS(port1, port2),
+        NIL_GATE_NO_PORT_INFOS(),
+        NIL_GATE_PORT_INFOS(int),
         &node_outputs_1
     );
 
-    nil_gate_add_node(
+    nil_gate_core_node(
         core,
-        NIL_GATE_NODE_INFO(
-            &bar,
-            NIL_GATE_NODE_INPUT(node_outputs_1.ports[0], node_outputs_1.ports[0]),
-            NIL_GATE_NODE_NO_OUTPUT_PORT(),
-            NIL_GATE_NODE_NO_OUTPUT_PORT()
-        ),
+        bar,
+        NIL_GATE_RPORTS(node_outputs_1.ports[0], node_outputs_1.ports[0]),
+        NIL_GATE_NO_PORT_INFOS(),
+        NIL_GATE_NO_PORT_INFOS(),
         NULL
     );
     nil_gate_core_commit(core);
@@ -86,10 +82,7 @@ int main(void)
     }
     {
         struct nil_gate_bports batch_ports = NIL_GATE_BATCH(2);
-        nil_gate_core_batch(core, (struct nil_gate_mports){
-            .size = 2,
-            .ports = (struct nil_gate_mport[]){port1, port2}
-        }, &batch_ports);
+        nil_gate_core_batch(core, NIL_GATE_MPORTS(port1, port2), &batch_ports);
 
         int* new_value = malloc(sizeof(int));
         *new_value = 130;
