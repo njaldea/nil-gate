@@ -5,22 +5,22 @@ if(NOT ENABLE_SANDBOX)
     return()
 endif()
 
-find_package(Boost REQUIRED)
+find_package(Boost REQUIRED COMPONENTS asio)
 
 add_executable(${PROJECT_NAME}_basic basic.cpp)
 target_link_libraries(${PROJECT_NAME}_basic PRIVATE gate)
 
 add_executable(${PROJECT_NAME}_opt opt.cpp)
 target_link_libraries(${PROJECT_NAME}_opt PRIVATE gate)
-target_link_libraries(${PROJECT_NAME}_opt PRIVATE Boost::boost)
+target_link_libraries(${PROJECT_NAME}_opt PRIVATE Boost::asio)
 
 add_executable(${PROJECT_NAME}_runner runner.cpp)
 target_link_libraries(${PROJECT_NAME}_runner PRIVATE gate)
-target_link_libraries(${PROJECT_NAME}_runner PRIVATE Boost::boost)
+target_link_libraries(${PROJECT_NAME}_runner PRIVATE Boost::asio)
 
 add_executable(${PROJECT_NAME}_uniform uniform.cpp)
 target_link_libraries(${PROJECT_NAME}_uniform PRIVATE gate)
-target_link_libraries(${PROJECT_NAME}_uniform PRIVATE Boost::boost)
+target_link_libraries(${PROJECT_NAME}_uniform PRIVATE Boost::asio)
 
 if(NOT ENABLE_C_API)
     return()
