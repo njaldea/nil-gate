@@ -37,16 +37,9 @@ target_link_libraries(
     ${PROJECT_NAME} INTERFACE nil::xalt
 )
 
-target_include_directories(
-    ${PROJECT_NAME}
-    INTERFACE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/publish>
-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-)
-
 add_test_subdirectory()
 
-nil_install_headers()
+nil_install_headers(${PROJECT_NAME} INTERFACE)
 nil_install_targets(${PROJECT_NAME})
 
 set(ENABLE_C_API OFF CACHE BOOL "[0 | OFF - 1 | ON]: build c api?")
