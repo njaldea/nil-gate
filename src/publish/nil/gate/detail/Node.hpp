@@ -2,6 +2,7 @@
 
 #include "../Diffs.hpp"
 #include "../INode.hpp"
+#include "nil/gate/ports/ReadOnly.hpp"
 #include "traits/node.hpp"
 
 #include <nil/xalt/checks.hpp>

@@ -46,7 +46,7 @@ int main()
     const auto [c1] = core.node(C("c"), {b1, a2});
     core.node(D("d"), {c1, a2});
 
-    auto outs = core.uniform_node<int>({
+    auto outs = core.unode<int>({
         .inputs = {c1},
         .req_output_size = 1,
         .opt_output_size = 1,

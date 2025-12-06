@@ -25,6 +25,6 @@ namespace nil::gate
          *                      - the changes are mainly from Port::set_value.
          * @param nodes - these nodes are alive as long as the Core object is alive.
          */
-        virtual void run(std::function<void()> apply_changes, std::span<INode* const> nodes) = 0;
+        virtual void run(std::function<std::span<INode* const>()> apply_changes) = 0;
     };
 }

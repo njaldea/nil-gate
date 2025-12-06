@@ -227,7 +227,7 @@ extern "C"
             }();
         };
 
-        auto node_result = core->handle->uniform_node<ng::c::PortType>(
+        auto node_result = core->handle->unode<ng::c::PortType>(
             {.inputs = std::move(ng_inputs),
              .req_output_size = req_outputs.size,
              .opt_output_size = opt_outputs.size,

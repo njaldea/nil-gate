@@ -116,7 +116,7 @@ namespace nil::gate
         }
 
         template <typename T>
-        auto uniform_node(UNode<T>::Info info)
+        auto unode(UNode<T>::Info info)
         {
             auto n = std::make_unique<UNode<T>>(this, diffs.get(), std::move(info));
             return static_cast<UNode<T>*>(owned_nodes.emplace_back(n.release()))->output_ports();
@@ -199,14 +199,14 @@ namespace nil::gate
         void commit() const
         {
             runner->run(
-                [d = std::shared_ptr(diffs->flush())]()
+                [this, d = std::shared_ptr(diffs->flush())]() -> std::span<INode* const>
                 {
                     if (d)
                     {
                         d->call();
                     }
-                },
-                owned_nodes
+                    return this->owned_nodes;
+                }
             );
         }
 
