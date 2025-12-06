@@ -1,6 +1,5 @@
 #pragma once
 
-#include "../Diffs.hpp"
 #include "../INode.hpp"
 #include "../ports/Mutable.hpp"
 #include "../traits/compatibility.hpp"
@@ -23,27 +22,38 @@ namespace nil::gate::detail
     class Port final: public gate::ports::Mutable<T>
     {
     public:
-        Port()
+        explicit Port()
             : state(EState::Pending)
             , data(std::nullopt)
-            , diffs(nullptr)
+            , parent(nullptr)
         {
         }
 
         explicit Port(T init_data)
             : state(EState::Stale)
             , data(std::make_optional<T>(std::move(init_data)))
-            , diffs(nullptr)
+            , parent(nullptr)
         {
         }
 
-        ~Port() noexcept override = default;
+        ~Port() noexcept override
+        {
+            for (auto* node : node_out)
+            {
+                node->detach_in(this);
+            }
+        }
 
         Port(Port&&) noexcept = delete;
         Port& operator=(Port&&) noexcept = delete;
 
         Port(const Port&) = delete;
         Port& operator=(const Port&) = delete;
+
+        int score() const noexcept override
+        {
+            return parent != nullptr ? parent->score() : 0;
+        }
 
         const T& value() const noexcept override
         {
@@ -57,32 +67,22 @@ namespace nil::gate::detail
 
         void set_value(T new_data) override
         {
-            diffs->push(make_callable(
-                [this, new_data = std::move(new_data)]() mutable
-                {
-                    if (!is_equal(new_data))
-                    {
-                        pend();
-                        set(std::move(new_data));
-                        done();
-                    }
-                }
-            ));
+            if (!is_equal(new_data))
+            {
+                pend();
+                set(std::move(new_data));
+                done();
+            }
         }
 
         void unset_value() override
         {
-            diffs->push(make_callable(
-                [this]() mutable
-                {
-                    if (has_value())
-                    {
-                        pend();
-                        unset();
-                        done();
-                    }
-                }
-            ));
+            if (has_value())
+            {
+                pend();
+                unset();
+                done();
+            }
         }
 
         bool is_equal(const T& value) const
@@ -94,14 +94,7 @@ namespace nil::gate::detail
         {
             if (!is_equal(new_data))
             {
-                if (data.has_value())
-                {
-                    *data = std::move(new_data);
-                }
-                else
-                {
-                    data.emplace(std::move(new_data));
-                }
+                data = std::move(new_data);
 
                 for (auto& a : adapters)
                 {
@@ -151,14 +144,24 @@ namespace nil::gate::detail
             state = EState::Stale;
         }
 
-        void attach(INode* node)
+        void attach_in(INode* node)
+        {
+            parent = node;
+        }
+
+        void attach_out(INode* node)
         {
             node_out.push_back(node);
         }
 
-        void attach(Diffs* new_diffs)
+        void detach_in(INode* node)
         {
-            diffs = new_diffs;
+            std::erase_if(node_out, [node](auto* n) { return n == node; });
+        }
+
+        void detach_out(INode* node)
+        {
+            std::erase_if(node_out, [node](auto* n) { return n == node; });
         }
 
         bool is_ready() const
@@ -270,7 +273,7 @@ namespace nil::gate::detail
 
         EState state;
         std::optional<T> data;
-        nil::gate::Diffs* diffs;
+        INode* parent;
         std::vector<INode*> node_out;
 
         struct IAdapter
@@ -287,14 +290,24 @@ namespace nil::gate::detail
             IAdapter& operator=(const IAdapter&) = delete;
             IAdapter& operator=(IAdapter&&) = delete;
 
-            void attach(INode* node)
+            void attach_out(INode* node)
             {
-                port->attach(node);
+                port->attach_out(node);
+            }
+
+            void detach_out(INode* node)
+            {
+                port->detach_out(node);
             }
 
             bool is_ready() const
             {
                 return port->is_ready();
+            }
+
+            int score() const
+            {
+                return port->score();
             }
 
             virtual void set(const T&) = 0;

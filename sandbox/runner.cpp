@@ -11,48 +11,56 @@
 
 int main()
 {
-    nil::gate::Core core;
+    // nil::gate::runners::NonBlocking non_blocking_runner;
+    // nil::gate::runners::Parallel parallel_runner(10);
+    // nil::gate::runners::boost_asio::Serial basio_serial_runner;
+    nil::gate::runners::boost_asio::Parallel baso_parallel_runner(10);
+    nil::gate::Core core(&baso_parallel_runner);
 
-    auto* e1_i = core.port(0);
-
-    auto [e2_i] = core.node(
-        [](int v)
+    core.apply(
+        [](nil::gate::Graph& graph)
         {
-            std::printf("Main: %d\n", v);
-            return v + 10;
-        },
-        {e1_i}
+            auto* e1_i = graph.port(0);
+
+            auto* node1 = graph.node(
+                [](int v)
+                {
+                    std::printf("Main: %d\n", v);
+                    return v + 10;
+                },
+                {e1_i}
+            );
+            auto [e2_i] = node1->outputs();
+
+            graph.node(
+                [](int b1, int b2) { std::printf("First: %d : %d\n", b1, b2); },
+                {e1_i, e2_i}
+            );
+
+            auto* node2 = graph.node(
+                [](nil::gate::Core& c, nil::gate::opt_outputs<int> a, int b1, int b2)
+                {
+                    std::printf("Second: %d : %d\n", b1, b2);
+                    if (b1 % 2 == 0)
+                    {
+                        c.post([aa = get<0>(a)]() { aa->set_value(aa->value() + 20); });
+                    }
+                },
+                {e1_i, e2_i}
+            );
+            const auto [r] = node2->outputs();
+
+            graph.node([](int i) { std::printf("printer: %d\n", i); }, {r});
+        }
     );
-
-    core.node([](int b1, int b2) { std::printf("First: %d : %d\n", b1, b2); }, {e1_i, e2_i});
-
-    const auto [r] = core.node(
-        [](const nil::gate::Core& c, nil::gate::opt_outputs<int> a, int b1, int b2)
-        {
-            std::printf("Second: %d : %d\n", b1, b2);
-            if (b1 % 2 == 0)
-            {
-                auto [aa] = c.batch(a);
-                aa->set_value(aa->value() + 20);
-            }
-        },
-        {e1_i, e2_i}
-    );
-
-    core.node([](int i) { std::printf("printer: %d\n", i); }, {r});
-
-    core.set_runner<nil::gate::runners::NonBlocking>();
-    core.set_runner<nil::gate::runners::Parallel>(10);
-    core.set_runner<nil::gate::runners::boost_asio::Serial>();
-    core.set_runner<nil::gate::runners::boost_asio::Parallel>(10);
 
     while (true)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
         {
-            auto [b] = core.batch(e1_i);
+            // auto [b] = core.batch(e1_i);
             // getting value here might not be thread safe.. so be ware.
-            b->set_value(b->value() + 1);
+            // b->set_value(b->value() + 1);
         }
         core.commit();
     }

@@ -5,9 +5,8 @@ find_package(nil-xalt CONFIG REQUIRED)
 set(
     HEADERS
         publish/nil/gate.hpp
-        publish/nil/gate/Batch.hpp
         publish/nil/gate/Core.hpp
-        publish/nil/gate/Diffs.hpp
+        publish/nil/gate/Graph.hpp
         publish/nil/gate/INode.hpp
         publish/nil/gate/IPort.hpp
         publish/nil/gate/ICallable.hpp
@@ -25,7 +24,6 @@ set(
         publish/nil/gate/detail/Node.hpp
         publish/nil/gate/detail/traits/node.hpp
         publish/nil/gate/detail/validation.hpp
-        publish/nil/gate/ports/Batch.hpp
         publish/nil/gate/ports/Mutable.hpp
         publish/nil/gate/ports/ReadOnly.hpp
         publish/nil/gate/nodes/Scoped.hpp

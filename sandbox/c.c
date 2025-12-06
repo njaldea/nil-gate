@@ -31,14 +31,14 @@ void bar(struct nil_gate_node_args* props)
 
     if (props->opt_outputs.size == 1)
     {
-        struct nil_gate_bports batch_ports = NIL_GATE_BATCH(1);
-        nil_gate_core_batch(props->core, props->opt_outputs, &batch_ports);
+        // struct nil_gate_bports batch_ports = NIL_GATE_BATCH(1);
+        // nil_gate_core_batch(props->core, props->opt_outputs, &batch_ports);
 
-        int* value = malloc(sizeof(int));
-        *value = 1101;
-        nil_gate_port_set_value(batch_ports.ports[0], value);
-        nil_gate_core_batch_release(&batch_ports);
-        nil_gate_core_commit(props->core);
+        // int* value = malloc(sizeof(int));
+        // *value = 1101;
+        // nil_gate_port_set_value(batch_ports.ports[0], value);
+        // nil_gate_core_batch_release(&batch_ports);
+        // nil_gate_core_commit(props->core);
     }
 }
 
@@ -81,15 +81,15 @@ int main(void)
         nil_gate_core_commit(core);
     }
     {
-        struct nil_gate_bports batch_ports = NIL_GATE_BATCH(2);
-        nil_gate_core_batch(core, NIL_GATE_MPORTS(port1, port2), &batch_ports);
+        // struct nil_gate_bports batch_ports = NIL_GATE_BATCH(2);
+        // nil_gate_core_batch(core, NIL_GATE_MPORTS(port1, port2), &batch_ports);
 
-        int* new_value = malloc(sizeof(int));
-        *new_value = 130;
-        nil_gate_port_set_value(batch_ports.ports[0], new_value);
+        // int* new_value = malloc(sizeof(int));
+        // *new_value = 130;1
+        // nil_gate_port_set_value(batch_ports.ports[0], new_value);
 
-        nil_gate_core_batch_release(&batch_ports);
-        nil_gate_core_commit(core);
+        // nil_gate_core_batch_release(&batch_ports);
+        // nil_gate_core_commit(core);
     }
     {
         nil_gate_port_unset_value(port1);

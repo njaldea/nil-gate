@@ -2,6 +2,8 @@
 
 #include "../detail/Port.hpp"
 #include "../errors.hpp"
+#include "../ports/Port.hpp"
+#include "../ports/ReadOnly.hpp"
 #include "../traits/compatibility.hpp"
 
 namespace nil::gate
@@ -53,9 +55,17 @@ namespace nil::gate::ports
         // NOLINTNEXTLINE(hicpp-explicit-conversions)
         Compatible(ports::ReadOnly<TO>* port)
             : context(port)
-            , ptr_attach(&impl_attach<detail::Port<TO>>)
+            , ptr_attach_out(&impl_attach_out<detail::Port<TO>>)
+            , ptr_detach_out(&impl_detach_out<detail::Port<TO>>)
             , ptr_is_ready(&impl_is_ready<detail::Port<TO>>)
+            , ptr_score(&impl_score<detail::Port<TO>>)
             , ptr_value(&impl_value<detail::Port<TO>>)
+        {
+        }
+
+        // NOLINTNEXTLINE(hicpp-explicit-conversions)
+        Compatible(Port<TO>* port)
+            : Compatible(port->to_compat())
         {
         }
 
@@ -67,37 +77,109 @@ namespace nil::gate::ports
         Compatible(const Compatible&) = default;
         Compatible& operator=(const Compatible&) = default;
 
+        template <typename T>
+        Compatible& operator=(ports::ReadOnly<T>* port)
+        {
+            auto* p = parent;
+            *this = Compatible<TO>(port);
+            static_cast<detail::Port<T>*>(port)->attach_out(p);
+            return *this;
+        }
+
+        template <typename T>
+        Compatible& operator=(Port<T>* port)
+        {
+            *this = port->as_readonly();
+            return *this;
+        }
+
         const TO& value() const
         {
+            // should not be possible based on how it is called
             return ptr_value(context);
         }
 
-        void attach(INode* node)
+        void attach_out(INode* node)
         {
-            ptr_attach(context, node);
+            parent = node;
+            if (nullptr == context)
+            {
+                return;
+            }
+            ptr_attach_out(context, node);
+        }
+
+        void detach_out(INode* node)
+        {
+            if (nullptr == context)
+            {
+                return;
+            }
+            ptr_detach_out(context, node);
+        }
+
+        // called by parent node to check if a port linked to this compatible port
+        // if it does, it removes itself to it. no need to detach out, this will be called
+        // by node, which is triggered by the input port.
+        bool detach(IPort* port)
+        {
+            if (port == context)
+            {
+                context = nullptr;
+                return true;
+            }
+            return false;
+        }
+
+        int score() const noexcept
+        {
+            if (nullptr == context)
+            {
+                return 0;
+            }
+            return ptr_score(context);
         }
 
         bool is_ready() const
         {
+            if (nullptr == context)
+            {
+                return false;
+            }
             return ptr_is_ready(context);
         }
 
     private:
+        INode* parent = nullptr;
         void* context = nullptr;
-        void (*ptr_attach)(void*, INode*) = nullptr;
+        void (*ptr_attach_out)(void*, INode*) = nullptr;
+        void (*ptr_detach_out)(void*, INode*) = nullptr;
         bool (*ptr_is_ready)(const void*) = nullptr;
+        int (*ptr_score)(const void*) = nullptr;
         const TO& (*ptr_value)(const void*) = nullptr;
 
         template <typename T>
-        static void impl_attach(void* port, INode* node)
+        static void impl_attach_out(void* port, INode* node)
         {
-            static_cast<T*>(port)->attach(node);
+            static_cast<T*>(port)->attach_out(node);
+        }
+
+        template <typename T>
+        static void impl_detach_out(void* port, INode* node)
+        {
+            static_cast<T*>(port)->detach_out(node);
         }
 
         template <typename T>
         static bool impl_is_ready(const void* port)
         {
             return static_cast<const T*>(port)->is_ready();
+        }
+
+        template <typename T>
+        static int impl_score(const void* port)
+        {
+            return static_cast<const T*>(port)->score();
         }
 
         template <typename T>
@@ -110,8 +192,10 @@ namespace nil::gate::ports
             requires(!std::is_base_of_v<IPort, Adapter>)
         explicit Compatible(Adapter* adapter)
             : context(adapter)
-            , ptr_attach(&impl_attach<Adapter>)
+            , ptr_attach_out(&impl_attach_out<Adapter>)
+            , ptr_detach_out(&impl_detach_out<Adapter>)
             , ptr_is_ready(&impl_is_ready<Adapter>)
+            , ptr_score(&impl_score<Adapter>)
             , ptr_value(&impl_value<Adapter>)
         {
         }

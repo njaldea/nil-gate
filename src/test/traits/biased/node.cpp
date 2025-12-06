@@ -222,6 +222,7 @@ TEST(gate, traits_opt_output)
 
 TEST(gate, traits_opt_output_with_core)
 {
+    using namespace nil::gate;
     { // ok cases
         using opt_output_t = nil::gate::opt_outputs<
             int,
@@ -233,6 +234,7 @@ TEST(gate, traits_opt_output_with_core)
 
         ASSERT_EQ(type::opt_outputs::size, 4);
         ASSERT_EQ(type::outputs::size, 4);
+        ASSERT_TRUE(SUT<TC<void(nil::gate::Core&, opt_outputs<int>)>>::is_valid);
 
         using expected_t = nil::gate::opt_outputs<
             int,
@@ -246,8 +248,6 @@ TEST(gate, traits_opt_output_with_core)
         ASSERT_TRUE(type::has_core);
     }
     { // invalid cases
-        using namespace nil::gate;
-        ASSERT_FALSE(SUT<TC<void(nil::gate::Core&, opt_outputs<int>)>>::is_valid);
         ASSERT_FALSE(SUT<TC<void(nil::gate::Core, opt_outputs<int>)>>::is_valid);
     }
 }
@@ -409,7 +409,7 @@ TEST(gate, traits_output)
                         std::optional<const char>>>)
             );
 
-            ASSERT_FALSE(type::is_valid);
+            ASSERT_TRUE(type::is_valid);
             ASSERT_TRUE(type::has_opt);
             ASSERT_TRUE(type::has_core);
         }

@@ -1,4 +1,5 @@
 #include <nil/gate.hpp>
+#include <nil/gate/runners/Immediate.hpp>
 
 #include <nil/gate/bias/nil.hpp>
 
@@ -33,45 +34,51 @@ struct T<R(A...)>
 
 int main()
 {
-    nil::gate::Core core;
+    nil::gate::runners::Immediate runner;
+    nil::gate::Core core(&runner);
 
     using B = T<int(int, int)>;
     using C = T<int(int, int)>;
     using D = T<int(int, int)>;
 
-    auto* a1 = core.port(0);
-    auto* a2 = core.port(0);
+    nil::gate::Port<int>* a1 = nullptr;
+    nil::gate::Port<int>* a2 = nullptr;
 
-    const auto [b1] = core.node(B("b"), {a1, a2});
-    const auto [c1] = core.node(C("c"), {b1, a2});
-    core.node(D("d"), {c1, a2});
-
-    auto outs = core.unode<int>({
-        .inputs = {c1},
-        .req_output_size = 1,
-        .opt_output_size = 1,
-        .fn = [](const nil::gate::UNode<int>::Arg& v) -> std::vector<int>
+    core.apply(
+        [&a1, &a2](nil::gate::Graph& graph)
         {
+            a1 = graph.port(0);
+            a2 = graph.port(0);
+
+            const auto [b1] = graph.node(B("b"), {a1, a2})->outputs();
+            const auto [c1] = graph.node(C("c"), {b1, a2})->outputs();
+            graph.node(D("d"), {c1, a2});
+
+            auto outs = graph.unode<int>({
+                .inputs = {c1},
+                .req_output_size = 1,
+                .opt_output_size = 1,
+                .fn = [](const nil::gate::UNode<int>::Arg& v) -> std::vector<int>
+                {
+                    std::cout << __FILE__ << ':' << __LINE__ << std::endl;
+                    std::cout << v.inputs.size() << ','      //
+                              << v.opt_outputs.size() << ',' //
+                              << v.req_outputs << std::endl;
+                    return {100}; //
+                } //
+            });
             std::cout << __FILE__ << ':' << __LINE__ << std::endl;
-            std::cout << v.inputs.size() << ','      //
-                      << v.opt_outputs.size() << ',' //
-                      << v.req_outputs << std::endl;
-            return {100}; //
-        } //
-    });
-    std::cout << __FILE__ << ':' << __LINE__ << std::endl;
-    std::cout << outs.size() << std::endl;
+            std::cout << outs.size() << std::endl;
+        }
+    );
 
-    std::cout << __FILE__ << ':' << __LINE__ << ':' << (const char*)(__FUNCTION__) << std::endl;
-    core.commit();
+    core.apply([=]() { a1->set_value(2); });
 
-    a1->set_value(2);
-
-    std::cout << __FILE__ << ':' << __LINE__ << ':' << (const char*)(__FUNCTION__) << std::endl;
-    core.commit();
-
-    a1->set_value(4);
-
-    std::cout << __FILE__ << ':' << __LINE__ << ':' << (const char*)(__FUNCTION__) << std::endl;
-    core.commit();
+    core.apply(
+        [&a1](nil::gate::Graph& graph)
+        {
+            graph.remove(a1);
+            a1 = nullptr;
+        }
+    );
 }

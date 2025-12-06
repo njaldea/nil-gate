@@ -408,7 +408,7 @@ TEST(gate, traits_output)
                         std::optional<const char>>>)
             );
 
-            ASSERT_FALSE(type::is_valid);
+            ASSERT_TRUE(type::is_valid);
             ASSERT_TRUE(type::has_opt);
             ASSERT_TRUE(type::has_core);
         }

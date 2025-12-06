@@ -23,13 +23,15 @@ namespace nil::gate::ports
         Mutable& operator=(const Mutable&) = delete;
 
         /**
-         * @brief Set the value object. Effect is deferred. To be applied on next core.commit()
+         * @brief Set the value object.
          */
         virtual void set_value(T new_data) = 0;
 
         /**
-         * @brief Unset the value. Effect is deferred. To be applied on next core.commit()
+         * @brief Unset the value.
          */
         virtual void unset_value() = 0;
+
+        virtual int score() const noexcept = 0;
     };
 }

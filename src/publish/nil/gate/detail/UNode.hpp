@@ -1,6 +1,5 @@
 #pragma once
 
-#include "../Diffs.hpp"
 #include "../INode.hpp"
 #include "nil/gate/ports/Compatible.hpp"
 #include "nil/gate/ports/Mutable.hpp"
@@ -26,7 +25,7 @@ namespace nil::gate::detail
     public:
         struct Arg
         {
-            const Core* core;
+            Core* core;
             std::vector<std::reference_wrapper<const T>> inputs;
             std::vector<ports::Mutable<T>*> opt_outputs;
             std::uint64_t req_outputs;
@@ -40,35 +39,43 @@ namespace nil::gate::detail
             std::function<std::vector<T>(const Arg&)> fn;
         };
 
-        UNode(Core* init_core, Diffs* init_diffs, Info info)
+        UNode(Core* init_core, Info info)
             : core(init_core)
             , fn(info.fn)
-            , inputs(std::move(info.inputs))
-            , req_outputs(info.req_output_size)
-            , opt_outputs(info.opt_output_size)
+            , input_ports(std::move(info.inputs))
+            , req_output_ports(info.req_output_size)
+            , opt_output_ports(info.opt_output_size)
         {
-            for (auto& i : inputs)
+            for (auto& i : input_ports)
             {
-                i.attach(this);
+                i.attach_out(this);
             }
 
-            outputs.reserve(info.req_output_size + info.req_output_size);
-            for (auto& o : req_outputs)
+            output_ports.reserve(info.req_output_size + info.req_output_size);
+            for (auto& o : req_output_ports)
             {
-                o.attach(init_diffs);
-                outputs.push_back(&o);
+                o.attach_in(this);
+                output_ports.push_back(&o);
             }
 
-            mopt_outputs.reserve(info.opt_output_size);
-            for (auto& o : opt_outputs)
+            mopt_output_ports.reserve(info.opt_output_size);
+            for (auto& o : opt_output_ports)
             {
-                o.attach(init_diffs);
-                outputs.push_back(&o);
-                mopt_outputs.push_back(&o);
+                o.attach_in(this);
+                output_ports.push_back(&o);
+                mopt_output_ports.push_back(&o);
             }
+
+            score();
         }
 
-        ~UNode() noexcept override = default;
+        ~UNode() noexcept override
+        {
+            for (auto& i : input_ports)
+            {
+                i.detach_out(this);
+            }
+        }
 
         UNode(UNode&&) noexcept = delete;
         UNode& operator=(UNode&&) noexcept = delete;
@@ -76,11 +83,32 @@ namespace nil::gate::detail
         UNode(const UNode&) = delete;
         UNode& operator=(const UNode&) = delete;
 
+        int score() const noexcept override
+        {
+            if (!current_score.has_value())
+            {
+                if (input_ports.empty())
+                {
+                    current_score = 0;
+                }
+                else
+                {
+                    int max_score = 0;
+                    for (const auto& port : input_ports)
+                    {
+                        max_score = std::max(max_score, port.score());
+                    }
+                    current_score = max_score + 1;
+                }
+            }
+            return current_score.value();
+        }
+
         void exec() override
         {
             std::vector<std::reference_wrapper<const T>> p_inputs;
-            p_inputs.reserve(inputs.size());
-            for (auto& i : inputs)
+            p_inputs.reserve(input_ports.size());
+            for (auto& i : input_ports)
             {
                 p_inputs.push_back(std::cref(i.value()));
             }
@@ -88,16 +116,16 @@ namespace nil::gate::detail
             auto result = fn(
                 {.core = core,
                  .inputs = std::move(p_inputs),
-                 .opt_outputs = mopt_outputs,
-                 .req_outputs = req_outputs.size()}
+                 .opt_outputs = mopt_output_ports,
+                 .req_outputs = req_output_ports.size()}
             );
-            if (result.size() != req_outputs.size())
+            if (result.size() != req_output_ports.size())
             {
                 throw std::runtime_error("returned data by node does not match");
             }
-            for (auto i = 0U; i < req_outputs.size(); ++i)
+            for (auto i = 0U; i < req_output_ports.size(); ++i)
             {
-                req_outputs[i].set(std::move(result[i]));
+                req_output_ports[i].set(std::move(result[i]));
             }
         }
 
@@ -106,7 +134,7 @@ namespace nil::gate::detail
             if (node_state != ENodeState::Pending)
             {
                 node_state = ENodeState::Pending;
-                for (auto& outs : req_outputs)
+                for (auto& outs : req_output_ports)
                 {
                     outs.pend();
                 }
@@ -119,7 +147,7 @@ namespace nil::gate::detail
             {
                 node_state = ENodeState::Done;
                 input_state = EInputState::Stale;
-                for (auto& outs : req_outputs)
+                for (auto& outs : req_output_ports)
                 {
                     outs.done();
                 }
@@ -138,9 +166,9 @@ namespace nil::gate::detail
             }
         }
 
-        auto output_ports()
+        auto outputs()
         {
-            return outputs;
+            return output_ports;
         }
 
         bool is_input_changed() const override
@@ -155,7 +183,7 @@ namespace nil::gate::detail
 
         bool is_ready() const override
         {
-            for (const auto& i : inputs)
+            for (const auto& i : input_ports)
             {
                 if (!i.is_ready())
                 {
@@ -170,18 +198,32 @@ namespace nil::gate::detail
             input_state = EInputState::Changed;
         }
 
+        void detach_in(IPort* port) override
+        {
+            bool result = false;
+            for (auto& i : input_ports)
+            {
+                result |= i.detach(port);
+            }
+            if (result)
+            {
+                current_score = {};
+            }
+        }
+
     private:
         ENodeState node_state = ENodeState::Pending;
         EInputState input_state = EInputState::Changed;
 
-        const Core* core;
+        Core* core;
         std::function<std::vector<T>(const Arg&)> fn;
 
-        std::vector<ports::Compatible<T>> inputs;
-        std::vector<detail::Port<traits::portify_t<T>>> req_outputs;
-        std::vector<detail::Port<traits::portify_t<T>>> opt_outputs;
-        std::vector<ports::Mutable<T>*> mopt_outputs;
-        std::vector<ports::ReadOnly<T>*> outputs;
+        std::vector<ports::Compatible<T>> input_ports;
+        std::vector<detail::Port<traits::portify_t<T>>> req_output_ports;
+        std::vector<detail::Port<traits::portify_t<T>>> opt_output_ports;
+        std::vector<ports::Mutable<T>*> mopt_output_ports;
+        std::vector<ports::ReadOnly<T>*> output_ports;
+        mutable std::optional<int> current_score;
     };
 }
 

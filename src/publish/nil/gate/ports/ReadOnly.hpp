@@ -24,18 +24,20 @@ namespace nil::gate::ports
 
         /**
          * @brief Get the value held by the port.
-         *  Ensure that this is called inside the
-         *  runner's thread or that the runner is
-         *  not running. Ensure to check `has_value`
-         *  before calling this method.
+         *  Ensure the following:
+         *   - check `has_value` before calling this method.
+         *   - called when the runner is not running, or
+         *   - called inside core.post, core.apply, or
+         *   - called inside a node
          */
         [[nodiscard]] virtual const T& value() const noexcept = 0;
 
         /**
          * @brief Check if port is initialized.
-         *  Ensure that this is called inside the
-         *  runner's thread or that the runner is
-         *  not running.
+         *  Ensure the following:
+         *   - called when the runner is not running, or
+         *   - called inside core.post, core.apply, or
+         *   - called inside a node
          */
         [[nodiscard]] virtual bool has_value() const noexcept = 0;
     };

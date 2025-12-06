@@ -6,25 +6,30 @@ Focus:
 
 | Goal             | Meaning                                                                                       |
 |------------------|-----------------------------------------------------------------------------------------------|
-| Minimal work     | The engine only runs nodes whose inputs have actually changed since the last commit.          |
-| Output kinds     | It separates required state (req) from optional event emissions (opt) for clarity and control.|
-| Predictable perf | It performs no hidden allocations along the hot path to keep performance predictable.         |
-| Easy adaptation  | You can customize behavior using small, opt‑in traits without paying for unused features.     |
-| Flexible run     | You can plug in immediate, soft, non‑blocking, Boost.Asio, or custom runners as needed.       |
+| Minimal work     | Runs only nodes whose inputs changed since the last commit.                                   |
+| Output kinds     | Clear separation of required state (req) and optional event emissions (opt).                  |
+| Predictable perf | No hidden allocations along the hot path to keep performance predictable.                     |
+| Easy adaptation  | Small, opt‑in traits to customize behavior without paying for unused features.                |
+| Flexible run     | Immediate, soft blocking, non‑blocking, Boost.Asio, or custom runners as needed.             |
 
 ---
 
-## Why?
-Problem (common):
-* Everything re-runs, even when inputs are unchanged.
-* Code relies on ad‑hoc dirty flags.
-* State and event patterns are mixed together, which causes confusion.
+## Table of Contents
+- Quick Start
+- Core & Graph
+- Ports
+- Required vs Optional Outputs
+- Linking
+- Scheduling & Dynamic Changes
+- Execution Flow
+- Runners
+- Uniform Helper API
+- Common Pitfalls
+- FAQ
+- Roadmap
+- Limitations
 
-Solution (here):
-* A graph plus a queued diff model describes changes explicitly.
-* Only the minimal set of nodes recomputes after each commit.
-* A clear split: required outputs represent state; optional outputs represent events.
-
+---
 
 ## Quick Start
 
@@ -35,56 +40,86 @@ using namespace nil::gate;
 struct Adder { int operator()(int a, int b) const { return a + b; } };
 
 int main() {
-    Core core;
-    auto* a = core.port(1);       // Mutable<int>*
-    auto* b = core.port(2);       // Mutable<int>*
-    auto [sum] = core.node(Adder{}, {a, b}); // ReadOnly<int>*
-    core.commit();                // first run; sum=3
-    a->set_value(10);
-    core.commit();                // sum=12 (only runs once)
-    a->unset_value();             // uninitialize the port to block dependent nodes
+    runners::Immediate runner;
+    Core core(&runner);
+
+    ports::Mutable<int>* a = nullptr;
+    ports::Mutable<int>* b = nullptr;
+    ports::ReadOnly<int>* sum = nullptr;
+
+    core.apply([&](Graph& g) {
+        a = g.port(1);
+        b = g.port(2);
+        auto* node = g.node(Adder{}, {a, b});
+        std::tie(sum) = node->outputs();
+    });
+
+    a->set_value(10);             // immediate write
+    core.commit();                // runs affected nodes; sum becomes 12
+    a->unset_value();             // immediate clear
+    core.commit();                // downstream nodes see absence
 }
 ```
 
-Key rule: Calling `set_value()` or `unset_value()` only queues a change, and calling `commit()` applies queued changes and schedules affected nodes.
+Key rule: Call `set_value`/`unset_value` only inside `core.post`/`core.apply`, or when the runner is guaranteed idle. Writes update the port immediately; `commit()` runs affected nodes to propagate changes.
 
 ---
 
-## Core Concepts
+## Core & Graph
+- Construct `Core` with an `IRunner*`.
+- Use `core.post` to stage changes; `core.apply` posts and immediately commits.
+- Graph operations (add/remove/link) happen inside the lambda via the `Graph&` parameter.
 
-### 1. Ports
+```cpp
+Core core(&runner);
+core.post([](Graph& g){ /* add/remove/link here */ });
+core.commit();
+```
+
+---
+
+## Ports
 Ports carry values between nodes.
 
 | Type                   | Meaning                           | Writable | Source                          |
 |------------------------|-----------------------------------|----------|---------------------------------|
-| `ports::Mutable<T>`    | External input or opt output      | yes      | `core.port()`, node opt outputs |
+| `ports::Mutable<T>`    | External input or opt output      | yes      | `graph.port()`, node opt outputs|
 | `ports::ReadOnly<T>`   | Required (returned) output        | no       | node return                     |
-| `ports::Batch<T>`      | Scoped proxy inside a batch       | yes      | `core.batch()`                  |
-| `ports::Compatible<T>` | Internal adapter                  | no       | internal                        |
 
-Readiness: A port becomes ready after its first committed value. A node runs only when all of its input ports are ready.
+Readiness: A port becomes ready after its first set. A node runs only when all inputs are ready at commit.
 
-Change test: The function `traits::compare<T>::match(l, r)` (default: `l == r`) determines equality; if it returns false, the value is considered changed.
+Equality and presence:
+- `traits::port::is_eq(current, next)` decides if a value changed (default: `current == next`).
+- `traits::port::has_value(value)` controls readiness for custom container-like types (default: true if engaged).
+- `traits::port::unset(opt)` customizes how to clear values stored in `std::optional<T>` ports (default: reset).
 
 Presence:
 
-| Call            | Meaning                                                                    |
-|-----------------|----------------------------------------------------------------------------|
-| `has_value()`   | Returns true if the port currently holds a committed value.                |
-| `value()`       | Returns the current value; call it only when `has_value()` is true.        |
-| `core.port<T>()`| Creates an uninitialized port that is not ready until a value is committed.|
-| `core.port(v)`  | Creates a port initialized with a value and ready immediately.             |
+| Call             | Meaning                                                                    |
+|------------------|----------------------------------------------------------------------------|
+| `has_value()`    | True if the port holds a (current) value.                                  |
+| `value()`        | Returns the current value; call only when `has_value()` is true.           |
+| `graph.port<T>()`| Creates an uninitialized port (not ready until a value is set).            |
+| `graph.port(v)`  | Creates a port initialized with a value (ready immediately).               |
 
-Mutation (queued):
+Mutation:
 
-| API            | Effect on the next `commit()`                                                       |
-|----------------|-------------------------------------------------------------------------------------|
-| `set_value(v)` | Queues a change that sets the value if it differs according to the compare trait.   |
-| `unset_value()`| Queues a change that removes the current value, making the port not ready afterward.|
+| API            | Effect                                                                  |
+|----------------|-------------------------------------------------------------------------|
+| `set_value(v)` | Immediately sets the value (if different by compare trait).             |
+| `unset_value()`| Immediately clears the current value (port becomes not ready).          |
 
-Optional outputs start empty and you decide when to emit or clear them. Required outputs are produced every run and are read‑only to outside code.
+Safety: Invoke these only within `core.post`/`core.apply`, or when the runner is idle. Mutating while the runner is executing is undefined.
 
-### 2. Required vs Optional Outputs
+Inside node callables:
+- Writing the node’s own required return and its own optional output ports is allowed.
+- Do not call `set_value`/`unset_value` on ports the node does not own. If a node needs to write to a foreign port, schedule that write via `Core::post(...)` (or use `Graph::link(...)`, which posts the write for you).
+
+Threading: Prefer scheduling writes from any thread via `core.post(...)`. If you directly call `set_value`/`unset_value`, do so only when the runner is idle. Always call `commit()` in the owning thread to run nodes and make outputs visible.
+
+---
+
+## Required vs Optional Outputs
 
 | Characteristic       | req (return)        | opt (parameter)                   |
 |----------------------|---------------------|-----------------------------------|
@@ -93,88 +128,71 @@ Optional outputs start empty and you decide when to emit or clear them. Required
 | Causes node re-run   | input change only   | never                             |
 | Best for             | core state          | events / pulses / sparse results  |
 
-req outputs:
-* They always produce a snapshot each time the node runs.
-* Downstream nodes only observe them when the snapshot changes.
-* They are read‑only to user code.
-
-opt outputs:
-* They appear only when you explicitly call `set_value()` on them.
-* They never cause the producing node to re-run by themselves.
-* They can be written from helper threads because changes are still queued.
-* They are useful for sparse, expensive, or conditional emissions.
-* They can be cleared with `unset_value()`, and consumers should check `has_value()`.
-
-Threading: You may pass an optional output port pointer to worker threads to queue changes; afterward, call `commit()` in the owning thread to apply them.
-
 Rule: Use a required output by default and switch to an optional output when emission is sparse or truly optional.
 
 ---
 
-### 3. Linking ports (`core.link`)
-
-You can link a read-only output to a mutable input using `core.link(from, to)`.
-
-Signature:
+## Linking
+Link a read-only output to a mutable input inside `core.apply` using `graph.link(from, to)`.
 
 | API                                        | Effect                                                           |
 |--------------------------------------------|------------------------------------------------------------------|
-| `core.link(ReadOnly<FROM>*, Mutable<TO>*)` | Creates a trivial node that forwards changes from `FROM` to `TO`.|
+| `graph.link(ReadOnly<FROM>*, Mutable<TO>*)` | Creates a trivial node that forwards changes from `FROM` to `TO`.|
 
 Notes:
-
-- It uses `traits::compatibility<TO, FROM>::convert` to adapt types when needed.
-- The link only forwards on change and after a `commit()` (like any other node).
-- If `TO` and `FROM` are not compatible, compilation fails with a clear static error.
-- This is useful for wiring subgraphs or mirroring state between ports.
-- You can use it to artificially create loops in the graph; the update will be visible in the next cycle (one-commit latency), which prevents immediate infinite feedback.
+- Uses `traits::compatibility<TO, FROM>::convert` to adapt types when needed.
+- Forwards on change and after a `commit()` (like any other node).
+- If types are not compatible, compilation fails with a clear static error.
+- You can create loops; updates are visible on the next cycle (one‑commit latency).
 
 Example:
 
 ```cpp
-auto* in = core.port(1);                            // Mutable<int>*
-auto [src] = core.node([](int v){return v;}, {in}); // ReadOnly<int>*
-auto* dst = core.port<int>();                       // Mutable<int>*
-core.link(src, dst);                                // forward src -> dst
-core.commit();                                      // apply initial value and forward link
-// dst now has the same value as src
-```
-
----
-
-## Batching
-You can group related changes so that downstream nodes observe a single combined diff set.
-
-```cpp
-{
-  auto [pa, pb] = core.batch(a, b); // pa/pb are ports::Batch<T>* (Mutable API)
-  pa->set_value(10);
-  pb->set_value(20.f);
-} // destruction queues both changes as one diff set
+core.apply([](Graph& graph){
+    auto* in = graph.port(1);
+    auto* node = graph.node([](int v){return v;}, {in});
+    auto [src] = node->outputs();
+    auto* dst = graph.port<int>();
+    graph.link(src, dst);
+});
 core.commit();
 ```
 
 ---
 
-## Execution Flow
-| Step | Action                                                                                |
-|------|---------------------------------------------------------------------------------------|
-| 1    | Queue diffs via `set_value()` or `unset_value()`.                                     |
-| 2    | Call `commit()` to apply all queued diffs atomically.                                 |
-| 3    | Inputs whose value or presence changed mark dependent nodes as pending.               |
-| 4    | The runner executes each pending and ready node exactly once.                         |
-| 5    | Required outputs update; unchanged values are suppressed.                             |
-| 6    | Optional outputs become visible (emitted) or absent (cleared) to downstream consumers.|
+## Scheduling & Dynamic Changes
+Use `core.post` to stage writes or structural changes; `core.apply` is a convenience wrapper.
+
+```cpp
+core.post([&](Graph& g){ /* create nodes/ports or schedule opt emissions */ });
+core.commit();
+```
+
+Dynamic changes:
+- Add: create ports and nodes via `Graph`.
+- Remove: `graph.remove(ptr)` for a node (`INode*`) or a port (`IPort*`). Pointers to removed objects become invalid immediately; clear your references.
+- Link: `graph.link(from, to)` forwards changes across ports.
+
+Notes:
+- Structural changes apply during `commit()` and are observed in the next cycle.
+- Runner executes against a sorted snapshot; additions/removals are atomically visible per commit.
 
 ---
 
-## Ownership
-`Core` owns all objects. Returned pointers are non‑owning and remain valid until you call `core.clear()` or the `Core` object is destroyed.
+## Execution Flow
+| Step | Action                                                                                         |
+|------|------------------------------------------------------------------------------------------------|
+| 1    | Write to ports (immediate) or stage changes via `core.post`/`core.apply`.                      |
+| 2    | Call `commit()` to run the runner over a sorted snapshot of the graph.                         |
+| 3    | Inputs whose value or presence changed mark dependent nodes as pending for this cycle.         |
+| 4    | The runner executes each pending and ready node exactly once.                                  |
+| 5    | Required outputs update; unchanged values are suppressed.                                      |
+| 6    | Optional outputs emitted inside `core.post` (from nodes) become visible to downstream readers. |
 
 ---
 
 ## Runners
-The runner decides how pending nodes are executed. The default is `runners::Immediate`.
+Construct `Core` with a runner pointer and change it via `set_runner(IRunner*)`.
 
 Available runners:
 
@@ -182,17 +200,16 @@ Available runners:
 |-------------------------------------|---------------------------------------|---------------------------------------------------|--------------|
 | `runners::Immediate`                | Sync, single-thread                   | Simple apps and tests; deterministic ordering     | None         |
 | `runners::SoftBlocking`             | Sync; allows node-side `commit()`     | Nodes may call `commit()` during execution        | None         |
-| `runners::NonBlocking`              | Async diff apply; sync node exec      | Keep UI/main thread responsive                    | None         |
+| `runners::NonBlocking`              | Async scheduling; sync node exec      | Keep UI/main thread responsive                    | None         |
 | `runners::Parallel`                 | Thread pool (N threads)               | CPU-bound workloads; parallelizable graphs        | None         |
 | `runners::boost_asio::Serial`       | Asio `io_context` (1 thread)          | Integrate with existing Asio event loop           | Boost.Asio   |
 | `runners::boost_asio::Parallel`     | Asio `io_context` pool (N threads)    | Asio-based parallelism                            | Boost.Asio   |
 
-Set a runner:
+Set or change runner:
 
 ```cpp
-core.set_runner<nil::gate::runners::Parallel>(std::thread::hardware_concurrency());
-// or
-core.set_runner<nil::gate::runners::NonBlocking>();
+nil::gate::runners::Parallel parallel(std::thread::hardware_concurrency());
+core.set_runner(&parallel);
 ```
 
 ---
@@ -202,40 +219,41 @@ Include `#include <nil/gate/uniform_api.hpp>` for thin wrappers that simplify ge
 
 | Helper                              | Purpose                                | Notes                                              |
 |-------------------------------------|----------------------------------------|----------------------------------------------------|
-| `add_node(core, f, inputs_tuple)`   | Register node with provided inputs     | Returns tuple of ports (req + opt) or empty tuple  |
-| `add_port<T>(core)`                 | Create uninitialized mutable port      | Not ready until first set                          |
-| `add_port(core, value)`             | Create initialized mutable port        | Ready immediately                                  |
-| `link(core, from_ro, to_mut)`       | Connect ReadOnly->Mutable              | Uses compatibility trait                           |
-| `batch(core, ...)`                  | Start batch (variadic)                 | Returns `Batch<T...>`                              |
-| `batch(core, tuple)`                | Start batch from tuple                 | Same semantics                                     |
-| `set_runner<R>(core, args...)`      | Replace runner                         | Forwards args to R                                 |
-| `clear(core)`                       | Clear graph                            | Invalidates existing pointers                      |
-
-These helper wrappers normalize return shapes at compile time with zero runtime cost.
+| `add_node(graph, f, inputs_tuple)`  | Register node with provided inputs     | Returns tuple of ports (req + opt) or empty tuple  |
+| `add_port<T>(graph)`                | Create uninitialized mutable port      | Not ready until first set                          |
+| `add_port(graph, value)`            | Create initialized mutable port        | Ready immediately                                  |
+| `link(graph, from_ro, to_mut)`      | Connect ReadOnly->Mutable              | Uses compatibility trait                           |
+| `set_runner(core, runner_ptr)`      | Replace runner                         | Accepts `IRunner*`                                 |
 
 ---
 
-## Traits & Customization
-Traits let you override specific behavioral rules:
+## Traits & Bias Headers
+You can customize how types are stored, validated, adapted, and compared.
 
-| Trait                                    | Purpose                                     | Default                             |
-|------------------------------------------|---------------------------------------------|-------------------------------------|
-| `traits::compare<T>::match(l,r)`         | Decide if values differ (true = changed)    | `l != r` (via `operator==`)         |
-| `traits::portify<T>::type`               | Normalize stored type (e.g. indirection)    | Identity                            |
-| `traits::compatibility<TO,FROM>::convert`| Adapt upstream value type                   | Copy / static_cast when possible    |
-| `traits::is_port_type_valid<T>::value`   | Gate allowed port element types             | True for decayed, non-pointer forms |
+- Storage normalization: `traits::portify<T>::type`
+    - Default: `T`.
+    - Override to change how `T` is stored in ports (e.g., const-qualify wrappers).
 
-Override only the traits you need to change; leave the rest at their defaults.
+- Type validation: `traits::is_port_type_valid<T>::value`
+    - Default: allows decayed, non-pointer types; disallows raw pointers.
+    - Use bias headers to tighten rules (see below).
 
----
+- Type adaptation: `traits::compatibility<TO, FROM>::convert(const FROM&) -> TO or const TO&`
+    - Used by `graph.link` and input adapters to connect different types.
+    - If `convert` returns by reference, values are forwarded.
+    - If it returns by value (copy), an internal adapter caches the converted value for correctness.
 
-## Errors
-Compile errors highlight: incorrect `Core` parameter placement, invalid port types, unsupported function signatures, or missing compatibility adapters.
+- Port behavior overrides: specialize `traits::Port<T>` with static functions
+    - `static bool has_value(const T&)` for presence checks.
+    - `static bool is_eq(const T&, const T&)` for change detection.
+    - `static void unset(std::optional<T>&)` to customize clearing.
 
----
+Bias headers (`#include <nil/gate/bias/nil.hpp>`) apply safe defaults:
+- `bias/portify.hpp`: converts wrappers to their const forms (e.g., `unique_ptr<T>` → `unique_ptr<const T>`).
+- `bias/is_port_type_valid.hpp`: disallows mutable wrappers and allows only const-qualified variants and `std::reference_wrapper<const T>`.
+- `bias/compatibility.hpp`: adds useful adapters, e.g., `T` ↔ `std::reference_wrapper<const T>` and pointer extraction from `shared_ptr<const T>`, `unique_ptr<const T>`, `optional<const T>`.
 
-## Bias Header (Optional)
-Including `#include <nil/gate/bias/nil.hpp>` enables a recommended set of adapters and disallows unsafe patterns.
+Tip: Include the bias header in applications to enforce safer APIs. Libraries can expose traits specializations without forcing a global bias.
 
 ---
 
@@ -243,21 +261,30 @@ Including `#include <nil/gate/bias/nil.hpp>` enables a recommended set of adapte
 ```cpp
 struct Mixer
 {
-    int operator()(nil::gate::opt_outputs<int> opts, int a, float b) const
+    int operator()(nil::gate::Core& core, nil::gate::opt_outputs<int> opts, int a, float b) const
     {
-        auto [pulse] = opts;           // opt Mutable<int>*
-        if (a > 10) pulse->set_value(a); // optional emission
+        // schedule optional emission for next commit to maintain cycle semantics
+        core.post([opts, a]() mutable {
+            if (a > 10) get<0>(opts)->set_value(a);
+            else get<0>(opts)->unset_value();
+        });
         return a + static_cast<int>(b);  // req output
     }
 };
 
-nil::gate::Core core;
-auto* ai = core.port(1);
-auto* bf = core.port(2.f);
-auto [
-    sum,        // ReadOnly<int>* (required)
-    pulse       // Mutable<int>* (optional)
-] = core.node(Mixer(), {ai, bf});
+nil::gate::runners::Immediate runner;
+nil::gate::Core core(&runner);
+nil::gate::ports::ReadOnly<int>* sum = nullptr;
+nil::gate::ports::Mutable<int>* pulse = nullptr;
+nil::gate::ports::Mutable<int>* ai = nullptr;
+nil::gate::ports::Mutable<float>* bf = nullptr;
+
+core.apply([&](nil::gate::Graph& g){
+    ai = g.port(1);
+    bf = g.port(2.f);
+    auto* n = g.node(Mixer(), {ai, bf});
+    std::tie(sum, pulse) = n->outputs();
+});
 
 core.commit();    // first run: sum=3, no emission
 ai->set_value(15);
@@ -269,13 +296,15 @@ core.commit();    // sum=17, opt emits 15
 ## Common Pitfalls
 | Pitfall                                   | Fix                                                                                     |
 |-------------------------------------------|-----------------------------------------------------------------------------------------|
-| Reading a value before the first commit   | Call `commit()` before reading any dependent output.                                   |
+| Reading a required output before commit   | Call `commit()` before reading any dependent output.                                   |
 | Calling `value()` when the port is empty  | Call `has_value()` first and read only if it returns true.                             |
-| Setting the same value repeatedly         | This is suppressed by design; no extra action is required.                             |
-| Forgetting to call `commit()`             | Schedule regular commits to apply queued changes.                                      |
-| Using a pointer after `core.clear()`      | Do not retain pointers across `core.clear()`; reacquire them instead.                  |
+| Setting the same value repeatedly         | Suppressed by design; no extra action required.                                        |
+| Forgetting to call `commit()`             | Schedule regular commits to run nodes and propagate changes.                           |
+| Using a pointer after removal             | Clear references immediately when you call `graph.remove(...)`.                        |
 | Expecting an optional output to re-run producer | Only input changes trigger node execution.                                     |
 | Ignoring `has_value()` on an optional output| Always guard optional output reads with `has_value()`.                               |
+| Mutating while runner is active            | Wrap changes in `core.post`/`core.apply` or ensure the runner is idle before writes. |
+| Node writing to a non-owned port           | Post the mutation via `Core::post(...)` (or use `graph.link(...)`); don’t write directly. |
 
 ---
 
@@ -285,9 +314,10 @@ core.commit();    // sum=17, opt emits 15
 | Are writes thread safe?          | You may queue writes on other threads and then call `commit()` in the owning thread; add sync if producers race.      |
 | Can a node read its own opt output? | No. Optional outputs are not inputs; use a separate port if feedback is required.                                 |
 | Force a re-run?                  | Add a ticking input port or define a compare trait that always reports change (use sparingly).                       |
-| Many opt emissions?              | Use `core.batch(...)` to group them and then call `commit()`.                                                         |
+| Many opt emissions?              | Use `core.post(...)` to stage them together and then call `commit()`.                                                 |
 | Unchanged req output?            | An unchanged required output is suppressed so downstream nodes do not see a diff.                                    |
-| Uninitialized vs initialized port?| `core.port<T>()` starts empty until its first committed set; `core.port(v)` is ready immediately.                    |
+| Uninitialized vs initialized port?| `graph.port<T>()` starts empty until its first set; `graph.port(v)` is ready immediately.                            |
+| Modify the graph at runtime?     | Yes, inside `core.post`/`core.apply`. Changes (add/remove/link) take effect on the next `commit()`; clear pointers after removal. |
 
 ---
 
@@ -305,9 +335,7 @@ The library trades some flexibility for simplicity and performance.
 
 | Limitation                            | Impact                                                                                 | Mitigation                                    |
 |---------------------------------------|----------------------------------------------------------------------------------------|-----------------------------------------------|
-| Static graph                          | Nodes and ports are defined up‑front; there is no mid‑run structural mutation.         | Rebuild the graph or stage multiple cores.    |
-| No node/port removal                  | Created nodes and ports persist until `core.clear()` destroys the graph.               | Call `core.clear()` and reconstruct.          |
-| Safe addition requires quiescence     | Adding nodes safely assumes the runner is idle to avoid partial observations.          | Pause scheduling, add, then resume.           |
+| Structural changes apply on commit    | Adds/removes and rewiring are visible on the next commit cycle.                        | Use `core.apply`/`core.post` and `commit()`.  |
 | Manual commit boundary                | Forgetting `commit()` prevents propagation.                                            | Tie `commit()` to a main loop tick or guard.  |
 | Opt outputs never re-run producers    | Emitting on an opt output does not trigger its producer to run.                        | Add a ticking input or tweak compare trait.   |
 | No built‑in dynamic load rebalancing  | Work distribution depends on the chosen runner.                                        | Choose or implement a runner for your load.   |

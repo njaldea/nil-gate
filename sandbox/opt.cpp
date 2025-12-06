@@ -1,3 +1,4 @@
+#include "nil/gate/ports/Mutable.hpp"
 #include <nil/gate.hpp>
 #include <nil/gate/bias/nil.hpp>
 #include <nil/gate/runners/NonBlocking.hpp>
@@ -5,7 +6,7 @@
 
 #include <iostream>
 
-float deferred(const nil::gate::Core& core, nil::gate::opt_outputs<> /* z */, bool a)
+float deferred(nil::gate::Core& core, nil::gate::opt_outputs<> /* z */, bool a)
 {
     std::cout << "deferred: " << a << std::endl;
     if (a)
@@ -31,28 +32,33 @@ void foo(float v)
     std::cout << "foo: " << v << std::endl;
 }
 
+constexpr auto printer_i = [](float v) { std::cout << "printer<int>: " << v << std::endl; };
+constexpr auto printer_f = [](float v) { std::cout << "printer<float>: " << v << std::endl; };
+
 int main()
 {
-    nil::gate::Core core;
-
-    const auto printer_i = [](float v) { std::cout << "printer<int>: " << v << std::endl; };
-    const auto printer_f = [](float v) { std::cout << "printer<float>: " << v << std::endl; };
+    nil::gate::runners::Parallel runner(5);
+    nil::gate::Core core(&runner);
 
     auto ref = 100.f;
-    auto* a = core.port(false);
-    auto* l = core.port(std::cref(ref));
-    auto* r = core.port(200.f);
+    nil::gate::Port<bool>* a = nullptr;
 
-    core.node(&bar, {a});
+    core.apply(
+        [&ref, &a](nil::gate::Graph& graph)
+        {
+            a = graph.port(false);
+            auto* l = graph.port(std::cref(ref));
+            auto* r = graph.port(200.f);
 
-    const auto [f] = core.node(&deferred, {a});
-    const auto [fs] = core.node(&switcher, {a, l, r});
-    core.node(printer_i, {f});
+            graph.node(&bar, {a});
 
-    core.node(printer_f, {fs});
-    core.node(&foo, {f});
-
-    core.set_runner<nil::gate::runners::Parallel>(5);
+            const auto [f] = graph.node(&deferred, {a})->outputs();
+            const auto [fs] = graph.node(&switcher, {a, l, r})->outputs();
+            graph.node(printer_i, {f});
+            graph.node(printer_f, {fs});
+            graph.node(&foo, {f});
+        }
+    );
 
     while (true)
     {

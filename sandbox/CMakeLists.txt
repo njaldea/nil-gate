@@ -10,6 +10,9 @@ find_package(Boost REQUIRED COMPONENTS asio)
 add_executable(${PROJECT_NAME}_basic basic.cpp)
 target_link_libraries(${PROJECT_NAME}_basic PRIVATE gate)
 
+add_executable(${PROJECT_NAME}_dynamic dynamic.cpp)
+target_link_libraries(${PROJECT_NAME}_dynamic PRIVATE gate)
+
 add_executable(${PROJECT_NAME}_opt opt.cpp)
 target_link_libraries(${PROJECT_NAME}_opt PRIVATE gate)
 target_link_libraries(${PROJECT_NAME}_opt PRIVATE Boost::asio)

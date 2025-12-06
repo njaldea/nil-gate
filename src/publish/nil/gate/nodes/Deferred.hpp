@@ -26,7 +26,7 @@ namespace nil::gate::nodes
             }
 
             void operator()(
-                const Core& core,
+                Core& core,
                 const nil::gate::opt_outputs<F..., O...>& opts,
                 const I&... args
             )
@@ -40,19 +40,20 @@ namespace nil::gate::nodes
                 {
                     auto res = call(opts, std::index_sequence_for<O...>(), core, args...);
 
-                    {
-                        auto batch = core.batch(opts);
-                        [&]<std::size_t... indices>() {
-                            (..., get<indices>(batch)->set_value(std::move(get<indices>(res))));
-                        }(std::index_sequence_for<F...>());
-                    }
-                    core.commit();
+                    core.post(
+                        [opts, res]() mutable
+                        {
+                            [&]<std::size_t... indices>() {
+                                (..., get<indices>(opts)->set_value(std::move(get<indices>(res))));
+                            }(std::index_sequence_for<F...>());
+                        }
+                    );
                 }
                 else
                 {
                     auto res = call(opts, std::index_sequence_for<O...>(), core, args...);
-                    get<0>(opts)->set_value(std::move(res));
-                    core.commit();
+
+                    core.post([opts, res]() mutable { get<0>(opts)->set_value(std::move(res)); });
                 }
             }
 

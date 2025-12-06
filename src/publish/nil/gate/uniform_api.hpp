@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Core.hpp"
+#include "nil/gate/IRunner.hpp"
+#include "nil/gate/ports/Port.hpp"
 
 namespace nil::gate
 {
@@ -17,7 +19,7 @@ namespace nil::gate
      * otherwise returns an empty std::tuple<>.
      *
      * Requirements (validated by underlying traits):
-     *  - Optional first parameter: const Core&
+     *  - Optional first parameter: Core&
      *  - Optional second parameter: opt_output<...>
      *  - Remaining parameters: inputs (zero or more)
      *  - Return: void, T, or std::tuple<T...>
@@ -26,27 +28,31 @@ namespace nil::gate
      * overload directly.
      */
     template <typename T>
-    auto add_node(Core& core, T&& instance, typename detail::traits::node<T>::inputs::ports inputs)
+    auto add_node(
+        Graph& graph,
+        T&& instance,
+        typename detail::traits::node<T>::inputs::ports inputs
+    )
     {
         constexpr auto has_output = detail::traits::node<T>::outputs::size > 0;
         constexpr auto has_input = detail::traits::node<T>::inputs::size > 0;
 
         if constexpr (has_output && has_input)
         {
-            return core.node(std::forward<T>(instance), inputs);
+            return graph.node(std::forward<T>(instance), inputs);
         }
         if constexpr (has_output && !has_input)
         {
-            return core.node(std::forward<T>(instance));
+            return graph.node(std::forward<T>(instance));
         }
         if constexpr (!has_output && has_input)
         {
-            core.node(std::forward<T>(instance), inputs);
+            graph.node(std::forward<T>(instance), inputs);
             return std::tuple<>();
         }
         if constexpr (!has_output && !has_input)
         {
-            core.node(std::forward<T>(instance));
+            graph.node(std::forward<T>(instance));
             return std::tuple<>();
         }
     }
@@ -56,61 +62,35 @@ namespace nil::gate
      * Port becomes ready after first set_value()/sync write.
      */
     template <typename T>
-    auto add_port(Core& core)
+    auto add_port(Graph& graph)
     {
-        return core.port<T>();
+        return graph.port<T>();
     }
 
     /**
      * Create a mutable port initialized with a value (immediately ready).
      */
     template <typename T>
-    auto add_port(Core& core, T&& value)
+    auto add_port(Graph& graph, T&& value)
     {
-        return core.port(std::forward<T>(value));
+        return graph.port(std::forward<T>(value));
     }
 
     /**
-     * Link a ReadOnly<FROM> producing port to a Mutable<TO> consuming port.
+     * Link a ReadOnly<FROM> producing port to a Port<TO> consuming port.
      * Type adaptation (if any) is handled through traits::compatibility.
      */
     template <typename TO, typename FROM>
-    void link(Core& core, ports::ReadOnly<FROM>* from, ports::Mutable<TO>* to)
+    auto link(Graph& graph, ports::ReadOnly<FROM>* from, Port<TO>* to)
     {
-        core.link(from, to);
-    }
-
-    /**
-     * Begin a batch over the provided mutable ports (variadic form).
-     * Writes via the returned Batch<T...> appear atomically at next commit.
-     */
-    template <typename... T>
-    Batch<T...> batch(const Core& core, ports::Mutable<T>*... ports)
-    {
-        return core.batch(ports...);
-    }
-
-    /**
-     * Begin a batch from a tuple of mutable ports.
-     */
-    template <typename... T>
-    Batch<T...> batch(const Core& core, std::tuple<ports::Mutable<T>*...> ports)
-    {
-        return core.batch(std::move(ports));
+        return graph.link(from, to);
     }
 
     /**
      * Replace current runner with a new instance of T constructed in-place with Args.
      */
-    template <typename T, typename... Args>
-    void set_runner(Core& core, Args&&... args)
+    inline void set_runner(Core& core, IRunner* runner)
     {
-        core.set_runner<T>(std::forward<Args>(args)...);
-    }
-
-    /** Clear all ports and nodes (invalidates existing pointers). */
-    inline void clear(Core& core)
-    {
-        core.clear();
+        core.set_runner(runner);
     }
 }

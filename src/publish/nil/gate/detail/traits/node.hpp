@@ -20,8 +20,7 @@ namespace nil::gate
 namespace nil::gate::detail::traits
 {
     template <typename T>
-    concept is_core_valid_v //
-        = (std::is_reference_v<T> && std::is_const_v<std::remove_reference_t<T>>);
+    concept is_core_valid_v = std::is_lvalue_reference_v<T>;
 
     template <typename T>
     concept is_opt_valid_v //
@@ -111,6 +110,7 @@ namespace nil::gate::detail::traits
     struct node_inputs<xalt::tlist<I...>> final
     {
         using types = xalt::tlist<I...>;
+        using port_types = xalt::tlist<portify_t<std::decay_t<I>>...>;
         using ports = inputs<portify_t<std::decay_t<I>>...>;
         using make_index_sequence = std::index_sequence_for<I...>;
         static constexpr auto size = sizeof...(I);
@@ -124,6 +124,7 @@ namespace nil::gate::detail::traits
     struct node_req_outputs<xalt::tlist<F...>> final
     {
         using types = xalt::tlist<F...>;
+        using port_types = xalt::tlist<portify_t<std::decay_t<F>>...>;
         using ports = req_outputs<portify_t<std::decay_t<F>>...>;
         using data_ports = std::tuple<detail::Port<portify_t<std::decay_t<F>>>...>;
         using make_index_sequence = std::index_sequence_for<F...>;
@@ -138,6 +139,7 @@ namespace nil::gate::detail::traits
     struct node_opt_outputs<xalt::tlist<O...>> final
     {
         using types = xalt::tlist<O...>;
+        using port_types = xalt::tlist<portify_t<std::decay_t<O>>...>;
         using ports = opt_outputs<portify_t<std::decay_t<O>>...>;
         using data_ports = std::tuple<detail::Port<portify_t<std::decay_t<O>>>...>;
         using make_index_sequence = std::index_sequence_for<O...>;
@@ -152,6 +154,7 @@ namespace nil::gate::detail::traits
     struct node_outputs<req_outputs<F...>, opt_outputs<O...>> final
     {
         using types = xalt::tlist<F..., O...>;
+        using port_types = xalt::tlist<F..., O...>;
         using ports = outputs<F..., O...>;
         using make_index_sequence = std::index_sequence_for<F..., O...>;
         static constexpr auto size = sizeof...(F) + sizeof...(O);

@@ -10,130 +10,126 @@ extern "C"
 {
 #endif
 
-// core types
+    // core types
 
-struct nil_gate_core;
+    struct nil_gate_core;
 
-struct nil_gate_port_info
-{
-    int (*eq)(const void*, const void*);
-    void (*destroy)(void*);
-};
+    struct nil_gate_port_info
+    {
+        int (*eq)(const void*, const void*);
+        void (*destroy)(void*);
+    };
 
-struct nil_gate_bport
-{
-    void* handle; // batch_port
-    struct nil_gate_port_info info;
-};
+    struct nil_gate_bport
+    {
+        void* handle; // batch_port
+        struct nil_gate_port_info info;
+    };
 
-struct nil_gate_mport
-{
-    void* const handle; // mutable_port
-    const struct nil_gate_port_info info;
-};
+    struct nil_gate_mport
+    {
+        void* const handle; // mutable_port
+        const struct nil_gate_port_info info;
+    };
 
-struct nil_gate_rport
-{
-    void* handle; // readonly_port
-    struct nil_gate_port_info info;
-};
+    struct nil_gate_rport
+    {
+        void* handle; // readonly_port
+        struct nil_gate_port_info info;
+    };
 
-// core operations
+    // core operations
 
-struct nil_gate_core* nil_gate_core_create(void);
-void nil_gate_core_destroy(struct nil_gate_core* core);
-void nil_gate_core_commit(struct nil_gate_core const* core);
+    struct nil_gate_core* nil_gate_core_create(void);
+    void nil_gate_core_destroy(struct nil_gate_core* core);
+    void nil_gate_core_commit(struct nil_gate_core const* core);
 
-void nil_gate_core_set_runner_immediate(struct nil_gate_core* core);
-void nil_gate_core_set_runner_soft_blocking(struct nil_gate_core* core);
-void nil_gate_core_set_runner_non_blocking(struct nil_gate_core* core);
-void nil_gate_core_set_runner_parallel_blocking(struct nil_gate_core* core, uint32_t thread_count);
+    void nil_gate_core_set_runner_immediate(struct nil_gate_core* core);
+    void nil_gate_core_set_runner_soft_blocking(struct nil_gate_core* core);
+    void nil_gate_core_set_runner_non_blocking(struct nil_gate_core* core);
+    void nil_gate_core_set_runner_parallel_blocking(
+        struct nil_gate_core* core,
+        uint32_t thread_count
+    );
+    void nil_gate_core_unset_runner(struct nil_gate_core* core);
 
-struct nil_gate_mport nil_gate_core_port(
-    struct nil_gate_core* core,
-    struct nil_gate_port_info info,
-    void* initial_value
-);
-// port operations
+    struct nil_gate_mport nil_gate_core_port(
+        struct nil_gate_core* core,
+        struct nil_gate_port_info info,
+        void* initial_value
+    );
+    // port operations
 
-void nil_gate_mport_set_value(struct nil_gate_mport port, void* new_value);
-void nil_gate_mport_unset_value(struct nil_gate_mport port);
-void nil_gate_bport_set_value(struct nil_gate_bport port, void* new_value);
-void nil_gate_bport_unset_value(struct nil_gate_bport port);
+    void nil_gate_mport_set_value(struct nil_gate_mport port, void* new_value);
+    void nil_gate_mport_unset_value(struct nil_gate_mport port);
 
-struct nil_gate_port_infos
-{
-    uint8_t size;
-    struct nil_gate_port_info const* infos;
-};
-
-struct nil_gate_rports {
-    uint8_t size;
-    struct nil_gate_rport* ports;
-};
-
-struct nil_gate_mports {
-    uint8_t size;
-    struct nil_gate_mport const* ports;
-};
-
-struct nil_gate_bports {
-    void* handle;
-    uint8_t size;
-    struct nil_gate_bport* ports;
-};
-
-void nil_gate_core_batch(
-    struct nil_gate_core const* core,
-    struct nil_gate_mports mports,
-    struct nil_gate_bports* batch_ports
-);
-void nil_gate_core_batch_release(struct nil_gate_bports* batch);
-
-#define nil_gate_port_set_value(PORT, VALUE) \
-    _Generic((PORT), struct nil_gate_mport: nil_gate_mport_set_value, struct nil_gate_bport: nil_gate_bport_set_value)(PORT, VALUE)
-#define nil_gate_port_unset_value(PORT) \
-    _Generic((PORT), struct nil_gate_mport: nil_gate_mport_unset_value, struct nil_gate_bport: nil_gate_bport_unset_value)(PORT)
-
-// node setup
-
-struct nil_gate_node_args;
-
-// node execution
-
-struct nil_gate_node_args
-{
-    struct nil_gate_core const * const core;
-
-    struct inputs {
+    struct nil_gate_port_infos
+    {
         uint8_t size;
-        const void* const* data;
-    } const inputs;
+        struct nil_gate_port_info const* infos;
+    };
 
-    struct req_outputs {
+    struct nil_gate_rports
+    {
         uint8_t size;
-        void** data; // to be filled by the node function
-    } const req_outputs;
+        struct nil_gate_rport* ports;
+    };
 
-    struct nil_gate_mports const opt_outputs;
-};
+    struct nil_gate_mports
+    {
+        uint8_t size;
+        struct nil_gate_mport const* ports;
+    };
 
-void nil_gate_core_node(
-    struct nil_gate_core const* core,
-    void (*fn)(struct nil_gate_node_args* args),
-    struct nil_gate_rports inputs,
-    struct nil_gate_port_infos req_outputs,
-    struct nil_gate_port_infos opt_outputs,
-    struct nil_gate_rports* output_ports
-);
+#define nil_gate_port_set_value(PORT, VALUE)                                                       \
+    _Generic((PORT), struct nil_gate_mport: nil_gate_mport_set_value)(PORT, VALUE)
+#define nil_gate_port_unset_value(PORT)                                                            \
+    _Generic((PORT), struct nil_gate_mport: nil_gate_mport_unset_value)(PORT)
 
-struct nil_gate_rport nil_gate_mport_to_rport(struct nil_gate_mport port);
-struct nil_gate_rport nil_gate_rport_to_rport(struct nil_gate_rport port);
-struct nil_gate_mport nil_gate_mport_to_mport(struct nil_gate_mport port);
+    // node setup
 
-#define nil_gate_to_rport(V) _Generic((V), struct nil_gate_mport: nil_gate_mport_to_rport, struct nil_gate_rport: nil_gate_rport_to_rport)(V)
+    struct nil_gate_node_args;
 
-// clang-format off
+    // node execution
+
+    struct nil_gate_node_args
+    {
+        struct nil_gate_core const* const core;
+
+        struct inputs
+        {
+            uint8_t size;
+            const void* const* data;
+        } const inputs;
+
+        struct req_outputs
+        {
+            uint8_t size;
+            void** data; // to be filled by the node function
+        } const req_outputs;
+
+        struct nil_gate_mports const opt_outputs;
+    };
+
+    void nil_gate_core_node(
+        struct nil_gate_core const* core,
+        void (*fn)(struct nil_gate_node_args* args),
+        struct nil_gate_rports inputs,
+        struct nil_gate_port_infos req_outputs,
+        struct nil_gate_port_infos opt_outputs,
+        struct nil_gate_rports* outputs
+    );
+
+    struct nil_gate_rport nil_gate_mport_to_rport(struct nil_gate_mport port);
+    struct nil_gate_rport nil_gate_rport_to_rport(struct nil_gate_rport port);
+    struct nil_gate_mport nil_gate_mport_to_mport(struct nil_gate_mport port);
+
+#define nil_gate_to_rport(V)                                                                                       \
+    _Generic((V), struct nil_gate_mport: nil_gate_mport_to_rport, struct nil_gate_rport: nil_gate_rport_to_rport)( \
+        V                                                                                                          \
+    )
+
+    // clang-format off
 #define NIL_GATE_PORT_INFO(V)  (struct nil_gate_port_info){                     \
     .eq = NIL_XALT_CONCAT(nil_gate_port_eq_, V),                                \
     .destroy = NIL_XALT_CONCAT(nil_gate_port_destroy_, V)                       \
@@ -202,7 +198,7 @@ struct nil_gate_mport nil_gate_mport_to_mport(struct nil_gate_mport port);
     }                                                                           \
 }
 
-// clang-format on
+    // clang-format on
 
 #ifdef __cplusplus
 }
