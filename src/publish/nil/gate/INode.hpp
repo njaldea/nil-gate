@@ -3,6 +3,7 @@
 namespace nil::gate
 {
     class Core;
+    class IPort;
 }
 
 namespace nil::gate
@@ -29,6 +30,9 @@ namespace nil::gate
 
         virtual void pend() = 0;
         virtual void input_changed() = 0;
+
+        virtual int score() const = 0;
+        virtual void detach_in(IPort* port) = 0;
 
     protected:
         enum class ENodeState

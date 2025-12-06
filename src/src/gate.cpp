@@ -33,22 +33,28 @@ extern "C"
 
     void nil_gate_core_set_runner_immediate(nil_gate_core* core)
     {
-        core->handle->set_runner<nil::gate::runners::Immediate>();
+        core->handle->set_runner(new nil::gate::runners::Immediate()); // NOLINT
     }
 
     void nil_gate_core_set_runner_soft_blocking(nil_gate_core* core)
     {
-        core->handle->set_runner<nil::gate::runners::SoftBlocking>();
+        core->handle->set_runner(new nil::gate::runners::SoftBlocking()); // NOLINT
     }
 
     void nil_gate_core_set_runner_non_blocking(nil_gate_core* core)
     {
-        core->handle->set_runner<nil::gate::runners::NonBlocking>();
+        core->handle->set_runner(new nil::gate::runners::NonBlocking()); // NOLINT
     }
 
     void nil_gate_core_set_runner_parallel_blocking(nil_gate_core* core, uint32_t thread_count)
     {
-        core->handle->set_runner<nil::gate::runners::Parallel>(thread_count);
+        core->handle->set_runner(new nil::gate::runners::Parallel(thread_count)); // NOLINT
+    }
+
+    void nil_gate_core_unset_runner(struct nil_gate_core* core)
+    {
+        delete core->handle->get_runner(); // NOLINT
+        core->handle->set_runner(nullptr);
     }
 
     nil_gate_mport nil_gate_core_port(
@@ -122,7 +128,7 @@ extern "C"
         struct nil_gate_rports inputs,
         struct nil_gate_port_infos req_outputs,
         struct nil_gate_port_infos opt_outputs,
-        nil_gate_rports* output_ports
+        nil_gate_rports* outputs
     )
     {
         namespace ng = nil::gate;
@@ -236,15 +242,15 @@ extern "C"
 
         for (auto i = 0U; i < req_outputs.size; ++i)
         {
-            output_ports->ports[i].info = req_outputs.infos[i];
-            output_ports->ports[i].handle = node_result[i];
+            outputs->ports[i].info = req_outputs.infos[i];
+            outputs->ports[i].handle = node_result[i];
         }
 
         for (auto i = 0U; i < opt_outputs.size; ++i)
         {
             const auto ii = i + req_outputs.size;
-            output_ports->ports[ii].info = opt_outputs.infos[i];
-            output_ports->ports[ii].handle = node_result[i];
+            outputs->ports[ii].info = opt_outputs.infos[i];
+            outputs->ports[ii].handle = node_result[i];
         }
     }
 

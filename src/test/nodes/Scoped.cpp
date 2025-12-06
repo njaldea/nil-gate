@@ -38,7 +38,7 @@ TEST(nodes, scoped_with_req_out)
 
     nil::gate::Core core;
 
-    const auto [e] = core.node(nil::gate::nodes::Scoped(
+    auto* node = core.node(nil::gate::nodes::Scoped(
         [&]() { mocked_fn.Call("PRE"); },
         [&]()
         {
@@ -47,6 +47,7 @@ TEST(nodes, scoped_with_req_out)
         },
         [&]() { mocked_fn.Call("POST"); }
     ));
+    const auto [e] = node->outputs();
 
     EXPECT_CALL(mocked_fn, Call("PRE")) //
         .Times(1)

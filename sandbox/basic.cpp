@@ -1,4 +1,5 @@
 #include <nil/gate.hpp>
+#include <nil/gate/runners/Immediate.hpp>
 
 #include <nil/gate/bias/nil.hpp>
 
@@ -42,8 +43,8 @@ int main()
     auto* a1 = core.port(0);
     auto* a2 = core.port(0);
 
-    const auto [b1] = core.node(B("b"), {a1, a2});
-    const auto [c1] = core.node(C("c"), {b1, a2});
+    const auto [b1] = core.node(B("b"), {a1, a2})->outputs();
+    const auto [c1] = core.node(C("c"), {b1, a2})->outputs();
     core.node(D("d"), {c1, a2});
 
     auto outs = core.unode<int>({
@@ -62,16 +63,21 @@ int main()
     std::cout << __FILE__ << ':' << __LINE__ << std::endl;
     std::cout << outs.size() << std::endl;
 
+    nil::gate::runners::Immediate runner;
+    core.set_runner(&runner);
+
     std::cout << __FILE__ << ':' << __LINE__ << ':' << (const char*)(__FUNCTION__) << std::endl;
     core.commit();
 
     a1->set_value(2);
 
-    std::cout << __FILE__ << ':' << __LINE__ << ':' << (const char*)(__FUNCTION__) << std::endl;
-    core.commit();
-
-    a1->set_value(4);
+    core.remove(a1);
 
     std::cout << __FILE__ << ':' << __LINE__ << ':' << (const char*)(__FUNCTION__) << std::endl;
     core.commit();
+
+    // a1->set_value(4);
+
+    // std::cout << __FILE__ << ':' << __LINE__ << ':' << (const char*)(__FUNCTION__) << std::endl;
+    // core.commit();
 }

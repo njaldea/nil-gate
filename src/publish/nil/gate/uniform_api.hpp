@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core.hpp"
+#include "nil/gate/IRunner.hpp"
 
 namespace nil::gate
 {
@@ -102,10 +103,18 @@ namespace nil::gate
     /**
      * Replace current runner with a new instance of T constructed in-place with Args.
      */
-    template <typename T, typename... Args>
-    void set_runner(Core& core, Args&&... args)
+    void set_runner(Core& core, IRunner* runner)
     {
-        core.set_runner<T>(std::forward<Args>(args)...);
+        core.set_runner(runner);
+    }
+
+    /**
+     * Replace current runner with a new instance of T constructed in-place with Args.
+     */
+    template <typename T>
+    void set_runner(Core& core, T&& runner)
+    {
+        core.set_runner(std::forward<T>(runner));
     }
 
     /** Clear all ports and nodes (invalidates existing pointers). */

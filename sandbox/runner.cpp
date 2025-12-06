@@ -15,7 +15,7 @@ int main()
 
     auto* e1_i = core.port(0);
 
-    auto [e2_i] = core.node(
+    auto* node1 = core.node(
         [](int v)
         {
             std::printf("Main: %d\n", v);
@@ -23,10 +23,11 @@ int main()
         },
         {e1_i}
     );
+    auto [e2_i] = node1->outputs();
 
     core.node([](int b1, int b2) { std::printf("First: %d : %d\n", b1, b2); }, {e1_i, e2_i});
 
-    const auto [r] = core.node(
+    auto* node2 = core.node(
         [](const nil::gate::Core& c, nil::gate::opt_outputs<int> a, int b1, int b2)
         {
             std::printf("Second: %d : %d\n", b1, b2);
@@ -38,13 +39,18 @@ int main()
         },
         {e1_i, e2_i}
     );
+    const auto [r] = node2->outputs();
 
     core.node([](int i) { std::printf("printer: %d\n", i); }, {r});
 
-    core.set_runner<nil::gate::runners::NonBlocking>();
-    core.set_runner<nil::gate::runners::Parallel>(10);
-    core.set_runner<nil::gate::runners::boost_asio::Serial>();
-    core.set_runner<nil::gate::runners::boost_asio::Parallel>(10);
+    nil::gate::runners::NonBlocking non_blocking_runner;
+    nil::gate::runners::Parallel parallel_runner(10);
+    nil::gate::runners::boost_asio::Serial basio_serial_runner;
+    nil::gate::runners::boost_asio::Parallel baso_parallel_runner(10);
+    core.set_runner(&non_blocking_runner);
+    core.set_runner(&parallel_runner);
+    core.set_runner(&basio_serial_runner);
+    core.set_runner(&baso_parallel_runner);
 
     while (true)
     {

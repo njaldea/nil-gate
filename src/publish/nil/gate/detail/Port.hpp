@@ -23,10 +23,11 @@ namespace nil::gate::detail
     class Port final: public gate::ports::Mutable<T>
     {
     public:
-        Port()
+        explicit Port()
             : state(EState::Pending)
             , data(std::nullopt)
             , diffs(nullptr)
+            , parent(nullptr)
         {
         }
 
@@ -34,16 +35,28 @@ namespace nil::gate::detail
             : state(EState::Stale)
             , data(std::make_optional<T>(std::move(init_data)))
             , diffs(nullptr)
+            , parent(nullptr)
         {
         }
 
-        ~Port() noexcept override = default;
+        ~Port() noexcept override
+        {
+            for (auto* node : node_out)
+            {
+                node->detach_in(this);
+            }
+        }
 
         Port(Port&&) noexcept = delete;
         Port& operator=(Port&&) noexcept = delete;
 
         Port(const Port&) = delete;
         Port& operator=(const Port&) = delete;
+
+        int score() const noexcept override
+        {
+            return parent != nullptr ? parent->score() : 0;
+        }
 
         const T& value() const noexcept override
         {
@@ -151,9 +164,24 @@ namespace nil::gate::detail
             state = EState::Stale;
         }
 
-        void attach(INode* node)
+        void attach_in(INode* node)
+        {
+            parent = node;
+        }
+
+        void attach_out(INode* node)
         {
             node_out.push_back(node);
+        }
+
+        void detach_in(INode* node)
+        {
+            std::erase_if(node_out, [node](auto* n) { return n == node; });
+        }
+
+        void detach_out(INode* node)
+        {
+            std::erase_if(node_out, [node](auto* n) { return n == node; });
         }
 
         void attach(Diffs* new_diffs)
@@ -271,6 +299,7 @@ namespace nil::gate::detail
         EState state;
         std::optional<T> data;
         nil::gate::Diffs* diffs;
+        INode* parent;
         std::vector<INode*> node_out;
 
         struct IAdapter
@@ -287,9 +316,9 @@ namespace nil::gate::detail
             IAdapter& operator=(const IAdapter&) = delete;
             IAdapter& operator=(IAdapter&&) = delete;
 
-            void attach(INode* node)
+            void attach_out(INode* node)
             {
-                port->attach(node);
+                port->attach_out(node);
             }
 
             bool is_ready() const

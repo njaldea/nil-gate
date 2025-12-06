@@ -28,7 +28,8 @@ TEST(nodes, asynced_input)
     testing::StrictMock<testing::MockFunction<void(std::string)>> mocked_fn;
 
     nil::gate::Core core;
-    core.set_runner<nil::gate::runners::SoftBlocking>();
+    nil::gate::runners::SoftBlocking runner;
+    core.set_runner(&runner);
 
     auto* e = core.port(std::string("value"));
 
@@ -59,15 +60,18 @@ TEST(nodes, asynced_req_output) // failing
     testing::StrictMock<testing::MockFunction<void(std::string)>> mocked_fn;
 
     nil::gate::Core core;
-    core.set_runner<nil::gate::runners::SoftBlocking>();
+    nil::gate::runners::SoftBlocking runner;
+    core.set_runner(&runner);
 
-    const auto [e] = core.node(nil::gate::nodes::Deferred(
+    auto* node = core.node(nil::gate::nodes::Deferred(
         [&]()
         {
             mocked_fn.Call("NODE");
             return std::string("value");
         }
     ));
+
+    const auto [e] = node->outputs();
 
     EXPECT_CALL(mocked_fn, Call("NODE")) //
         .Times(1)
@@ -89,15 +93,17 @@ TEST(nodes, asynced_opt_output)
     testing::StrictMock<testing::MockFunction<void(std::string)>> mocked_fn;
 
     nil::gate::Core core;
-    core.set_runner<nil::gate::runners::SoftBlocking>();
+    nil::gate::runners::SoftBlocking runner;
+    core.set_runner(&runner);
 
-    const auto [e] = core.node(nil::gate::nodes::Deferred(
+    auto* node = core.node(nil::gate::nodes::Deferred(
         [&](nil::gate::opt_outputs<std::string> s)
         {
             mocked_fn.Call("NODE");
             get<0>(s)->set_value("value");
         }
     ));
+    const auto [e] = node->outputs();
 
     EXPECT_CALL(mocked_fn, Call("NODE")) //
         .Times(1)
@@ -119,9 +125,10 @@ TEST(nodes, asynced_outputs)
     testing::StrictMock<testing::MockFunction<void(std::string)>> mocked_fn;
 
     nil::gate::Core core;
-    core.set_runner<nil::gate::runners::SoftBlocking>();
+    nil::gate::runners::SoftBlocking runner;
+    core.set_runner(&runner);
 
-    const auto [se, ae] = core.node(nil::gate::nodes::Deferred(
+    auto* node = core.node(nil::gate::nodes::Deferred(
         [&](nil::gate::opt_outputs<std::string> s)
         {
             mocked_fn.Call("NODE");
@@ -129,6 +136,7 @@ TEST(nodes, asynced_outputs)
             return 100;
         }
     ));
+    const auto [se, ae] = node->outputs();
 
     EXPECT_CALL(mocked_fn, Call("NODE")) //
         .Times(1)

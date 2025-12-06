@@ -2,8 +2,8 @@
 
 #include "Batch.hpp"
 #include "Diffs.hpp"
+#include "IRunner.hpp"
 #include "errors.hpp"
-#include "runners/Immediate.hpp"
 
 #include "ports/Mutable.hpp"
 #include "traits/portify.hpp"
@@ -83,52 +83,58 @@ namespace nil::gate
         /// starting from this point - node
 
         template <concepts::is_node_invalid T>
-        outputs_t<T> node(T instance, errors::Node<T> = errors::Node<T>());
+        void* node(T instance, errors::Node<T> = errors::Node<T>());
         template <concepts::is_node_invalid T>
-        outputs_t<T> node(T instance, inputs_t<T> ports, errors::Node<T> = errors::Node<T>());
+        void* node(T instance, inputs_t<T> ports, errors::Node<T> = errors::Node<T>());
 
         template <concepts::is_node_valid T>
             requires(detail::traits::node<T>::inputs::size > 0)
-        outputs_t<T> node(T instance, inputs_t<T> input_ports)
+        auto* node(T instance, inputs_t<T> input_ports)
         {
+            need_to_sort = true;
             auto n = std::make_unique<detail::Node<T>>(
                 this,
                 diffs.get(),
                 std::move(instance),
                 std::move(input_ports)
             );
-            return static_cast<detail::Node<T>*>(owned_nodes.emplace_back(n.release()))
-                ->output_ports();
+            return static_cast<typename detail::Node<T>::base_t*>(
+                owned_nodes.emplace_back(n.release())
+            );
         }
 
         template <concepts::is_node_valid T>
             requires(detail::traits::node<T>::inputs::size == 0)
-        outputs_t<T> node(T instance)
+        auto* node(T instance)
         {
+            need_to_sort = true;
             auto n = std::make_unique<detail::Node<T>>(
                 this,
                 diffs.get(),
                 std::move(instance),
                 inputs_t<T>()
             );
-            return static_cast<detail::Node<T>*>(owned_nodes.emplace_back(n.release()))
-                ->output_ports();
+            return static_cast<typename detail::Node<T>::base_t*>(
+                owned_nodes.emplace_back(n.release())
+            );
         }
 
         template <typename T>
         auto unode(UNode<T>::Info info)
         {
+            need_to_sort = true;
             auto n = std::make_unique<UNode<T>>(this, diffs.get(), std::move(info));
-            return static_cast<UNode<T>*>(owned_nodes.emplace_back(n.release()))->output_ports();
+            return static_cast<UNode<T>*>(owned_nodes.emplace_back(n.release()))->outputs();
         }
 
         /// starting from this point - link
 
         template <typename TO, typename FROM>
-        void link(ports::ReadOnly<FROM>* from, ports::Mutable<TO>* to)
+        auto* link(ports::ReadOnly<FROM>* from, ports::Mutable<TO>* to)
         {
+            need_to_sort = true;
             static_assert(concepts::is_compatible<TO, FROM>, "Not Compatible");
-            this->node([to](const TO& v) { to->set_value(v); }, {from});
+            return this->node([to](const TO& v) { to->set_value(v); }, {from});
         }
 
         /// starting from this point - port
@@ -192,6 +198,55 @@ namespace nil::gate
 
         /// starting from this point - misc
 
+        void remove(INode* node)
+        {
+            diffs->push(make_callable(
+                [this, node]()
+                {
+                    need_to_sort = true;
+                    std::erase_if(
+                        owned_nodes,
+                        [node](auto* n)
+                        {
+                            if (n == node)
+                            {
+                                delete node; // NOLINT
+                                return true;
+                            }
+                            return false;
+                        }
+                    );
+                }
+            ));
+        }
+
+        void remove(IPort* port)
+        {
+            diffs->push(make_callable(
+                [this, port]()
+                {
+                    need_to_sort = true;
+                    std::erase_if(
+                        independent_ports,
+                        [port](auto* p)
+                        {
+                            if (p == port)
+                            {
+                                delete port; // NOLINT
+                                return true;
+                            }
+                            return false;
+                        }
+                    );
+                }
+            ));
+        }
+
+        void post(std::function<void(Core&)> fn)
+        {
+            diffs->push(make_callable([this, fn = std::move(fn)]() { fn(*this); }));
+        }
+
         /**
          * Commit all of the changes to the graph.
          * Changes are scheduled by mutating the ports through their set_value method.
@@ -205,6 +260,7 @@ namespace nil::gate
                     {
                         d->call();
                     }
+                    sort();
                     return this->owned_nodes;
                 }
             );
@@ -213,21 +269,14 @@ namespace nil::gate
         /**
          * Use a custom runner. By default uses `nil::gate:runner::Immediate`.
          */
-        template <typename Runner, typename... Args>
-        void set_runner(Args&&... args)
+        void set_runner(IRunner* new_runner)
         {
-            runner.reset();
-            runner = std::make_unique<Runner>(std::forward<Args>(args)...);
+            runner = new_runner;
         }
 
-        /**
-         * Use a custom runner. By default uses `nil::gate:runner::Immediate`.
-         */
-        template <typename Runner>
-        void set_runner(Runner&& new_runner)
+        IRunner* get_runner() const
         {
-            runner.reset();
-            runner = std::make_unique<Runner>(std::forward<Runner>(new_runner));
+            return runner;
         }
 
         void clear()
@@ -248,8 +297,24 @@ namespace nil::gate
 
     private:
         std::unique_ptr<Diffs> diffs = std::make_unique<Diffs>();
-        std::vector<INode*> owned_nodes;
+        mutable std::vector<INode*> owned_nodes;
         std::vector<IPort*> independent_ports;
-        std::unique_ptr<IRunner> runner = std::make_unique<runners::Immediate>();
+        mutable bool need_to_sort = true;
+        IRunner* runner = nullptr;
+
+        void sort() const
+        {
+            if (!need_to_sort)
+            {
+                return;
+            }
+
+            need_to_sort = true;
+            std::sort(
+                owned_nodes.begin(),
+                owned_nodes.end(),
+                [](const auto* l, const auto* r) { return l->score() < r->score(); }
+            );
+        }
     };
 }

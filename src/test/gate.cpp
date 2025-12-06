@@ -58,7 +58,9 @@ TEST(gate, create_node_req_output)
     ASSERT_TRUE(port->has_value());
     ASSERT_EQ(port->value(), 1);
 
-    const auto [req_out] = core.node([](int v) { return v + 1; }, {port});
+    auto* node = core.node([](int v) { return v + 1; }, {port});
+    const auto [req_out] = node->outputs();
+
     ASSERT_FALSE(req_out->has_value());
 
     core.commit();
@@ -74,7 +76,7 @@ TEST(gate, create_node_opt_output)
     ASSERT_TRUE(port->has_value());
     ASSERT_EQ(port->value(), 1);
 
-    const auto [opt_out] = core.node(
+    auto* node = core.node(
         [](nil::gate::opt_outputs<int> o, int v)
         {
             if (v % 2 == 0)
@@ -88,6 +90,8 @@ TEST(gate, create_node_opt_output)
         },
         {port}
     );
+    const auto [opt_out] = node->outputs();
+
     ASSERT_FALSE(opt_out->has_value());
 
     core.commit();
@@ -123,7 +127,8 @@ TEST(gate, create_node_opt_output_core_commit_in_node)
 {
     nil::gate::Core core;
 
-    core.set_runner<nil::gate::runners::SoftBlocking>();
+    nil::gate::runners::SoftBlocking runner;
+    core.set_runner(&runner);
 
     const testing::InSequence seq;
     testing::StrictMock<testing::MockFunction<void(std::string_view, int, int)>> foo;
@@ -144,7 +149,8 @@ TEST(gate, create_node_opt_output_core_commit_in_node)
     };
 
     auto* port = core.port(1);
-    const auto [opt_out] = core.node(sut_node, {port});
+    auto* node = core.node(sut_node, {port});
+    const auto [opt_out] = node->outputs();
     auto* side_port = core.port(100);
     core.node([&](int v1, int v2) { foo.Call("dep node", v1, v2); }, {opt_out, side_port});
 
