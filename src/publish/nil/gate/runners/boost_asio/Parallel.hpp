@@ -8,8 +8,8 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/post.hpp>
 
-#include <set>
 #include <thread>
+#include <unordered_set>
 
 namespace nil::gate::runners::boost_asio
 {
@@ -54,29 +54,27 @@ namespace nil::gate::runners::boost_asio
         Parallel& operator=(Parallel&&) = delete;
         Parallel& operator=(const Parallel&) = delete;
 
-        void run(std::function<void()> apply_changes, std::span<INode* const> nodes) override
+        void run(std::function<std::span<INode* const>()> apply_changes) override
         {
             boost::asio::post(
                 main_context,
-                [this, nodes, apply_changes = std::move(apply_changes)]() mutable
+                [this, apply_changes = std::move(apply_changes)]() mutable
                 {
                     all_diffs.emplace_back(std::move(apply_changes));
-                    if (running_list.empty())
+                    if (!running_list.empty())
                     {
-                        for (const auto& dd : std::exchange(all_diffs, {}))
+                        return;
+                    }
+
+                    std::span<INode* const> nodes;
+                    for (const auto& dd : std::exchange(all_diffs, {}))
+                    {
+                        if (dd)
                         {
-                            if (dd)
-                            {
-                                dd();
-                            }
+                            nodes = dd();
                         }
                     }
 
-                    if (!running_list.empty())
-                    {
-                        deferred_nodes = nodes;
-                        return;
-                    }
                     for (const auto& node : nodes)
                     {
                         if (nullptr != node && node->is_pending())
@@ -121,13 +119,12 @@ namespace nil::gate::runners::boost_asio
             running_list.erase(node);
 
             // This is early frame stop. Is this desirable?
-            if (!deferred_nodes.empty())
+            if (!all_diffs.empty())
             {
                 if (running_list.empty())
                 {
                     waiting_list.clear();
-                    run({}, deferred_nodes);
-                    deferred_nodes = {};
+                    run({});
                 }
             }
             else
@@ -148,11 +145,10 @@ namespace nil::gate::runners::boost_asio
         }
 
     private:
-        std::set<nil::gate::INode*> running_list;
+        std::unordered_set<nil::gate::INode*> running_list;
         std::vector<nil::gate::INode*> waiting_list;
 
-        std::span<INode* const> deferred_nodes;
-        std::vector<std::function<void()>> all_diffs;
+        std::vector<std::function<std::span<INode* const>()>> all_diffs;
 
         boost::asio::io_context main_context;
         boost::asio::io_context exec_context;

@@ -45,14 +45,15 @@ int main()
 
     core.node(&bar, {a});
 
-    const auto [f] = core.node(&deferred, {a});
-    const auto [fs] = core.node(&switcher, {a, l, r});
+    const auto [f] = core.node(&deferred, {a})->outputs();
+    const auto [fs] = core.node(&switcher, {a, l, r})->outputs();
     core.node(printer_i, {f});
 
     core.node(printer_f, {fs});
     core.node(&foo, {f});
 
-    core.set_runner<nil::gate::runners::Parallel>(5);
+    nil::gate::runners::Parallel runner(5);
+    core.set_runner(&runner);
 
     while (true)
     {

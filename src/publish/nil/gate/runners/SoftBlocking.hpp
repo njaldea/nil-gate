@@ -37,13 +37,13 @@ namespace nil::gate::runners
         SoftBlocking& operator=(SoftBlocking&&) = delete;
         SoftBlocking& operator=(const SoftBlocking&) = delete;
 
-        void run(std::function<void()> apply_changes, std::span<INode* const> nodes) override
+        void run(std::function<std::span<INode* const>()> apply_changes) override
         {
             bool should_wait = true;
             {
                 auto lock = std::unique_lock(mutex);
                 should_wait = !is_running;
-                tasks.emplace_back(std::move(apply_changes), nodes);
+                tasks.emplace_back(std::move(apply_changes));
                 cv.notify_one();
             }
             if (should_wait)
@@ -63,13 +63,7 @@ namespace nil::gate::runners
         std::mutex done_mutex;
         std::condition_variable done_cv;
 
-        struct Task // NOLINT
-        {
-            std::function<void()> apply_changes;
-            std::span<INode* const> nodes;
-        };
-
-        std::vector<Task> tasks;
+        std::vector<std::function<std::span<INode* const>()>> tasks;
 
         void loop()
         {
@@ -94,17 +88,19 @@ namespace nil::gate::runners
                     is_running = true;
                     return std::exchange(tasks, {});
                 }();
+
                 if (!tasks_to_execute.empty())
                 {
+                    std::span<INode* const> nodes;
                     for (const auto& task : tasks_to_execute)
                     {
-                        if (task.apply_changes)
+                        if (task)
                         {
-                            task.apply_changes();
+                            nodes = task();
                         }
                     }
-                    const auto& t = tasks_to_execute.back();
-                    for (const auto& node : t.nodes)
+
+                    for (const auto& node : nodes)
                     {
                         if (nullptr != node)
                         {

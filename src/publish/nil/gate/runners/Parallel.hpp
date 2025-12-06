@@ -6,8 +6,8 @@
 #include <mutex>
 #include <optional>
 #include <queue>
-#include <set>
 #include <thread>
+#include <unordered_set>
 
 namespace nil::gate::runners
 {
@@ -27,27 +27,24 @@ namespace nil::gate::runners
         Parallel& operator=(Parallel&&) = delete;
         Parallel& operator=(const Parallel&) = delete;
 
-        void run(std::function<void()> apply_changes, std::span<INode* const> nodes) override
+        void run(std::function<std::span<INode* const>()> apply_changes) override
         {
             main_tasks.push(
-                [this, nodes, apply_changes = std::move(apply_changes)]() mutable
+                [this, apply_changes = std::move(apply_changes)]() mutable
                 {
                     all_diffs.emplace_back(std::move(apply_changes));
-                    if (running_list.empty())
-                    {
-                        for (const auto& dd : std::exchange(all_diffs, {}))
-                        {
-                            if (dd)
-                            {
-                                dd();
-                            }
-                        }
-                    }
-
                     if (!running_list.empty())
                     {
-                        deferred_nodes = nodes;
                         return;
+                    }
+
+                    std::span<INode* const> nodes;
+                    for (const auto& dd : std::exchange(all_diffs, {}))
+                    {
+                        if (dd)
+                        {
+                            nodes = dd();
+                        }
                     }
 
                     for (const auto& node : nodes)
@@ -92,13 +89,12 @@ namespace nil::gate::runners
             node->done();
             running_list.erase(node);
 
-            if (!deferred_nodes.empty())
+            if (!all_diffs.empty())
             {
                 if (running_list.empty())
                 {
                     waiting_list.clear();
-                    run({}, deferred_nodes);
-                    deferred_nodes = {};
+                    run({});
                 }
             }
             else
@@ -214,11 +210,10 @@ namespace nil::gate::runners
             std::vector<std::thread> threads;
         };
 
-        std::set<INode*> running_list;
+        std::unordered_set<INode*> running_list;
         std::vector<INode*> waiting_list;
 
-        std::span<INode* const> deferred_nodes;
-        std::vector<std::function<void()>> all_diffs;
+        std::vector<std::function<std::span<INode* const>()>> all_diffs;
 
         TaskManager main_tasks;
         TaskManager exec_tasks;

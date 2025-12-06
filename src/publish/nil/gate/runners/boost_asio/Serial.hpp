@@ -37,17 +37,18 @@ namespace nil::gate::runners::boost_asio
         Serial& operator=(Serial&&) = delete;
         Serial& operator=(const Serial&) = delete;
 
-        void run(std::function<void()> apply_changes, std::span<INode* const> nodes) override
+        void run(std::function<std::span<INode* const>()> apply_changes) override
         {
             boost::asio::post(
                 main_context,
-                [apply_changes = std::move(apply_changes), nodes]()
+                [apply_changes = std::move(apply_changes)]()
                 {
-                    if (apply_changes)
+                    if (!apply_changes)
                     {
-                        apply_changes();
+                        return;
                     }
-                    for (const auto& node : nodes)
+
+                    for (const auto& node : apply_changes())
                     {
                         if (nullptr != node)
                         {

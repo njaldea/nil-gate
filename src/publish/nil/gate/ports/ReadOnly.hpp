@@ -38,5 +38,7 @@ namespace nil::gate::ports
          *  not running.
          */
         [[nodiscard]] virtual bool has_value() const noexcept = 0;
+
+        virtual int score() const noexcept = 0;
     };
 }
