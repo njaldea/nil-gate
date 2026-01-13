@@ -1,7 +1,5 @@
 project(gate)
 
-find_package(nil-xalt CONFIG REQUIRED)
-
 set(
     HEADERS
         publish/nil/gate.hpp
@@ -26,6 +24,8 @@ set(
         publish/nil/gate/detail/validation.hpp
         publish/nil/gate/ports/Mutable.hpp
         publish/nil/gate/ports/ReadOnly.hpp
+        publish/nil/gate/ports/External.hpp
+        publish/nil/gate/ports/Compatible.hpp
         publish/nil/gate/nodes/Scoped.hpp
 )
 

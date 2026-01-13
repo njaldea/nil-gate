@@ -15,8 +15,8 @@ int main() // NOLINT
     runners::Immediate runner;
     Core core(&runner);
 
-    Port<int>* a = nullptr;                          // input port
-    Port<int>* loopback_port = nullptr;              // current processor output
+    ports::External<int>* a = nullptr;               // input port
+    ports::External<int>* loopback_port = nullptr;   // current processor output
     ports::ReadOnly<int>* out = nullptr;             // current processor output
     INode* proc_node = nullptr;                      // current processor (add/sub)
     Node<tlist<int>, tlist<>>* looper = nullptr;     // printer node

@@ -2,7 +2,6 @@
 
 #include "Core.hpp"
 #include "nil/gate/IRunner.hpp"
-#include "nil/gate/ports/Port.hpp"
 
 namespace nil::gate
 {
@@ -81,7 +80,7 @@ namespace nil::gate
      * Type adaptation (if any) is handled through traits::compatibility.
      */
     template <typename TO, typename FROM>
-    auto link(Graph& graph, ports::ReadOnly<FROM>* from, Port<TO>* to)
+    auto link(Graph& graph, ports::ReadOnly<FROM>* from, ports::External<TO>* to)
     {
         return graph.link(from, to);
     }

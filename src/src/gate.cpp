@@ -1,4 +1,5 @@
 #include <nil/gate.h>
+#include <nil/gate.hpp>
 #include <nil/gate/runners/Immediate.hpp>
 #include <nil/gate/runners/NonBlocking.hpp>
 #include <nil/gate/runners/Parallel.hpp>
@@ -10,81 +11,125 @@ extern "C"
 {
     struct nil_gate_core
     {
-        nil::gate::Core* handle;
+        nil::gate::Core* core;
+    };
+
+    struct nil_gate_graph
+    {
+        nil::gate::Graph* graph;
     };
 
     nil_gate_core* nil_gate_core_create(void)
     {
-        auto* core = new nil_gate_core();     // NOLINT
-        core->handle = new nil::gate::Core(); // NOLINT
+        auto* core = new nil_gate_core();   // NOLINT
+        core->core = new nil::gate::Core(); // NOLINT
         return core;
     }
 
     void nil_gate_core_destroy(nil_gate_core* core)
     {
-        delete core->handle; // NOLINT
-        delete core;         // NOLINT
+        delete core->core; // NOLINT
+        delete core;       // NOLINT
     }
 
     void nil_gate_core_commit(const nil_gate_core* core)
     {
-        core->handle->commit();
+        core->core->commit();
     }
 
     void nil_gate_core_set_runner_immediate(nil_gate_core* core)
     {
-        core->handle->set_runner(new nil::gate::runners::Immediate()); // NOLINT
+        delete core->core->get_runner();                             // NOLINT
+        core->core->set_runner(new nil::gate::runners::Immediate()); // NOLINT
     }
 
     void nil_gate_core_set_runner_soft_blocking(nil_gate_core* core)
     {
-        core->handle->set_runner(new nil::gate::runners::SoftBlocking()); // NOLINT
+        delete core->core->get_runner();                                // NOLINT
+        core->core->set_runner(new nil::gate::runners::SoftBlocking()); // NOLINT
     }
 
     void nil_gate_core_set_runner_non_blocking(nil_gate_core* core)
     {
-        core->handle->set_runner(new nil::gate::runners::NonBlocking()); // NOLINT
+        delete core->core->get_runner();                               // NOLINT
+        core->core->set_runner(new nil::gate::runners::NonBlocking()); // NOLINT
     }
 
     void nil_gate_core_set_runner_parallel_blocking(nil_gate_core* core, uint32_t thread_count)
     {
-        core->handle->set_runner(new nil::gate::runners::Parallel(thread_count)); // NOLINT
+        delete core->core->get_runner();                                        // NOLINT
+        core->core->set_runner(new nil::gate::runners::Parallel(thread_count)); // NOLINT
     }
 
     void nil_gate_core_unset_runner(struct nil_gate_core* core)
     {
-        delete core->handle->get_runner(); // NOLINT
-        core->handle->set_runner(nullptr);
+        delete core->core->get_runner(); // NOLINT
+        core->core->set_runner(nullptr);
     }
 
-    nil_gate_mport nil_gate_core_port(
-        nil_gate_core* core,
+    void nil_gate_core_apply(struct nil_gate_core* core, void (*callable)(struct nil_gate_graph*))
+    {
+        core->core->apply(
+            [callable](nil::gate::Graph& gate_graph)
+            {
+                if (callable != nullptr)
+                {
+                    struct nil_gate_graph graph
+                    {
+                        .graph = &gate_graph
+                    };
+                    callable(&graph);
+                }
+            }
+        );
+    }
+
+    nil_gate_mport nil_gate_graph_port(
+        nil_gate_graph* graph,
         nil_gate_port_info meta_info,
         void* initial_value
     )
     {
         return nil_gate_mport{
-            .handle = core->handle->port(
+            .handle = graph->graph->port(
                 nil::gate::c::PortType(initial_value, meta_info.eq, meta_info.destroy)
             ),
-            .info = meta_info
+            .info = meta_info,
+            .port_type = 0
         };
     }
 
     void nil_gate_mport_set_value(nil_gate_mport port, void* new_value)
     {
-        static_cast<nil::gate::ports::Mutable<nil::gate::c::PortType>*>(port.handle)
-            ->set_value(nil::gate::c::PortType(new_value, port.info.eq, port.info.destroy));
+        if (port.port_type == 0)
+        {
+            static_cast<nil::gate::ports::External<nil::gate::c::PortType>*>(port.handle)
+                ->set_value(nil::gate::c::PortType(new_value, port.info.eq, port.info.destroy));
+        }
+        else
+        {
+            static_cast<nil::gate::ports::Mutable<nil::gate::c::PortType>*>(port.handle)
+                ->set_value(nil::gate::c::PortType(new_value, port.info.eq, port.info.destroy));
+        }
     }
 
     void nil_gate_mport_unset_value(nil_gate_mport port)
     {
-        static_cast<nil::gate::ports::Mutable<nil::gate::c::PortType>*>(port.handle)->unset_value();
+        if (port.port_type == 0)
+        {
+            static_cast<nil::gate::ports::External<nil::gate::c::PortType>*>(port.handle)
+                ->unset_value();
+        }
+        else
+        {
+            static_cast<nil::gate::ports::Mutable<nil::gate::c::PortType>*>(port.handle)
+                ->unset_value();
+        }
     }
 
-    void nil_gate_core_node(
-        const nil_gate_core* core,
-        void (*fn)(struct nil_gate_node_args* args),
+    void nil_gate_graph_node(
+        const nil_gate_graph* graph,
+        void (*fn)(struct nil_gate_node_args const* args),
         struct nil_gate_rports inputs,
         struct nil_gate_port_infos req_outputs,
         struct nil_gate_port_infos opt_outputs,
@@ -98,9 +143,18 @@ extern "C"
             object.reserve(inputs.size);
             for (auto i = 0U; i < inputs.size; ++i)
             {
-                object.emplace_back(
-                    static_cast<ng::ports::ReadOnly<ng::c::PortType>*>(inputs.ports[i].handle)
-                );
+                if (inputs.ports[i].port_type == 0)
+                {
+                    object.emplace_back(
+                        static_cast<ng::ports::External<ng::c::PortType>*>(inputs.ports[i].handle)
+                    );
+                }
+                else
+                {
+                    object.emplace_back(
+                        static_cast<ng::ports::ReadOnly<ng::c::PortType>*>(inputs.ports[i].handle)
+                    );
+                }
             }
             return object;
         }();
@@ -127,7 +181,7 @@ extern "C"
             return object;
         }();
 
-        auto ng_fn = [core = core,
+        auto ng_fn = [graph = graph,
                       fn = fn,
                       ng_req_output_info = std::move(ng_req_output_info),
                       ng_opt_output_info = std::move(ng_opt_output_info)] //
@@ -152,15 +206,17 @@ extern "C"
                 object.reserve(arg.opt_outputs.size());
                 for (auto i = 0U; i < arg.opt_outputs.size(); ++i)
                 {
-                    object.push_back(
-                        nil_gate_mport{.handle = arg.opt_outputs[i], .info = ng_opt_output_info[i]}
-                    );
+                    object.push_back(nil_gate_mport{
+                        .handle = arg.opt_outputs[i],
+                        .info = ng_opt_output_info[i],
+                        .port_type = 1
+                    });
                 }
                 return object;
             }();
 
             auto args = nil_gate_node_args{
-                .core = core,
+                .graph = graph,
                 .inputs = {
                     .size = static_cast<std::uint8_t>(arg.inputs.size()),
                     .data=arg_inputs.data()
@@ -193,7 +249,7 @@ extern "C"
             }();
         };
 
-        auto node_result = core->handle->unode<ng::c::PortType>(
+        auto node_result = graph->graph->unode<ng::c::PortType>(
             {.inputs = std::move(ng_inputs),
              .req_output_size = req_outputs.size,
              .opt_output_size = opt_outputs.size,
@@ -216,7 +272,7 @@ extern "C"
 
     nil_gate_rport nil_gate_mport_to_rport(nil_gate_mport port)
     {
-        return {.handle = port.handle, .info = port.info};
+        return {.handle = port.handle, .info = port.info, .port_type = port.port_type};
     }
 
     nil_gate_rport nil_gate_rport_to_rport(nil_gate_rport port)

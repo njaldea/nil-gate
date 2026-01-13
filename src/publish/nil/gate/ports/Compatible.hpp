@@ -2,7 +2,7 @@
 
 #include "../detail/Port.hpp"
 #include "../errors.hpp"
-#include "../ports/Port.hpp"
+#include "../ports/External.hpp"
 #include "../ports/ReadOnly.hpp"
 #include "../traits/compatibility.hpp"
 
@@ -64,7 +64,7 @@ namespace nil::gate::ports
         }
 
         // NOLINTNEXTLINE(hicpp-explicit-conversions)
-        Compatible(Port<TO>* port)
+        Compatible(External<TO>* port)
             : Compatible(port->to_compat())
         {
         }
@@ -87,9 +87,9 @@ namespace nil::gate::ports
         }
 
         template <typename T>
-        Compatible& operator=(Port<T>* port)
+        Compatible& operator=(External<T>* port)
         {
-            *this = port->as_readonly();
+            *this = port->to_compat();
             return *this;
         }
 

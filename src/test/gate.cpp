@@ -78,7 +78,7 @@ TEST(gate, create_node_opt_output)
     nil::gate::runners::SoftBlocking runner;
     nil::gate::Core core(&runner);
 
-    nil::gate::Port<int>* port = nullptr;
+    nil::gate::ports::External<int>* port = nullptr;
     nil::gate::ports::ReadOnly<int>* opt_out = nullptr;
     core.post(
         [&port, &opt_out](nil::gate::Graph& graph)
@@ -149,8 +149,8 @@ TEST(gate, create_node_opt_output_core_commit_in_node)
     const testing::InSequence seq;
     testing::StrictMock<testing::MockFunction<void(std::string_view, int, int)>> foo;
 
-    nil::gate::Port<int>* port = nullptr;
-    nil::gate::Port<int>* side_port = nullptr;
+    nil::gate::ports::External<int>* port = nullptr;
+    nil::gate::ports::External<int>* side_port = nullptr;
     nil::gate::ports::ReadOnly<int>* opt_out = nullptr;
     core.apply(
         [&foo, &port, &opt_out, &side_port](nil::gate::Graph& graph)

@@ -41,7 +41,7 @@ int main()
     nil::gate::Core core(&runner);
 
     auto ref = 100.f;
-    nil::gate::Port<bool>* a = nullptr;
+    nil::gate::ports::External<bool>* a = nullptr;
 
     core.apply(
         [&ref, &a](nil::gate::Graph& graph)

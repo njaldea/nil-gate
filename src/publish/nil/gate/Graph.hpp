@@ -7,7 +7,7 @@
 #include "detail/Node.hpp"
 #include "detail/UNode.hpp"
 #include "detail/traits/node.hpp"
-#include "ports/Port.hpp"
+#include "ports/External.hpp"
 
 #include <span>
 
@@ -119,7 +119,7 @@ namespace nil::gate
         /// starting from this point - link
 
         template <typename TO, typename FROM>
-        auto link(ports::ReadOnly<FROM>* from, Port<TO>* to)
+        auto link(ports::ReadOnly<FROM>* from, ports::External<TO>* to)
             -> nil::gate::Node<nil::xalt::tlist<FROM>, nil::xalt::tlist<>>*;
 
         /// starting from this point - port
@@ -133,7 +133,7 @@ namespace nil::gate
         auto* port()
         {
             auto* e = new detail::Port<traits::portify_t<T>>(); // NOLINT
-            auto* Port = new gate::Port(core, e);               // NOLINT
+            auto* Port = new ports::External(core, e);          // NOLINT
             independent_ports.emplace_back(Port);
             return Port;
         }
@@ -142,7 +142,7 @@ namespace nil::gate
         auto* port(T value)
         {
             auto* e = new detail::Port<traits::portify_t<T>>(std::move(value)); // NOLINT
-            auto* Port = new gate::Port(core, e);                               // NOLINT
+            auto* Port = new ports::External(core, e);                          // NOLINT
             independent_ports.emplace_back(Port);
             return Port;
         }

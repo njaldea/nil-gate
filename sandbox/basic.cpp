@@ -41,8 +41,8 @@ int main()
     using C = T<int(int, int)>;
     using D = T<int(int, int)>;
 
-    nil::gate::Port<int>* a1 = nullptr;
-    nil::gate::Port<int>* a2 = nullptr;
+    nil::gate::ports::External<int>* a1 = nullptr;
+    nil::gate::ports::External<int>* a2 = nullptr;
 
     core.apply(
         [&a1, &a2](nil::gate::Graph& graph)

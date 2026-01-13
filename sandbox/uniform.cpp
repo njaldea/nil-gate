@@ -48,7 +48,7 @@ int main()
     nil::gate::runners::Parallel runner(5);
     nil::gate::Core core(&runner);
 
-    nil::gate::Port<bool>* a = nullptr;
+    nil::gate::ports::External<bool>* a = nullptr;
     core.apply(
         [&a](nil::gate::Graph& graph)
         {

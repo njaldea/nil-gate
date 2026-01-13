@@ -4,6 +4,7 @@
 #include "IRunner.hpp"
 
 #include "detail/traits/node.hpp"
+#include "nil/gate/ports/External.hpp"
 
 #include <nil/xalt/fn_call.hpp>
 
@@ -12,7 +13,7 @@ namespace nil::gate
     class Core final
     {
     public:
-        explicit Core(IRunner* init_runner)
+        explicit Core(IRunner* init_runner = nullptr)
             : graph(this)
             , runner(init_runner)
         {
@@ -45,6 +46,10 @@ namespace nil::gate
          */
         void commit()
         {
+            if (runner == nullptr)
+            {
+                return;
+            }
             runner->run(
                 [this, fns = std::move(changes)]()
                 {
@@ -80,7 +85,7 @@ namespace nil::gate
     };
 
     template <typename TO, typename FROM>
-    auto Graph::link(ports::ReadOnly<FROM>* from, Port<TO>* to)
+    auto Graph::link(ports::ReadOnly<FROM>* from, ports::External<TO>* to)
         -> nil::gate::Node<nil::xalt::tlist<FROM>, nil::xalt::tlist<>>*
     {
         need_to_sort = true;
@@ -89,14 +94,14 @@ namespace nil::gate
     }
 
     template <typename T>
-    void Port<T>::set_value(T new_data)
+    void ports::External<T>::set_value(T new_data)
     {
         this->core->post([this, new_data = std::move(new_data)]() mutable
                          { this->port->set_value(std::move(new_data)); });
     }
 
     template <typename T>
-    void Port<T>::unset_value()
+    void ports::External<T>::unset_value()
     {
         this->core->post([this]() mutable { this->port->unset_value(); });
     }

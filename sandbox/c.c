@@ -13,7 +13,7 @@ int nil_gate_port_eq_int(const void* l, const void* r)
     return *(const int*)(l) == *(const int*)(r) ? 1 : 0;
 }
 
-void bar(struct nil_gate_node_args* props)
+void bar(struct nil_gate_node_args const* props)
 {
     for (int i = 0; i < props->inputs.size; ++i)
     {
@@ -42,22 +42,22 @@ void bar(struct nil_gate_node_args* props)
     }
 }
 
-int main(void)
-{
-    struct nil_gate_core* core = nil_gate_core_create();
-    nil_gate_core_set_runner_soft_blocking(core);
+struct nil_gate_mport port1; // NOLINT
+struct nil_gate_mport port2; // NOLINT
 
+void gate_apply_1(struct nil_gate_graph* graph)
+{
     int* value = malloc(sizeof(int));
     *value = 10;
-    struct nil_gate_mport port1 = nil_gate_core_port(core, NIL_GATE_PORT_INFO(int), value);
-    
+    port1 = nil_gate_graph_port(graph, NIL_GATE_PORT_INFO(int), value);
+
     value = malloc(sizeof(int));
     *value = 11;
-    struct nil_gate_mport port2 = nil_gate_core_port(core, NIL_GATE_PORT_INFO(int), value);
+    port2 = nil_gate_graph_port(graph, NIL_GATE_PORT_INFO(int), value);
 
     struct nil_gate_rports node_outputs_1 = NIL_GATE_NODE_OUTPUTS(1);
-    nil_gate_core_node(
-        core,
+    nil_gate_graph_node(
+        graph,
         bar,
         NIL_GATE_RPORTS(port1, port2),
         NIL_GATE_NO_PORT_INFOS(),
@@ -65,40 +65,56 @@ int main(void)
         &node_outputs_1
     );
 
-    nil_gate_core_node(
-        core,
+    nil_gate_graph_node(
+        graph,
         bar,
         NIL_GATE_RPORTS(node_outputs_1.ports[0], node_outputs_1.ports[0]),
         NIL_GATE_NO_PORT_INFOS(),
         NIL_GATE_NO_PORT_INFOS(),
         NULL
     );
-    nil_gate_core_commit(core);
+}
+
+void gate_apply_2(struct nil_gate_graph* graph)
+{
+    (void)graph;
+    int* new_value = malloc(sizeof(int));
+    *new_value = 20;
+    nil_gate_port_set_value(port1, new_value);
+}
+
+void gate_apply_3(struct nil_gate_graph* graph)
+{
+    (void)graph;
+    nil_gate_port_unset_value(port1);
+}
+
+void gate_apply_4(struct nil_gate_graph* graph)
+{
+    (void)graph;
+    int* new_value = malloc(sizeof(int));
+    *new_value = 30;
+    nil_gate_port_set_value(port1, new_value);
+}
+
+int main(void)
+{
+    struct nil_gate_core* core = nil_gate_core_create();
+    nil_gate_core_set_runner_soft_blocking(core);
     {
-        int* new_value = malloc(sizeof(int));
-        *new_value = 20;
-        nil_gate_port_set_value(port1, new_value);
+        nil_gate_core_apply(core, gate_apply_1);
         nil_gate_core_commit(core);
     }
     {
-        // struct nil_gate_bports batch_ports = NIL_GATE_BATCH(2);
-        // nil_gate_core_batch(core, NIL_GATE_MPORTS(port1, port2), &batch_ports);
-
-        // int* new_value = malloc(sizeof(int));
-        // *new_value = 130;1
-        // nil_gate_port_set_value(batch_ports.ports[0], new_value);
-
-        // nil_gate_core_batch_release(&batch_ports);
-        // nil_gate_core_commit(core);
-    }
-    {
-        nil_gate_port_unset_value(port1);
+        nil_gate_core_apply(core, gate_apply_2);
         nil_gate_core_commit(core);
     }
     {
-        int* new_value = malloc(sizeof(int));
-        *new_value = 30;
-        nil_gate_port_set_value(port1, new_value);
+        nil_gate_core_apply(core, gate_apply_3);
+        nil_gate_core_commit(core);
+    }
+    {
+        nil_gate_core_apply(core, gate_apply_4);
         nil_gate_core_commit(core);
     }
     nil_gate_core_destroy(core);

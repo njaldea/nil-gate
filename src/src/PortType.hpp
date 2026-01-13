@@ -16,8 +16,8 @@ namespace nil::gate::c
             void (*init_destroy)(void*)
         );
 
-        PortType(const PortType& o) = delete;
-        PortType& operator=(const PortType& o) = delete;
+        PortType(const PortType& o) = default;
+        PortType& operator=(const PortType& o) = default;
         PortType(PortType&& o) noexcept;
         PortType& operator=(PortType&& o) noexcept;
         ~PortType();

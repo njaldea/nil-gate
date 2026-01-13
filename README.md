@@ -81,10 +81,11 @@ core.commit();
 ## Ports
 Ports carry values between nodes.
 
-| Type                   | Meaning                           | Writable | Source                          |
-|------------------------|-----------------------------------|----------|---------------------------------|
-| `ports::Mutable<T>`    | External input or opt output      | yes      | `graph.port()`, node opt outputs|
-| `ports::ReadOnly<T>`   | Required (returned) output        | no       | node return                     |
+| Type                   | Meaning                           | Writable        | Source           |
+|------------------------|-----------------------------------|-----------------|------------------|
+| `ports::External<T>`   | External input or opt output      | yes (queued)    | `graph.port()`   |
+| `ports::Mutable<T>`    | Optional output                   | yes (immediate) | node opt outputs |
+| `ports::ReadOnly<T>`   | Required (returned) output        | no              | node return      |
 
 Readiness: A port becomes ready after its first set. A node runs only when all inputs are ready at commit.
 
@@ -104,10 +105,10 @@ Presence:
 
 Mutation:
 
-| API            | Effect                                                                  |
-|----------------|-------------------------------------------------------------------------|
-| `set_value(v)` | Immediately sets the value (if different by compare trait).             |
-| `unset_value()`| Immediately clears the current value (port becomes not ready).          |
+| API            | Effect                                                      |
+|----------------|-------------------------------------------------------------|
+| `set_value(v)` | sets the value (if different by compare trait).             |
+| `unset_value()`| clears the current value (port becomes not ready).          |
 
 Safety: Invoke these only within `core.post`/`core.apply`, or when the runner is idle. Mutating while the runner is executing is undefined.
 
@@ -135,9 +136,9 @@ Rule: Use a required output by default and switch to an optional output when emi
 ## Linking
 Link a read-only output to a mutable input inside `core.apply` using `graph.link(from, to)`.
 
-| API                                        | Effect                                                           |
-|--------------------------------------------|------------------------------------------------------------------|
-| `graph.link(ReadOnly<FROM>*, Mutable<TO>*)` | Creates a trivial node that forwards changes from `FROM` to `TO`.|
+| API                                          | Effect                                                           |
+|----------------------------------------------|------------------------------------------------------------------|
+| `graph.link(ReadOnly<FROM>*, External<TO>*)` | Creates a trivial node that forwards changes from `FROM` to `TO`.|
 
 Notes:
 - Uses `traits::compatibility<TO, FROM>::convert` to adapt types when needed.
