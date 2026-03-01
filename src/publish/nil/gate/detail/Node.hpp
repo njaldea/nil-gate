@@ -75,7 +75,12 @@ namespace nil::gate::detail
                 else
                 {
                     current_score = std::apply(
-                        [](const auto&... ports) { return std::max<int>({ports.score()...}) + 1; },
+                        [](const auto&... ports)
+                        {
+                            auto i = 0;
+                            ((i = std::max(i, ports.score())), ...);
+                            return i + 1;
+                        },
                         input_ports
                     );
                 }
