@@ -132,19 +132,17 @@ namespace nil::gate
         template <concepts::is_port_valid T>
         auto* port()
         {
-            auto* e = new detail::Port<traits::portify_t<T>>(); // NOLINT
-            auto* Port = new ports::External(core, e);          // NOLINT
-            independent_ports.emplace_back(Port);
-            return Port;
+            auto* p = new ports::External<traits::portify_t<T>>(core); // NOLINT
+            external_ports.emplace_back(p);
+            return p;
         }
 
         template <concepts::is_port_valid T>
         auto* port(T value)
         {
-            auto* e = new detail::Port<traits::portify_t<T>>(std::move(value)); // NOLINT
-            auto* Port = new ports::External(core, e);                          // NOLINT
-            independent_ports.emplace_back(Port);
-            return Port;
+            auto* p = new ports::External<traits::portify_t<T>>(core, std::move(value)); // NOLINT
+            external_ports.emplace_back(p);
+            return p;
         }
 
         /// starting from this point - misc
@@ -154,22 +152,22 @@ namespace nil::gate
             remove(owned_nodes, node);
         }
 
-        void remove(IPort* port)
+        void remove(EPort* port)
         {
-            remove(independent_ports, port);
+            remove(external_ports, port);
         }
 
         void clear()
         {
-            for (auto* e : independent_ports)
+            for (auto* e : external_ports)
             {
                 delete e; // NOLINT
             }
-            independent_ports.clear();
+            external_ports.clear();
 
-            for (auto* e : owned_nodes)
+            for (auto* n : owned_nodes)
             {
-                delete e; // NOLINT
+                delete n; // NOLINT
             }
             owned_nodes.clear();
         }
@@ -177,7 +175,7 @@ namespace nil::gate
     private:
         Core* core;
         std::vector<INode*> owned_nodes;
-        std::vector<IPort*> independent_ports;
+        std::vector<EPort*> external_ports;
         bool need_to_sort = true;
 
         auto sort() -> std::span<INode* const>

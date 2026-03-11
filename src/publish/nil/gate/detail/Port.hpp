@@ -38,6 +38,12 @@ namespace nil::gate::detail
 
         ~Port() noexcept override
         {
+            if (parent != nullptr)
+            {
+                detach_out(parent);
+                parent = nullptr;
+            }
+
             for (auto* node : node_out)
             {
                 node->detach_in(this);
@@ -156,7 +162,10 @@ namespace nil::gate::detail
 
         void detach_in(INode* node)
         {
-            std::erase_if(node_out, [node](auto* n) { return n == node; });
+            if (node == parent)
+            {
+                parent = nullptr;
+            }
         }
 
         void detach_out(INode* node)

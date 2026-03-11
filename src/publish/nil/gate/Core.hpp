@@ -4,7 +4,6 @@
 #include "IRunner.hpp"
 
 #include "detail/traits/node.hpp"
-#include "nil/gate/ports/External.hpp"
 
 #include <nil/xalt/fn_call.hpp>
 
@@ -97,12 +96,24 @@ namespace nil::gate
     void ports::External<T>::set_value(T new_data)
     {
         this->core->post([this, new_data = std::move(new_data)]() mutable
-                         { this->port->set_value(std::move(new_data)); });
+                         { this->port.set_value(std::move(new_data)); });
+    }
+
+    template <typename T>
+    void ports::External<T>::update(std::function<T(const T*)> callable)
+    {
+        this->core->post(
+            [this, callable]() mutable {
+                this->port.set_value(
+                    callable(this->port.has_value() ? &this->port.value() : nullptr)
+                );
+            }
+        );
     }
 
     template <typename T>
     void ports::External<T>::unset_value()
     {
-        this->core->post([this]() mutable { this->port->unset_value(); });
+        this->core->post([this]() { this->port.unset_value(); });
     }
 }

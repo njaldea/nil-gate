@@ -53,10 +53,7 @@ namespace nil::gate::detail
             score();
         }
 
-        ~Node() noexcept override
-        {
-            std::apply([this](auto&... i) { (i.detach_out(this), ...); }, input_ports);
-        }
+        ~Node() noexcept override = default;
 
         Node(Node&&) noexcept = delete;
         Node& operator=(Node&&) noexcept = delete;

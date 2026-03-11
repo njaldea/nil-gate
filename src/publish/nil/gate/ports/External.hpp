@@ -1,29 +1,46 @@
 #pragma once
 
 #include "../detail/Port.hpp"
-#include "ReadOnly.hpp"
+
+#include <functional>
 
 namespace nil::gate
 {
     class Core;
+
+    class EPort
+    {
+    public:
+        EPort() = default;
+        virtual ~EPort() noexcept = default;
+
+        EPort(EPort&&) noexcept = delete;
+        EPort& operator=(EPort&&) noexcept = delete;
+
+        EPort(const EPort&) = delete;
+        EPort& operator=(const EPort&) = delete;
+    };
 }
 
 namespace nil::gate::ports
 {
     template <typename T>
-    class External: public ports::ReadOnly<T>
+    class External final: public EPort
     {
     public:
-        External(Core* init_core, detail::Port<T>* init_port)
+        External(Core* init_core, T intial_value)
             : core(init_core)
-            , port(init_port)
+            , port(intial_value)
         {
         }
 
-        ~External() noexcept
+        explicit External(Core* init_core)
+            : core(init_core)
+            , port()
         {
-            delete port;
         }
+
+        ~External() noexcept final = default;
 
         External(External&&) = delete;
         External(const External&) = delete;
@@ -34,23 +51,15 @@ namespace nil::gate::ports
 
         void unset_value();
 
-        [[nodiscard]] const T& value() const noexcept override
-        {
-            return port->value();
-        }
+        void update(std::function<T(const T*)> callable);
 
-        [[nodiscard]] bool has_value() const noexcept override
+        ports::Mutable<T>* to_direct()
         {
-            return port->has_value();
-        }
-
-        ports::ReadOnly<T>* to_compat()
-        {
-            return port;
+            return &port;
         }
 
     private:
         Core* core;
-        detail::Port<T>* port;
+        detail::Port<T> port;
     };
 }

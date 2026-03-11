@@ -15,23 +15,25 @@ int main() // NOLINT
     runners::Immediate runner;
     Core core(&runner);
 
-    ports::External<int>* a = nullptr;               // input port
-    ports::External<int>* loopback_port = nullptr;   // current processor output
-    ports::ReadOnly<int>* out = nullptr;             // current processor output
-    INode* proc_node = nullptr;                      // current processor (add/sub)
+    ports::External<int>* a = nullptr;             // input port
+    ports::External<int>* loopback_port = nullptr; // current processor output
+    Node<nil::xalt::tlist<int, int>, nil::xalt::tlist<int>>* proc_node
+        = nullptr;                                   // current processor (add/sub)
     Node<tlist<int>, tlist<>>* looper = nullptr;     // printer node
     Node<tlist<int>, tlist<>>* print_node = nullptr; // printer node
 
     auto inc = [](int v, int loopback)
     {
-        std::printf("inc(%d) -> %d [%d]\n", v, v + 1, loopback);
-        return v + 1;
+        std::printf("inc(%d) -> %d [%d]\n", v, v + loopback, loopback);
+        return v + loopback;
     };
+
     auto dec = [](int v, int loopback)
     {
-        std::printf("dec(%d) -> %d [%d]\n", v, v - 1, loopback);
-        return v - 1;
+        std::printf("dec(%d) -> %d [%d]\n", v, v - loopback, loopback);
+        return v - loopback;
     };
+
     auto printer = [](int v) { std::printf("out=%d\n", v); };
 
     // Ensure input exists and build default chain (add)
@@ -41,11 +43,10 @@ int main() // NOLINT
             std::printf("[init] create input + add chain\n");
             a = g.port(0);
             loopback_port = g.port(10);
-            auto* n = g.node(inc, {a, loopback_port});
-            std::tie(out) = n->outputs();
-            looper = g.link(out, loopback_port);
-            proc_node = n;
-            print_node = g.node(printer, {out});
+
+            proc_node = g.node(inc, {a, loopback_port});
+            looper = g.link(get<0>(proc_node->outputs()), loopback_port);
+            print_node = g.node(printer, {get<0>(proc_node->outputs())});
         }
     );
 
@@ -64,23 +65,24 @@ int main() // NOLINT
                     g.remove(looper);
                     looper = nullptr;
                 }
+                if (print_node != nullptr)
+                {
+                    g.remove(print_node);
+                    print_node = nullptr;
+                }
                 if (mode == "add")
                 {
                     std::printf("[switch] add mode\n");
-                    auto* n = g.node(inc, {a, loopback_port});
-                    std::tie(out) = n->outputs();
-                    looper = g.link(out, loopback_port);
-                    proc_node = n;
-                    get<0>(print_node->inputs()) = out;
+                    proc_node = g.node(inc, {a, loopback_port});
+                    looper = g.link(get<0>(proc_node->outputs()), loopback_port);
+                    print_node = g.node(printer, {get<0>(proc_node->outputs())});
                 }
                 else if (mode == "sub")
                 {
                     std::printf("[switch] sub mode\n");
-                    auto* n = g.node(dec, {a, loopback_port});
-                    std::tie(out) = n->outputs();
-                    looper = g.link(out, loopback_port);
-                    proc_node = n;
-                    get<0>(print_node->inputs()) = out;
+                    proc_node = g.node(dec, {a, loopback_port});
+                    looper = g.link(get<0>(proc_node->outputs()), loopback_port);
+                    print_node = g.node(printer, {get<0>(proc_node->outputs())});
                 }
             }
         );
@@ -133,7 +135,8 @@ int main() // NOLINT
             if (iss >> v)
             {
                 std::printf("[input] a=%d\n", v);
-                core.apply([&a, v]() { a->set_value(v); });
+                a->set_value(v);
+                core.commit();
             }
             else
             {
@@ -148,7 +151,8 @@ int main() // NOLINT
             if (issn >> v)
             {
                 std::printf("[input] a=%d\n", v);
-                core.apply([&a, v]() { a->set_value(v); });
+                a->set_value(v);
+                core.commit();
             }
             else
             {

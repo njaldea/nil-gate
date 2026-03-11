@@ -8,6 +8,7 @@
 #include <queue>
 #include <thread>
 #include <unordered_set>
+#include <utility>
 
 namespace nil::gate::runners
 {
@@ -32,7 +33,11 @@ namespace nil::gate::runners
             main_tasks.push(
                 [this, apply_changes = std::move(apply_changes)]() mutable
                 {
-                    all_diffs.emplace_back(std::move(apply_changes));
+                    if (apply_changes)
+                    {
+                        all_diffs.emplace_back(std::move(apply_changes));
+                    }
+
                     if (!running_list.empty())
                     {
                         return;
@@ -47,6 +52,8 @@ namespace nil::gate::runners
                         }
                     }
 
+                    running_list.clear();
+                    waiting_list.clear();
                     for (const auto& node : nodes)
                     {
                         if (nullptr != node && node->is_pending())
@@ -93,7 +100,6 @@ namespace nil::gate::runners
             {
                 if (running_list.empty())
                 {
-                    waiting_list.clear();
                     run({});
                 }
             }

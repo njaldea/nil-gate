@@ -1,4 +1,5 @@
 #include <nil/gate.hpp>
+#include <nil/gate/runners/Immediate.hpp>
 #include <nil/gate/runners/NonBlocking.hpp>
 #include <nil/gate/runners/Parallel.hpp>
 #include <nil/gate/runners/boost_asio/Parallel.hpp>
@@ -7,22 +8,24 @@
 #include <nil/gate/bias/nil.hpp>
 
 #include <cstdio>
+#include <iostream>
 #include <thread>
 
 int main()
 {
-    // nil::gate::runners::NonBlocking non_blocking_runner;
-    // nil::gate::runners::Parallel parallel_runner(10);
-    // nil::gate::runners::boost_asio::Serial basio_serial_runner;
-    nil::gate::runners::boost_asio::Parallel baso_parallel_runner(10);
-    nil::gate::Core core(&baso_parallel_runner);
+    // nil::gate::runners::Immediate runner;
+    // nil::gate::runners::NonBlocking runner;
+    // nil::gate::runners::Parallel runner(1);
+    // nil::gate::runners::boost_asio::Serial runner;
+    nil::gate::runners::boost_asio::Parallel runner(1);
+    nil::gate::Core core(&runner);
 
     core.apply(
         [](nil::gate::Graph& graph)
         {
-            auto* e1_i = graph.port(0);
+            auto* e1_i = graph.port(1);
 
-            auto* node1 = graph.node(
+            auto* main_node = graph.node(
                 [](int v)
                 {
                     std::printf("Main: %d\n", v);
@@ -30,27 +33,35 @@ int main()
                 },
                 {e1_i}
             );
-            auto [e2_i] = node1->outputs();
+            const auto [e2_i] = main_node->outputs();
 
-            graph.node(
+            auto* first_node = graph.node(
                 [](int b1, int b2) { std::printf("First: %d : %d\n", b1, b2); },
                 {e1_i, e2_i}
             );
 
-            auto* node2 = graph.node(
-                [](nil::gate::Core& c, nil::gate::opt_outputs<int> a, int b1, int b2)
+            auto* second_node = graph.node(
+                [e1_i](nil::gate::Core& c, nil::gate::opt_outputs<int> a, int b1, int b2)
                 {
                     std::printf("Second: %d : %d\n", b1, b2);
-                    if (b1 % 2 == 0)
+                    e1_i->update([](const auto* v) { return v == nullptr ? 1 : *v + 1; });
+
+                    if (b1 % 2 != 0)
                     {
                         c.post([aa = get<0>(a)]() { aa->set_value(aa->value() + 20); });
                     }
                 },
                 {e1_i, e2_i}
             );
-            const auto [r] = node2->outputs();
+            const auto [r] = second_node->outputs();
 
-            graph.node([](int i) { std::printf("printer: %d\n", i); }, {r});
+            auto* pr_node = graph.node([](int i) { std::printf("printer: %d\n", i); }, {r});
+
+            std::cout << "mn node : " << main_node << std::endl;
+            std::cout << "f1 node : " << first_node << std::endl;
+            std::cout << "f2 node : " << second_node << std::endl;
+            std::cout << "pr node : " << pr_node << std::endl;
+            std::cout << "------" << std::endl;
         }
     );
 

@@ -69,13 +69,7 @@ namespace nil::gate::detail
             score();
         }
 
-        ~UNode() noexcept override
-        {
-            for (auto& i : input_ports)
-            {
-                i.detach_out(this);
-            }
-        }
+        ~UNode() noexcept override = default;
 
         UNode(UNode&&) noexcept = delete;
         UNode& operator=(UNode&&) noexcept = delete;

@@ -60,7 +60,11 @@ namespace nil::gate::runners::boost_asio
                 main_context,
                 [this, apply_changes = std::move(apply_changes)]() mutable
                 {
-                    all_diffs.emplace_back(std::move(apply_changes));
+                    if (apply_changes)
+                    {
+                        all_diffs.emplace_back(std::move(apply_changes));
+                    }
+
                     if (!running_list.empty())
                     {
                         return;
@@ -75,6 +79,8 @@ namespace nil::gate::runners::boost_asio
                         }
                     }
 
+                    running_list.clear();
+                    waiting_list.clear();
                     for (const auto& node : nodes)
                     {
                         if (nullptr != node && node->is_pending())
@@ -123,7 +129,6 @@ namespace nil::gate::runners::boost_asio
             {
                 if (running_list.empty())
                 {
-                    waiting_list.clear();
                     run({});
                 }
             }

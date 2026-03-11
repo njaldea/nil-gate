@@ -12,7 +12,7 @@ TEST(gate, create_port_uninit)
     core.post(
         [](nil::gate::Graph& graph)
         {
-            auto* port = graph.port<int>();
+            auto* port = graph.port<int>()->to_direct();
             ASSERT_FALSE(port->has_value());
 
             port->set_value(1);
@@ -34,7 +34,7 @@ TEST(gate, create_port_init)
     core.post(
         [](nil::gate::Graph& graph)
         {
-            auto* port = graph.port(1);
+            auto* port = graph.port(1)->to_direct();
             ASSERT_TRUE(port->has_value());
             ASSERT_EQ(port->value(), 1);
 
@@ -59,8 +59,8 @@ TEST(gate, create_node_req_output)
         [&req_out](nil::gate::Graph& graph)
         {
             auto* port = graph.port(1);
-            ASSERT_TRUE(port->has_value());
-            ASSERT_EQ(port->value(), 1);
+            ASSERT_TRUE(port->to_direct()->has_value());
+            ASSERT_EQ(port->to_direct()->value(), 1);
 
             auto* node = graph.node([](int v) { return v + 1; }, {port});
             std::tie(req_out) = node->outputs();
@@ -84,8 +84,8 @@ TEST(gate, create_node_opt_output)
         [&port, &opt_out](nil::gate::Graph& graph)
         {
             port = graph.port(1);
-            ASSERT_TRUE(port->has_value());
-            ASSERT_EQ(port->value(), 1);
+            ASSERT_TRUE(port->to_direct()->has_value());
+            ASSERT_EQ(port->to_direct()->value(), 1);
 
             auto* node = graph.node(
                 [](nil::gate::Core& c, nil::gate::opt_outputs<int> o, int v)
@@ -113,31 +113,31 @@ TEST(gate, create_node_opt_output)
     );
 
     core.commit();
-    ASSERT_TRUE(port->has_value());
-    ASSERT_EQ(port->value(), 1);
+    ASSERT_TRUE(port->to_direct()->has_value());
+    ASSERT_EQ(port->to_direct()->value(), 1);
     ASSERT_FALSE(opt_out->has_value());
 
     core.commit();
-    ASSERT_TRUE(port->has_value());
-    ASSERT_EQ(port->value(), 1);
+    ASSERT_TRUE(port->to_direct()->has_value());
+    ASSERT_EQ(port->to_direct()->value(), 1);
     ASSERT_TRUE(opt_out->has_value());
     ASSERT_EQ(opt_out->value(), 2);
 
     port->set_value(0);
-    ASSERT_TRUE(port->has_value());
-    ASSERT_EQ(port->value(), 0);
+    ASSERT_TRUE(port->to_direct()->has_value());
+    ASSERT_EQ(port->to_direct()->value(), 1);
     ASSERT_TRUE(opt_out->has_value());
     ASSERT_EQ(opt_out->value(), 2);
 
     core.commit();
-    ASSERT_TRUE(port->has_value());
-    ASSERT_EQ(port->value(), 0);
+    ASSERT_TRUE(port->to_direct()->has_value());
+    ASSERT_EQ(port->to_direct()->value(), 0);
     ASSERT_TRUE(opt_out->has_value()); // unchanged. to be applied on next cycle
     ASSERT_EQ(opt_out->value(), 2);
 
     core.commit();
-    ASSERT_TRUE(port->has_value());
-    ASSERT_EQ(port->value(), 0);
+    ASSERT_TRUE(port->to_direct()->has_value());
+    ASSERT_EQ(port->to_direct()->value(), 0);
     ASSERT_FALSE(opt_out->has_value());
 }
 
@@ -179,8 +179,8 @@ TEST(gate, create_node_opt_output_core_commit_in_node)
             graph.node([&](int v1, int v2) { foo.Call("dep node", v1, v2); }, {opt_out, side_port});
         }
     );
-    ASSERT_TRUE(port->has_value());
-    ASSERT_EQ(port->value(), 1);
+    ASSERT_TRUE(port->to_direct()->has_value());
+    ASSERT_EQ(port->to_direct()->value(), 1);
     ASSERT_FALSE(opt_out->has_value());
 
     {
@@ -189,8 +189,8 @@ TEST(gate, create_node_opt_output_core_commit_in_node)
             .Times(1)
             .RetiresOnSaturation();
         core.commit();
-        ASSERT_TRUE(port->has_value());
-        ASSERT_EQ(port->value(), 1);
+        ASSERT_TRUE(port->to_direct()->has_value());
+        ASSERT_EQ(port->to_direct()->value(), 1);
         ASSERT_TRUE(opt_out->has_value());
         ASSERT_EQ(opt_out->value(), 2);
     }
@@ -198,8 +198,8 @@ TEST(gate, create_node_opt_output_core_commit_in_node)
     {
         // pend set, should have no changes
         port->set_value(0);
-        ASSERT_TRUE(port->has_value());
-        ASSERT_EQ(port->value(), 0);
+        ASSERT_TRUE(port->to_direct()->has_value());
+        ASSERT_EQ(port->to_direct()->value(), 1);
         ASSERT_TRUE(opt_out->has_value());
         ASSERT_EQ(opt_out->value(), 2);
     }
@@ -208,8 +208,8 @@ TEST(gate, create_node_opt_output_core_commit_in_node)
         // commit, node should unset the out port
         // dep node should not run
         core.commit();
-        ASSERT_TRUE(port->has_value());
-        ASSERT_EQ(port->value(), 0);
+        ASSERT_TRUE(port->to_direct()->has_value());
+        ASSERT_EQ(port->to_direct()->value(), 0);
         ASSERT_TRUE(opt_out->has_value());
         ASSERT_EQ(opt_out->value(), 2);
     }
@@ -217,8 +217,8 @@ TEST(gate, create_node_opt_output_core_commit_in_node)
     {
         // side port changed, should have no change
         side_port->set_value(101);
-        ASSERT_TRUE(port->has_value());
-        ASSERT_EQ(port->value(), 0);
+        ASSERT_TRUE(port->to_direct()->has_value());
+        ASSERT_EQ(port->to_direct()->value(), 0);
         ASSERT_TRUE(opt_out->has_value());
         ASSERT_EQ(opt_out->value(), 2);
     }
@@ -227,38 +227,38 @@ TEST(gate, create_node_opt_output_core_commit_in_node)
         // commit, should have no change since dep node
         // should not run
         core.commit();
-        ASSERT_TRUE(port->has_value());
-        ASSERT_EQ(port->value(), 0);
+        ASSERT_TRUE(port->to_direct()->has_value());
+        ASSERT_EQ(port->to_direct()->value(), 0);
         ASSERT_FALSE(opt_out->has_value());
     }
 
     {
         // set port to odd, changes not yet applied
         port->set_value(11);
-        ASSERT_TRUE(port->has_value());
-        ASSERT_EQ(port->value(), 11);
+        ASSERT_TRUE(port->to_direct()->has_value());
+        ASSERT_EQ(port->to_direct()->value(), 0);
         ASSERT_FALSE(opt_out->has_value());
     }
 
     {
         core.commit();
-        ASSERT_TRUE(port->has_value());
-        ASSERT_EQ(port->value(), 11);
+        ASSERT_TRUE(port->to_direct()->has_value());
+        ASSERT_EQ(port->to_direct()->value(), 11);
         ASSERT_FALSE(opt_out->has_value());
     }
 
     {
         side_port->unset_value();
-        ASSERT_TRUE(port->has_value());
-        ASSERT_EQ(port->value(), 11);
+        ASSERT_TRUE(port->to_direct()->has_value());
+        ASSERT_EQ(port->to_direct()->value(), 11);
         ASSERT_FALSE(opt_out->has_value());
     }
     {
         // commit, dep node should not run
         // no changes to other ports/node
         core.commit();
-        ASSERT_TRUE(port->has_value());
-        ASSERT_EQ(port->value(), 11);
+        ASSERT_TRUE(port->to_direct()->has_value());
+        ASSERT_EQ(port->to_direct()->value(), 11);
         ASSERT_TRUE(opt_out->has_value());
         ASSERT_EQ(opt_out->value(), 12);
     }

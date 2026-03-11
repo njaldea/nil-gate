@@ -52,6 +52,14 @@ namespace nil::gate::ports
         {
         }
 
+        template <typename FROM>
+            requires(concepts::is_compatible<TO, FROM> && !std::is_same_v<TO, FROM>)
+        // NOLINTNEXTLINE(hicpp-explicit-conversions)
+        Compatible(External<FROM>* port)
+            : Compatible(port->to_direct())
+        {
+        }
+
         // NOLINTNEXTLINE(hicpp-explicit-conversions)
         Compatible(ports::ReadOnly<TO>* port)
             : context(port)
@@ -65,7 +73,7 @@ namespace nil::gate::ports
 
         // NOLINTNEXTLINE(hicpp-explicit-conversions)
         Compatible(External<TO>* port)
-            : Compatible(port->to_compat())
+            : Compatible(port->to_direct())
         {
         }
 

@@ -71,7 +71,6 @@ int main()
     while (true)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        a->set_value(!a->value());
-        core.commit();
+        core.apply([aa = a->to_direct()]() { aa->set_value(!aa->value()); });
     }
 }
