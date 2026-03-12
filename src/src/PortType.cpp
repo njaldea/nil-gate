@@ -47,10 +47,9 @@ namespace nil::gate::c
     }
 }
 
-namespace nil::gate::traits::port
+namespace nil::gate::traits
 {
-    template <>
-    bool is_eq(const c::PortType& current_value, const c::PortType& new_value)
+    bool Port<c::PortType>::is_eq(const c::PortType& current_value, const c::PortType& new_value)
     {
         if (current_value.eq != new_value.eq || current_value.destroy != new_value.destroy)
         {
@@ -59,14 +58,12 @@ namespace nil::gate::traits::port
         return 0 != current_value.eq(current_value.value, new_value.value);
     }
 
-    template <>
-    bool has_value(const c::PortType& value)
+    bool Port<c::PortType>::has_value(const c::PortType& value)
     {
         return value.value != nullptr;
     }
 
-    template <>
-    void unset(std::optional<c::PortType>& value)
+    void Port<c::PortType>::unset(std::optional<c::PortType>& value)
     {
         if (value.has_value())
         {

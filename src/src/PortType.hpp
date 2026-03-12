@@ -16,22 +16,23 @@ namespace nil::gate::c
             void (*init_destroy)(void*)
         );
 
-        PortType(const PortType& o) = default;
-        PortType& operator=(const PortType& o) = default;
+        PortType(const PortType& o) = delete;
+        PortType& operator=(const PortType& o) = delete;
         PortType(PortType&& o) noexcept;
         PortType& operator=(PortType&& o) noexcept;
         ~PortType();
     };
 }
 
-namespace nil::gate::traits::port
+namespace nil::gate::traits
 {
     template <>
-    bool is_eq(const c::PortType& current_value, const c::PortType& new_value);
+    struct Port<c::PortType>
+    {
+        static bool is_eq(const c::PortType& current_value, const c::PortType& new_value);
 
-    template <>
-    bool has_value(const c::PortType& value);
+        static bool has_value(const c::PortType& value);
 
-    template <>
-    void unset(std::optional<c::PortType>& value);
+        static void unset(std::optional<c::PortType>& value);
+    };
 }

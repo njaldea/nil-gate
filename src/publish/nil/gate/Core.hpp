@@ -89,31 +89,7 @@ namespace nil::gate
     {
         need_to_sort = true;
         static_assert(concepts::is_compatible<TO, FROM>, "Not Compatible");
-        return this->node([to](const FROM& v) { to->set_value(v); }, {from});
+        return this->node([mto = to->to_direct()](const FROM& v) { mto->set_value(v); }, {from});
     }
 
-    template <typename T>
-    void ports::External<T>::set_value(T new_data)
-    {
-        this->core->post([this, new_data = std::move(new_data)]() mutable
-                         { this->port.set_value(std::move(new_data)); });
-    }
-
-    template <typename T>
-    void ports::External<T>::update(std::function<T(const T*)> callable)
-    {
-        this->core->post(
-            [this, callable]() mutable {
-                this->port.set_value(
-                    callable(this->port.has_value() ? &this->port.value() : nullptr)
-                );
-            }
-        );
-    }
-
-    template <typename T>
-    void ports::External<T>::unset_value()
-    {
-        this->core->post([this]() { this->port.unset_value(); });
-    }
 }

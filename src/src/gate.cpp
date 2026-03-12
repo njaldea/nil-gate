@@ -67,125 +67,120 @@ extern "C"
         core->core->set_runner(nullptr);
     }
 
-    void nil_gate_core_apply(struct nil_gate_core* core, void (*callable)(struct nil_gate_graph*))
+    void nil_gate_core_post(struct nil_gate_core* core, struct nil_gate_core_callable callable)
     {
-        core->core->apply(
+        core->core->post(
             [callable](nil::gate::Graph& gate_graph)
             {
-                if (callable != nullptr)
+                if (callable.exec != nullptr)
                 {
                     struct nil_gate_graph graph
                     {
                         .graph = &gate_graph
                     };
-                    callable(&graph);
+                    callable.exec(&graph, callable.context);
+                }
+                if (callable.context != nullptr && callable.destroy_context != nullptr)
+                {
+                    callable.destroy_context(callable.context);
                 }
             }
         );
     }
 
-    nil_gate_mport nil_gate_graph_port(
+    void nil_gate_core_apply(struct nil_gate_core* core, struct nil_gate_core_callable callable)
+    {
+        core->core->apply(
+            [callable](nil::gate::Graph& gate_graph)
+            {
+                if (callable.exec != nullptr)
+                {
+                    struct nil_gate_graph graph
+                    {
+                        .graph = &gate_graph
+                    };
+                    callable.exec(&graph, callable.context);
+                }
+                if (callable.context != nullptr && callable.destroy_context != nullptr)
+                {
+                    callable.destroy_context(callable.context);
+                }
+            }
+        );
+    }
+
+    nil_gate_eport nil_gate_graph_port(
         nil_gate_graph* graph,
         nil_gate_port_info meta_info,
         void* initial_value
     )
     {
-        return nil_gate_mport{
-            .handle = graph->graph->port(
-                nil::gate::c::PortType(initial_value, meta_info.eq, meta_info.destroy)
-            ),
-            .info = meta_info,
-            .port_type = 0
+        auto* handle = graph->graph->port(
+            nil::gate::c::PortType(initial_value, meta_info.eq, meta_info.destroy)
+        );
+        return nil_gate_eport{
+            .handle = handle,
+            .sub_handle = handle->to_direct(),
+            .info = meta_info
         };
     }
 
     void nil_gate_mport_set_value(nil_gate_mport port, void* new_value)
     {
-        if (port.port_type == 0)
-        {
-            static_cast<nil::gate::ports::External<nil::gate::c::PortType>*>(port.handle)
-                ->set_value(nil::gate::c::PortType(new_value, port.info.eq, port.info.destroy));
-        }
-        else
-        {
-            static_cast<nil::gate::ports::Mutable<nil::gate::c::PortType>*>(port.handle)
-                ->set_value(nil::gate::c::PortType(new_value, port.info.eq, port.info.destroy));
-        }
+        static_cast<nil::gate::ports::Mutable<nil::gate::c::PortType>*>(port.handle)
+            ->set_value(nil::gate::c::PortType(new_value, port.info.eq, port.info.destroy));
+    }
+
+    void nil_gate_eport_set_value(nil_gate_eport port, void* new_value)
+    {
+        static_cast<nil::gate::ports::External<nil::gate::c::PortType>*>(port.handle)
+            ->to_direct()
+            ->set_value(nil::gate::c::PortType(new_value, port.info.eq, port.info.destroy));
     }
 
     void nil_gate_mport_unset_value(nil_gate_mport port)
     {
-        if (port.port_type == 0)
-        {
-            static_cast<nil::gate::ports::External<nil::gate::c::PortType>*>(port.handle)
-                ->unset_value();
-        }
-        else
-        {
-            static_cast<nil::gate::ports::Mutable<nil::gate::c::PortType>*>(port.handle)
-                ->unset_value();
-        }
+        static_cast<nil::gate::ports::Mutable<nil::gate::c::PortType>*>(port.handle)->unset_value();
     }
 
-    void nil_gate_graph_node(
-        const nil_gate_graph* graph,
-        void (*fn)(struct nil_gate_node_args const* args),
-        struct nil_gate_rports inputs,
-        struct nil_gate_port_infos req_outputs,
-        struct nil_gate_port_infos opt_outputs,
-        nil_gate_rports* outputs
-    )
+    void nil_gate_eport_unset_value(nil_gate_eport port)
+    {
+        static_cast<nil::gate::ports::External<nil::gate::c::PortType>*>(port.handle)
+            ->to_direct()
+            ->unset_value();
+    }
+
+    void nil_gate_graph_node(const nil_gate_graph* graph, struct nil_gate_node_info node_info)
     {
         namespace ng = nil::gate;
-        auto ng_inputs = [&inputs]()
+        auto ng_inputs = [&node_info]()
         {
             std::vector<ng::ports::Compatible<ng::c::PortType>> object;
-            object.reserve(inputs.size);
-            for (auto i = 0U; i < inputs.size; ++i)
+            object.reserve(node_info.inputs.size);
+            for (auto i = 0U; i < node_info.inputs.size; ++i)
             {
-                if (inputs.ports[i].port_type == 0)
-                {
-                    object.emplace_back(
-                        static_cast<ng::ports::External<ng::c::PortType>*>(inputs.ports[i].handle)
-                    );
-                }
-                else
-                {
-                    object.emplace_back(
-                        static_cast<ng::ports::ReadOnly<ng::c::PortType>*>(inputs.ports[i].handle)
-                    );
-                }
+                object.emplace_back(static_cast<ng::ports::ReadOnly<ng::c::PortType>*>(
+                    node_info.inputs.ports[i].handle
+                ));
             }
             return object;
         }();
 
-        auto ng_req_output_info = [&req_outputs]()
+        auto ng_opt_output_info = [&node_info]()
         {
             std::vector<nil_gate_port_info> object;
-            object.reserve(req_outputs.size);
-            for (auto i = 0U; i < req_outputs.size; ++i)
+            object.reserve(node_info.outputs.size);
+            for (auto i = 0U; i < node_info.outputs.size; ++i)
             {
-                object.push_back(req_outputs.infos[i]);
+                object.push_back(node_info.outputs.infos[i]);
             }
             return object;
         }();
 
-        auto ng_opt_output_info = [&opt_outputs]()
-        {
-            std::vector<nil_gate_port_info> object;
-            object.reserve(opt_outputs.size);
-            for (auto i = 0U; i < opt_outputs.size; ++i)
-            {
-                object.push_back(opt_outputs.infos[i]);
-            }
-            return object;
-        }();
-
-        auto ng_fn = [graph = graph,
-                      fn = fn,
-                      ng_req_output_info = std::move(ng_req_output_info),
+        auto ng_fn = [exec = node_info.exec,
+                      context = node_info.context,
                       ng_opt_output_info = std::move(ng_opt_output_info)] //
-            (const ng::UNode<ng::c::PortType>::Arg& arg) -> std::vector<ng::c::PortType>
+            (const ng::UNode<ng::c::PortType>::Arg& arg) -> void
         {
             auto arg_inputs = [&]()
             {
@@ -198,81 +193,56 @@ extern "C"
                 return object;
             }();
 
-            std::vector<void*> arg_req_outputs(arg.req_outputs, nullptr);
-
             auto arg_opt_outputs = [&]()
             {
                 std::vector<nil_gate_mport> object;
-                object.reserve(arg.opt_outputs.size());
-                for (auto i = 0U; i < arg.opt_outputs.size(); ++i)
+                object.reserve(arg.outputs.size());
+                for (auto i = 0U; i < arg.outputs.size(); ++i)
                 {
-                    object.push_back(nil_gate_mport{
-                        .handle = arg.opt_outputs[i],
-                        .info = ng_opt_output_info[i],
-                        .port_type = 1
-                    });
+                    object.push_back(
+                        nil_gate_mport{.handle = arg.outputs[i], .info = ng_opt_output_info[i]}
+                    );
                 }
                 return object;
             }();
 
+            auto ngc = nil_gate_core{.core = arg.core};
+
             auto args = nil_gate_node_args{
-                .graph = graph,
+                .core = &ngc,
                 .inputs = {
                     .size = static_cast<std::uint8_t>(arg.inputs.size()),
                     .data=arg_inputs.data()
                 },
-                .req_outputs = {
-                    .size = static_cast<std::uint8_t>(arg.req_outputs),
-                    .data = arg_req_outputs.data()
-                },
-                .opt_outputs = {
-                    .size = static_cast<std::uint8_t>(arg.opt_outputs.size()),
+                .outputs = {
+                    .size = static_cast<std::uint8_t>(arg.outputs.size()),
                     .ports = arg_opt_outputs.data(),
-                }
+                },
+                .context = context
             };
 
-            fn(&args);
-
-            return [&]()
-            {
-                std::vector<ng::c::PortType> final_req_outputs;
-                final_req_outputs.reserve(arg.req_outputs);
-                for (auto i = 0U; i < arg_req_outputs.size(); ++i)
-                {
-                    final_req_outputs.emplace_back(
-                        arg_req_outputs[i],
-                        ng_req_output_info[i].eq,
-                        ng_req_output_info[i].destroy
-                    );
-                }
-                return final_req_outputs;
-            }();
+            exec(&args);
         };
 
-        auto node_result = graph->graph->unode<ng::c::PortType>(
-            {.inputs = std::move(ng_inputs),
-             .req_output_size = req_outputs.size,
-             .opt_output_size = opt_outputs.size,
-             .fn = std::move(ng_fn)}
-        );
+        auto node_result = graph->graph
+                               ->unode<ng::c::PortType>(
+                                   {.inputs = std::move(ng_inputs),
+                                    .output_size = node_info.outputs.size,
+                                    .fn = std::move(ng_fn)}
+                               )
+                               ->outputs();
 
-        for (auto i = 0U; i < req_outputs.size; ++i)
+        for (auto i = 0U; i < node_info.outputs.size; ++i)
         {
-            outputs->ports[i].info = req_outputs.infos[i];
-            outputs->ports[i].handle = node_result[i];
-        }
-
-        for (auto i = 0U; i < opt_outputs.size; ++i)
-        {
-            const auto ii = i + req_outputs.size;
-            outputs->ports[ii].info = opt_outputs.infos[i];
-            outputs->ports[ii].handle = node_result[i];
+            const auto ii = i + node_info.outputs.size;
+            node_info.output_handles->ports[ii].info = node_info.outputs.infos[i];
+            node_info.output_handles->ports[ii].handle = node_result[i];
         }
     }
 
     nil_gate_rport nil_gate_mport_to_rport(nil_gate_mport port)
     {
-        return {.handle = port.handle, .info = port.info, .port_type = port.port_type};
+        return {.handle = port.handle, .info = port.info};
     }
 
     nil_gate_rport nil_gate_rport_to_rport(nil_gate_rport port)
@@ -283,5 +253,15 @@ extern "C"
     nil_gate_mport nil_gate_mport_to_mport(nil_gate_mport port)
     {
         return port;
+    }
+
+    nil_gate_rport nil_gate_eport_to_rport(nil_gate_eport port)
+    {
+        return {.handle = port.sub_handle, .info = port.info};
+    }
+
+    nil_gate_mport nil_gate_eport_to_mport(nil_gate_eport port)
+    {
+        return {.handle = port.sub_handle, .info = port.info};
     }
 }

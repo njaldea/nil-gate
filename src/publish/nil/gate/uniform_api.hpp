@@ -57,8 +57,8 @@ namespace nil::gate
     }
 
     /**
-     * Create an uninitialized mutable port of type T.
-     * Port becomes ready after first set_value()/sync write.
+     * Create an uninitialized external port of type T.
+     * Port becomes ready after first direct set_value() on its to_direct() view.
      */
     template <typename T>
     auto add_port(Graph& graph)
@@ -67,7 +67,7 @@ namespace nil::gate
     }
 
     /**
-     * Create a mutable port initialized with a value (immediately ready).
+     * Create an external port initialized with a value.
      */
     template <typename T>
     auto add_port(Graph& graph, T&& value)
@@ -76,7 +76,7 @@ namespace nil::gate
     }
 
     /**
-     * Link a ReadOnly<FROM> producing port to a Port<TO> consuming port.
+     * Link a ReadOnly<FROM> producing port to an External<TO> consuming port.
      * Type adaptation (if any) is handled through traits::compatibility.
      */
     template <typename TO, typename FROM>

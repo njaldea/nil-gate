@@ -123,7 +123,7 @@ TEST(gate, create_node_opt_output)
     ASSERT_TRUE(opt_out->has_value());
     ASSERT_EQ(opt_out->value(), 2);
 
-    port->set_value(0);
+    core.post([mport = port->to_direct()]() { mport->set_value(0); });
     ASSERT_TRUE(port->to_direct()->has_value());
     ASSERT_EQ(port->to_direct()->value(), 1);
     ASSERT_TRUE(opt_out->has_value());
@@ -197,7 +197,7 @@ TEST(gate, create_node_opt_output_core_commit_in_node)
 
     {
         // pend set, should have no changes
-        port->set_value(0);
+        core.post([mport = port->to_direct()]() { mport->set_value(0); });
         ASSERT_TRUE(port->to_direct()->has_value());
         ASSERT_EQ(port->to_direct()->value(), 1);
         ASSERT_TRUE(opt_out->has_value());
@@ -216,7 +216,7 @@ TEST(gate, create_node_opt_output_core_commit_in_node)
 
     {
         // side port changed, should have no change
-        side_port->set_value(101);
+        core.post([mport = side_port->to_direct()]() { mport->set_value(101); });
         ASSERT_TRUE(port->to_direct()->has_value());
         ASSERT_EQ(port->to_direct()->value(), 0);
         ASSERT_TRUE(opt_out->has_value());
@@ -234,7 +234,7 @@ TEST(gate, create_node_opt_output_core_commit_in_node)
 
     {
         // set port to odd, changes not yet applied
-        port->set_value(11);
+        core.post([mport = port->to_direct()]() { mport->set_value(11); });
         ASSERT_TRUE(port->to_direct()->has_value());
         ASSERT_EQ(port->to_direct()->value(), 0);
         ASSERT_FALSE(opt_out->has_value());
@@ -248,7 +248,7 @@ TEST(gate, create_node_opt_output_core_commit_in_node)
     }
 
     {
-        side_port->unset_value();
+        core.post([mside_port = side_port->to_direct()]() { mside_port->unset_value(); });
         ASSERT_TRUE(port->to_direct()->has_value());
         ASSERT_EQ(port->to_direct()->value(), 11);
         ASSERT_FALSE(opt_out->has_value());

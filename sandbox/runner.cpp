@@ -44,7 +44,8 @@ int main()
                 [e1_i](nil::gate::Core& c, nil::gate::opt_outputs<int> a, int b1, int b2)
                 {
                     std::printf("Second: %d : %d\n", b1, b2);
-                    e1_i->update([](const auto* v) { return v == nullptr ? 1 : *v + 1; });
+                    c.post([=, e1_ii = e1_i->to_direct()]()
+                           { e1_ii->set_value(e1_ii->has_value() ? 1 : e1_ii->value() + 1); });
 
                     if (b1 % 2 != 0)
                     {

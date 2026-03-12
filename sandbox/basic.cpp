@@ -54,25 +54,24 @@ int main()
             const auto [c1] = graph.node(C("c"), {b1, a2})->outputs();
             graph.node(D("d"), {c1, a2});
 
-            auto outs = graph.unode<int>({
+            auto* outs = graph.unode<int>({
                 .inputs = {c1},
-                .req_output_size = 1,
-                .opt_output_size = 1,
-                .fn = [](const nil::gate::UNode<int>::Arg& v) -> std::vector<int>
+                .output_size = 2,
+                .fn =
+                    [](const nil::gate::UNode<int>::Arg& v)
                 {
                     std::cout << __FILE__ << ':' << __LINE__ << std::endl;
-                    std::cout << v.inputs.size() << ','      //
-                              << v.opt_outputs.size() << ',' //
-                              << v.req_outputs << std::endl;
-                    return {100}; //
+                    std::cout << v.inputs.size() << ',' //
+                              << v.outputs.size() << std::endl;
+                    v.outputs[0]->set_value(100);
                 } //
             });
             std::cout << __FILE__ << ':' << __LINE__ << std::endl;
-            std::cout << outs.size() << std::endl;
+            std::cout << outs->outputs().size() << std::endl;
         }
     );
 
-    core.apply([=]() { a1->set_value(2); });
+    core.apply([=, a11 = a1->to_direct()]() { a11->set_value(2); });
 
     core.apply(
         [&a1](nil::gate::Graph& graph)

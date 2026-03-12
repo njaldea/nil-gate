@@ -5,7 +5,6 @@
 #include <iostream>
 #include <sstream>
 #include <string>
-#include <tuple>
 
 int main() // NOLINT
 {
@@ -135,8 +134,7 @@ int main() // NOLINT
             if (iss >> v)
             {
                 std::printf("[input] a=%d\n", v);
-                a->set_value(v);
-                core.commit();
+                core.apply([v, ma = a->to_direct()]() { ma->set_value(v); });
             }
             else
             {
@@ -151,7 +149,7 @@ int main() // NOLINT
             if (issn >> v)
             {
                 std::printf("[input] a=%d\n", v);
-                a->set_value(v);
+                core.apply([v, ma = a->to_direct()]() { ma->set_value(v); });
                 core.commit();
             }
             else

@@ -2,12 +2,8 @@
 
 #include "../detail/Port.hpp"
 
-#include <functional>
-
 namespace nil::gate
 {
-    class Core;
-
     class EPort
     {
     public:
@@ -28,17 +24,12 @@ namespace nil::gate::ports
     class External final: public EPort
     {
     public:
-        External(Core* init_core, T intial_value)
-            : core(init_core)
-            , port(intial_value)
+        explicit External(T intial_value)
+            : port(std::move(intial_value))
         {
         }
 
-        explicit External(Core* init_core)
-            : core(init_core)
-            , port()
-        {
-        }
+        explicit External() = default;
 
         ~External() noexcept final = default;
 
@@ -47,19 +38,12 @@ namespace nil::gate::ports
         External& operator=(External&&) = delete;
         External& operator=(const External&) = delete;
 
-        void set_value(T new_data);
-
-        void unset_value();
-
-        void update(std::function<T(const T*)> callable);
-
         ports::Mutable<T>* to_direct()
         {
             return &port;
         }
 
     private:
-        Core* core;
         detail::Port<T> port;
     };
 }

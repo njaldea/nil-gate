@@ -112,8 +112,10 @@ namespace nil::gate
         auto unode(UNode<T>::Info info)
         {
             need_to_sort = true;
-            auto n = std::make_unique<UNode<T>>(core, std::move(info));
-            return static_cast<UNode<T>*>(owned_nodes.emplace_back(n.release()))->outputs();
+            auto n = std::make_unique<detail::UNode<T>>(core, std::move(info));
+            return static_cast<typename detail::UNode<T>::base_t*>(
+                owned_nodes.emplace_back(n.release())
+            );
         }
 
         /// starting from this point - link
@@ -132,7 +134,7 @@ namespace nil::gate
         template <concepts::is_port_valid T>
         auto* port()
         {
-            auto* p = new ports::External<traits::portify_t<T>>(core); // NOLINT
+            auto* p = new ports::External<traits::portify_t<T>>(); // NOLINT
             external_ports.emplace_back(p);
             return p;
         }
@@ -140,7 +142,7 @@ namespace nil::gate
         template <concepts::is_port_valid T>
         auto* port(T value)
         {
-            auto* p = new ports::External<traits::portify_t<T>>(core, std::move(value)); // NOLINT
+            auto* p = new ports::External<traits::portify_t<T>>(std::move(value)); // NOLINT
             external_ports.emplace_back(p);
             return p;
         }
