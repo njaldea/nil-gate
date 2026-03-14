@@ -1,7 +1,6 @@
 #include <nil/gate.hpp>
 #include <nil/gate/bias/nil.hpp>
-#include <nil/gate/runners/NonBlocking.hpp>
-#include <nil/gate/runners/Parallel.hpp>
+#include <nil/gate/runners/Async.hpp>
 
 #include <iostream>
 
@@ -36,7 +35,7 @@ constexpr auto printer_f = [](float v) { std::cout << "printer<float>: " << v <<
 
 int main()
 {
-    nil::gate::runners::Parallel runner(5);
+    nil::gate::runners::Async runner(5);
     nil::gate::Core core(&runner);
 
     auto ref = 100.f;

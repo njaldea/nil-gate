@@ -2,6 +2,8 @@
 
 #include "ReadOnly.hpp"
 
+#include <cstdint>
+
 namespace nil::gate::ports
 {
     /**
@@ -32,6 +34,6 @@ namespace nil::gate::ports
          */
         virtual void unset_value() = 0;
 
-        virtual int score() const noexcept = 0;
+        virtual std::uint32_t score() const noexcept = 0;
     };
 }

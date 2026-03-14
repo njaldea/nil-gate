@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 namespace nil::gate
 {
     class Core;
@@ -31,7 +33,7 @@ namespace nil::gate
         virtual void pend() = 0;
         virtual void input_changed() = 0;
 
-        virtual int score() const = 0;
+        virtual std::uint32_t score() const = 0;
         virtual void detach_in(IPort* port) = 0;
 
     protected:

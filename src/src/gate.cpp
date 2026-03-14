@@ -1,8 +1,7 @@
 #include <nil/gate.h>
 #include <nil/gate.hpp>
+#include <nil/gate/runners/Async.hpp>
 #include <nil/gate/runners/Immediate.hpp>
-#include <nil/gate/runners/NonBlocking.hpp>
-#include <nil/gate/runners/Parallel.hpp>
 #include <nil/gate/runners/SoftBlocking.hpp>
 
 #include "PortType.hpp"
@@ -49,16 +48,10 @@ extern "C"
         core->core->set_runner(new nil::gate::runners::SoftBlocking()); // NOLINT
     }
 
-    void nil_gate_core_set_runner_non_blocking(nil_gate_core* core)
+    void nil_gate_core_set_runner_async(nil_gate_core* core, uint32_t thread_count)
     {
-        delete core->core->get_runner();                               // NOLINT
-        core->core->set_runner(new nil::gate::runners::NonBlocking()); // NOLINT
-    }
-
-    void nil_gate_core_set_runner_parallel_blocking(nil_gate_core* core, uint32_t thread_count)
-    {
-        delete core->core->get_runner();                                        // NOLINT
-        core->core->set_runner(new nil::gate::runners::Parallel(thread_count)); // NOLINT
+        delete core->core->get_runner();                                     // NOLINT
+        core->core->set_runner(new nil::gate::runners::Async(thread_count)); // NOLINT
     }
 
     void nil_gate_core_unset_runner(struct nil_gate_core* core)

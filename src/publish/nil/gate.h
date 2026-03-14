@@ -23,11 +23,7 @@ extern "C"
 
     void nil_gate_core_set_runner_immediate(struct nil_gate_core* core);
     void nil_gate_core_set_runner_soft_blocking(struct nil_gate_core* core);
-    void nil_gate_core_set_runner_non_blocking(struct nil_gate_core* core);
-    void nil_gate_core_set_runner_parallel_blocking(
-        struct nil_gate_core* core,
-        uint32_t thread_count
-    );
+    void nil_gate_core_set_runner_Async(struct nil_gate_core* core, uint32_t thread_count);
     void nil_gate_core_unset_runner(struct nil_gate_core* core);
 
     struct nil_gate_graph;

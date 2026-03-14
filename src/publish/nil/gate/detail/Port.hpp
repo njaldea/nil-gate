@@ -56,7 +56,7 @@ namespace nil::gate::detail
         Port(const Port&) = delete;
         Port& operator=(const Port&) = delete;
 
-        int score() const noexcept override
+        std::uint32_t score() const noexcept override
         {
             return parent != nullptr ? parent->score() : 0;
         }
@@ -314,7 +314,7 @@ namespace nil::gate::detail
                 return port->is_ready();
             }
 
-            int score() const
+            std::uint32_t score() const
             {
                 return port->score();
             }

@@ -61,7 +61,7 @@ namespace nil::gate::detail
         Node(const Node&) = delete;
         Node& operator=(const Node&) = delete;
 
-        int score() const noexcept override
+        std::uint32_t score() const noexcept override
         {
             if (!current_score.has_value())
             {
@@ -74,9 +74,9 @@ namespace nil::gate::detail
                     current_score = std::apply(
                         [](const auto&... ports)
                         {
-                            auto i = 0;
+                            auto i = 0U;
                             ((i = std::max(i, ports.score())), ...);
-                            return i + 1;
+                            return i + 1U;
                         },
                         input_ports
                     );
@@ -248,6 +248,6 @@ namespace nil::gate::detail
         typename input_t::ports input_ports;
         typename req_output_t::data_ports req_outputs;
         typename opt_output_t::data_ports opt_outputs;
-        mutable std::optional<int> current_score;
+        mutable std::optional<std::uint32_t> current_score;
     };
 }

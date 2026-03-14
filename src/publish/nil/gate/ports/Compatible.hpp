@@ -139,7 +139,7 @@ namespace nil::gate::ports
             return false;
         }
 
-        int score() const noexcept
+        std::uint32_t score() const noexcept
         {
             if (nullptr == context)
             {
@@ -163,7 +163,7 @@ namespace nil::gate::ports
         void (*ptr_attach_out)(void*, INode*) = nullptr;
         void (*ptr_detach_out)(void*, INode*) = nullptr;
         bool (*ptr_is_ready)(const void*) = nullptr;
-        int (*ptr_score)(const void*) = nullptr;
+        std::uint32_t (*ptr_score)(const void*) = nullptr;
         const TO& (*ptr_value)(const void*) = nullptr;
 
         template <typename T>
@@ -185,7 +185,7 @@ namespace nil::gate::ports
         }
 
         template <typename T>
-        static int impl_score(const void* port)
+        static std::uint32_t impl_score(const void* port)
         {
             return static_cast<const T*>(port)->score();
         }

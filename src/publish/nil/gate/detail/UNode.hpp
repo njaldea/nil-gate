@@ -77,7 +77,7 @@ namespace nil::gate::detail
         UNode(const UNode&) = delete;
         UNode& operator=(const UNode&) = delete;
 
-        int score() const noexcept override
+        std::uint32_t score() const noexcept override
         {
             if (!current_score.has_value())
             {
@@ -87,12 +87,12 @@ namespace nil::gate::detail
                 }
                 else
                 {
-                    int max_score = 0;
+                    auto max_score = 0U;
                     for (const auto& port : input_ports)
                     {
                         max_score = std::max(max_score, port.score());
                     }
-                    current_score = max_score + 1;
+                    current_score = max_score + 1U;
                 }
             }
             return current_score.value();
@@ -200,6 +200,6 @@ namespace nil::gate::detail
         std::vector<detail::Port<traits::portify_t<T>>> output_ports;
         std::vector<ports::Mutable<T>*> moutput_ports;        // to be passed to the node
         std::vector<ports::ReadOnly<T>*> output_port_handles; // to be returned by the node
-        mutable std::optional<int> current_score;
+        mutable std::optional<std::uint32_t> current_score;
     };
 }

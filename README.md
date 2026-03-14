@@ -180,10 +180,8 @@ Type conversion uses `traits::compatibility<TO, FROM>::convert`.
 |---------------------------------|--------------------------------------|
 | `runners::Immediate`            | Sync, single-thread                  |
 | `runners::SoftBlocking`         | Sync, allows node-side `commit()`    |
-| `runners::NonBlocking`          | Async scheduling with sync node exec |
-| `runners::Parallel`             | Thread-pool                          |
-| `runners::boost_asio::Serial`   | Asio `io_context` single-thread      |
-| `runners::boost_asio::Parallel` | Asio pool                            |
+| `runners::Async`                | Thread-pool                          |
+| `runners::boost_asio::Async`    | Asio pool                            |
 
 Choose based on your threading and latency model.
 

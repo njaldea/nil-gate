@@ -1,9 +1,7 @@
 #include <nil/gate.hpp>
+#include <nil/gate/runners/Async.hpp>
 #include <nil/gate/runners/Immediate.hpp>
-#include <nil/gate/runners/NonBlocking.hpp>
-#include <nil/gate/runners/Parallel.hpp>
-#include <nil/gate/runners/boost_asio/Parallel.hpp>
-#include <nil/gate/runners/boost_asio/Serial.hpp>
+#include <nil/gate/runners/boost_asio/Async.hpp>
 
 #include <nil/gate/bias/nil.hpp>
 
@@ -14,10 +12,8 @@
 int main()
 {
     // nil::gate::runners::Immediate runner;
-    // nil::gate::runners::NonBlocking runner;
-    // nil::gate::runners::Parallel runner(1);
-    // nil::gate::runners::boost_asio::Serial runner;
-    nil::gate::runners::boost_asio::Parallel runner(1);
+    nil::gate::runners::Async runner(1);
+    // nil::gate::runners::boost_asio::Async runner(1);
     nil::gate::Core core(&runner);
 
     core.apply(
@@ -45,7 +41,7 @@ int main()
                 {
                     std::printf("Second: %d : %d\n", b1, b2);
                     c.post([=, e1_ii = e1_i->to_direct()]()
-                           { e1_ii->set_value(e1_ii->has_value() ? 1 : e1_ii->value() + 1); });
+                           { e1_ii->set_value(e1_ii->value() + 1); });
 
                     if (b1 % 2 != 0)
                     {
@@ -75,5 +71,11 @@ int main()
             // b->set_value(b->value() + 1);
         }
         core.commit();
+        static int count = 0;
+        ++count;
+        if (count == 5)
+        {
+            break;
+        }
     }
 }
