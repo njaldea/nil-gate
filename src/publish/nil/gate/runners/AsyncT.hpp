@@ -68,6 +68,7 @@ namespace nil::gate::runners
                     }
                     waiting_list.resize(max_score + 1);
 
+                    current_score = 0U;
                     for (const auto& node : nodes)
                     {
                         if (node == nullptr)
@@ -88,26 +89,28 @@ namespace nil::gate::runners
 
         std::vector<std::function<std::span<INode* const>()>> all_diffs;
 
+        std::uint32_t current_score = 0U;
         TaskManager main_tasks;
         TaskManager exec_tasks;
 
         void run_node(INode* node)
         {
-            if (node->is_input_changed())
+            if (node == nullptr || !node->is_pending() || !node->is_ready())
             {
-                running_list.emplace(node);
-                exec_tasks.push(
-                    [this, node]()
+                return;
+            }
+
+            running_list.emplace(node);
+            exec_tasks.push(
+                [this, node]()
+                {
+                    if (node->is_input_changed())
                     {
                         node->exec();
-                        main_tasks.push([this, node]() { mark_done(node); });
                     }
-                );
-            }
-            else
-            {
-                mark_done(node);
-            }
+                    main_tasks.push([this, node]() { mark_done(node); });
+                }
+            );
         }
 
         void mark_done(INode* node)
@@ -133,28 +136,27 @@ namespace nil::gate::runners
 
         void run_score()
         {
-            auto score = 0U;
-            while (waiting_list[score].empty())
+            if (current_score == waiting_list.size())
             {
-                if (score == waiting_list.size() - 1)
-                {
-                    return;
-                }
-                ++score;
+                return;
             }
 
-            std::erase_if(
-                waiting_list[score],
-                [this](auto* n)
-                {
-                    if (nullptr == n || !n->is_pending() || !n->is_ready())
-                    {
-                        return false;
-                    }
-                    run_node(n);
-                    return true;
-                }
-            );
+            if (!running_list.empty())
+            {
+                return;
+            }
+
+            for (const auto& n : waiting_list[current_score])
+            {
+                run_node(n);
+            }
+            waiting_list[current_score].clear();
+            ++current_score;
+
+            if (running_list.empty())
+            {
+                run_score();
+            }
         }
     };
 }
