@@ -24,7 +24,7 @@ namespace nil::gate
         struct Arg
         {
             Core* core;
-            std::vector<std::reference_wrapper<const T>> inputs;
+            std::vector<const T*> inputs;
             std::vector<ports::Mutable<T>*> outputs;
         };
 
@@ -100,11 +100,11 @@ namespace nil::gate::detail
 
         void exec() override
         {
-            std::vector<std::reference_wrapper<const T>> p_inputs;
+            std::vector<const T*> p_inputs;
             p_inputs.reserve(input_ports.size());
             for (auto& i : input_ports)
             {
-                p_inputs.push_back(std::cref(i.value()));
+                p_inputs.push_back(&i.value());
             }
 
             fn({.core = core, .inputs = std::move(p_inputs), .outputs = moutput_ports});

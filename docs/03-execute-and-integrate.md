@@ -44,24 +44,42 @@ Core lifecycle:
 Runner selection:
 - `nil_gate_core_set_runner_immediate`
 - `nil_gate_core_set_runner_soft_blocking`
-- `nil_gate_core_set_runner_Async`
+- `nil_gate_core_set_runner_async`
 - `nil_gate_core_unset_runner`
 
 Core mutation:
 - `nil_gate_core_post`
 - `nil_gate_core_apply`
 
-Port operations:
+Port creation:
 - `nil_gate_graph_port`
-- `nil_gate_mport_set_value` and `nil_gate_eport_set_value`
-- `nil_gate_mport_unset_value` and `nil_gate_eport_unset_value`
+
+Port value access (rport):
+- `nil_gate_rport_value`
+- `nil_gate_rport_has_value`
+
+Port mutation (mport):
+- `nil_gate_mport_set_value`
+- `nil_gate_mport_unset_value`
+
+Port conversion:
+- `nil_gate_mport_as_input`
+- `nil_gate_rport_as_input`
+- `nil_gate_eport_as_input`
+- `nil_gate_eport_to_direct`
 
 Node registration:
 - `nil_gate_graph_node`
+- `nil_gate_node_output_size`
+- `nil_gate_node_outputs`
 
 Macro helpers:
-- `NIL_GATE_PORT_INFOS`, `NIL_GATE_RPORTS`, `NIL_GATE_MPORTS`
-- `nil_gate_port_set_value`, `nil_gate_port_unset_value`, `nil_gate_to_rport`
+- `nil_gate_port_as_input` — generic `_Generic` dispatch over mport/rport/eport
+- `NIL_GATE_PORT_INFO` — build a `nil_gate_port_info` for a named type
+- `NIL_GATE_NO_PORT_INFOS` — empty output port info list
+- `NIL_GATE_PORT_INFOS(...)` — variadic output port info list
+- `NIL_GATE_NO_INPUT_PORTS` — empty input port list
+- `NIL_GATE_INPUT_PORTS(...)` — variadic input port list (auto-converts via `nil_gate_port_as_input`)
 
 ---
 

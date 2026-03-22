@@ -47,3 +47,5 @@ Bias headers (`nil/gate/bias/*.hpp`) provide stricter and safer defaults.
 ---
 
 Previous: [Part 3 - Execute and Integrate](03-execute-and-integrate.md)
+
+Next: [Part 5 - FFI: Lua](05-ffi-lua.md)

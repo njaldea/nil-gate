@@ -44,6 +44,7 @@ set(ENABLE_C_API OFF CACHE BOOL "[0 | OFF - 1 | ON]: build c api?")
 if(ENABLE_C_API)
     add_library(
         ${PROJECT_NAME}-c-api
+        SHARED
         publish/nil/gate.h
         src/gate.cpp
         src/PortType.cpp

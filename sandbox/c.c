@@ -49,7 +49,6 @@ struct nil_gate_eport port2; // NOLINT
 void gate_apply_1(struct nil_gate_graph* graph, void* context)
 {
     printf("gate_apply_1\n");
-    (void)graph;
     (void)context;
 
     int* value = malloc(sizeof(int));
@@ -60,28 +59,28 @@ void gate_apply_1(struct nil_gate_graph* graph, void* context)
     *value = 11;
     port2 = nil_gate_graph_port(graph, NIL_GATE_PORT_INFO(int), value);
 
-    struct nil_gate_rports node_outputs_1 = NIL_GATE_NODE_OUTPUTS(1);
-    nil_gate_graph_node(
+    nil_gate_node node = nil_gate_graph_node(
         graph,
-        (struct nil_gate_node_info){
+        (nil_gate_node_info){
             .exec=bar,
-            .inputs=NIL_GATE_RPORTS(port1, port2),
+            .inputs=NIL_GATE_INPUT_PORTS(port1, port2),
             .outputs=NIL_GATE_PORT_INFOS(int),
-            .output_handles=&node_outputs_1,
             .context=NULL,
-            .destroy_context=NULL
+            .cleanup=NULL
         }
     );
 
+    nil_gate_rport node_outputs_1[1];
+    nil_gate_node_outputs(node, node_outputs_1);
+
     nil_gate_graph_node(
         graph,
-        (struct nil_gate_node_info){
+        (nil_gate_node_info){
             .exec=bar,
-            .inputs=NIL_GATE_RPORTS(node_outputs_1.ports[0], node_outputs_1.ports[0]),
+            .inputs=NIL_GATE_INPUT_PORTS(node_outputs_1[0], node_outputs_1[0]),
             .outputs=NIL_GATE_NO_PORT_INFOS(),
-            .output_handles=NULL,
             .context=NULL,
-            .destroy_context=NULL
+            .cleanup=NULL
         }
     );
 }
@@ -94,7 +93,8 @@ struct port_set_context{
 void setter(struct nil_gate_graph* graph, struct port_set_context* context)
 {
     (void)graph;
-    nil_gate_port_set_value(context->port, context->data);
+    (void)context;
+    // nil_gate_port_set_value(context->port, context->data);
 }
 
 void gate_apply_2(struct nil_gate_graph* graph, void* context)
@@ -106,7 +106,8 @@ void gate_apply_2(struct nil_gate_graph* graph, void* context)
     int* new_value = malloc(sizeof(int));
     *new_value = 20;
     // need to post
-    nil_gate_port_set_value(port1, new_value);
+    (void)context;
+    // nil_gate_port_set_value(port1, new_value);
 }
 
 void gate_apply_3(struct nil_gate_graph* graph, void* context)
@@ -116,7 +117,7 @@ void gate_apply_3(struct nil_gate_graph* graph, void* context)
     (void)context;
 
     // need to post
-    nil_gate_port_unset_value(port1);
+    // nil_gate_port_unset_value(port1);
 }
 
 void gate_apply_4(struct nil_gate_graph* graph, void* context)
@@ -128,17 +129,17 @@ void gate_apply_4(struct nil_gate_graph* graph, void* context)
     int* new_value = malloc(sizeof(int));
     *new_value = 30;
     // need to post
-    nil_gate_port_set_value(port1, new_value);
+    // nil_gate_port_set_value(port1, new_value);
 }
 
 int main(void)
 {
     struct nil_gate_core* core = nil_gate_core_create();
     nil_gate_core_set_runner_soft_blocking(core);
-    nil_gate_core_apply(core, (struct nil_gate_core_callable){.exec=gate_apply_1, .context=NULL, .destroy_context=NULL});
-    nil_gate_core_apply(core, (struct nil_gate_core_callable){.exec=gate_apply_2, .context=NULL, .destroy_context=NULL});
-    nil_gate_core_apply(core, (struct nil_gate_core_callable){.exec=gate_apply_3, .context=NULL, .destroy_context=NULL});
-    nil_gate_core_apply(core, (struct nil_gate_core_callable){.exec=gate_apply_4, .context=NULL, .destroy_context=NULL});
+    nil_gate_core_apply(core, (struct nil_gate_core_callable){.exec=gate_apply_1, .context=NULL, .cleanup=NULL});
+    nil_gate_core_apply(core, (struct nil_gate_core_callable){.exec=gate_apply_2, .context=NULL, .cleanup=NULL});
+    nil_gate_core_apply(core, (struct nil_gate_core_callable){.exec=gate_apply_3, .context=NULL, .cleanup=NULL});
+    nil_gate_core_apply(core, (struct nil_gate_core_callable){.exec=gate_apply_4, .context=NULL, .cleanup=NULL});
     nil_gate_core_destroy(core);
     return 0;
 }
