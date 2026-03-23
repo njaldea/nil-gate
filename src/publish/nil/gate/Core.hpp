@@ -89,6 +89,10 @@ namespace nil::gate
     {
         need_to_sort = true;
         static_assert(concepts::is_compatible<TO, FROM>, "Not Compatible");
-        return this->node([mto = to->to_direct()](const FROM& v) { mto->set_value(v); }, {from});
+        return this->node(
+            [mto = to->to_direct()](Core& c, const FROM& v)
+            { c.post([mto, v]() mutable { mto->set_value(std::move(v)); }); },
+            {from}
+        );
     }
 }
