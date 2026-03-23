@@ -91,7 +91,7 @@ namespace nil::gate
         static_assert(concepts::is_compatible<TO, FROM>, "Not Compatible");
         return this->node(
             [mto = to->to_direct()](Core& c, const FROM& v)
-            { c.post([mto, v]() { mto->set_value(v); }); },
+            { c.post([mto, v]() mutable { mto->set_value(std::move(v)); }); },
             {from}
         );
     }
