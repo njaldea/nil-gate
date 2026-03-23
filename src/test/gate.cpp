@@ -263,3 +263,53 @@ TEST(gate, create_node_opt_output_core_commit_in_node)
         ASSERT_EQ(opt_out->value(), 12);
     }
 }
+
+TEST(gate, link_set_value_in_post)
+{
+    nil::gate::runners::SoftBlocking runner;
+    nil::gate::Core core(&runner);
+
+    nil::gate::ports::External<int>* src_port = nullptr;
+    nil::gate::ports::External<int>* dst_port = nullptr;
+    nil::gate::ports::ReadOnly<int>* out = nullptr;
+
+    core.apply(
+        [&src_port, &dst_port, &out](nil::gate::Graph& graph)
+        {
+            src_port = graph.port(1);
+            dst_port = graph.port<int>();
+            graph.link(src_port->to_direct(), dst_port);
+            auto* node = graph.node([](int v) { return v * 2; }, {dst_port});
+            std::tie(out) = node->outputs();
+        }
+    );
+
+    // After apply, the link node ran and posted set_value(1) to dst_port via core.post.
+    // dst_port is not yet updated because set_value is called inside post, not directly.
+    ASSERT_TRUE(src_port->to_direct()->has_value());
+    ASSERT_EQ(src_port->to_direct()->value(), 1);
+    ASSERT_FALSE(dst_port->to_direct()->has_value());
+    ASSERT_FALSE(out->has_value());
+
+    // Second commit applies the posted set_value. dst_port gets its value and downstream node runs.
+    core.commit();
+    ASSERT_TRUE(dst_port->to_direct()->has_value());
+    ASSERT_EQ(dst_port->to_direct()->value(), 1);
+    ASSERT_TRUE(out->has_value());
+    ASSERT_EQ(out->value(), 2);
+
+    // Change src_port value; link node posts set_value(3) for dst_port.
+    core.post([mport = src_port->to_direct()]() { mport->set_value(3); });
+    core.commit();
+
+    // After this commit, src changed and link ran, but dst_port still holds the old value
+    // because the set_value(3) for dst_port was posted, not yet applied.
+    ASSERT_EQ(src_port->to_direct()->value(), 3);
+    ASSERT_EQ(dst_port->to_direct()->value(), 1);
+    ASSERT_EQ(out->value(), 2);
+
+    // Next commit applies the posted set_value(3) to dst_port; downstream node re-runs.
+    core.commit();
+    ASSERT_EQ(dst_port->to_direct()->value(), 3);
+    ASSERT_EQ(out->value(), 6);
+}

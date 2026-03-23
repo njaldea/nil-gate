@@ -1,8 +1,0 @@
-{
-  "https://github.com/Microsoft/vcpkg": {
-    "HEAD": "f8be6942c0c5abd48bb325726d57af9ac39e251d"
-  },
-  "https://github.com/njaldea/nil-vcpkg-ports": {
-    "master": "f62429f823bb8a1562044d7b9f349bd6bfed2c73"
-  }
-}

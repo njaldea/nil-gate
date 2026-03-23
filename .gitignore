@@ -3,3 +3,4 @@
 .configure
 .vs
 __pycache__
+vcpkg_installed
