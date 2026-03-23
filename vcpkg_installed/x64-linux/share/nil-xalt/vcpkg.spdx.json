@@ -1,0 +1,457 @@
+{
+  "$schema": "https://raw.githubusercontent.com/spdx/spdx-spec/v2.2.1/schemas/spdx-schema.json",
+  "spdxVersion": "SPDX-2.2",
+  "dataLicense": "CC0-1.0",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "documentNamespace": "https://spdx.org/spdxdocs/nil-xalt-x64-linux-1.4.1-c95aaaba-f5b9-48a5-9ae9-368b3096cce3",
+  "name": "nil-xalt:x64-linux@1.4.1 b9cf3d8d154118783a6ba524dfc8e10e9d8eb8b13483bf8596763afc7b21ec42",
+  "creationInfo": {
+    "creators": [
+      "Tool: vcpkg-2026-03-04-4b3e4c276b5b87a649e66341e11553e8c577459c"
+    ],
+    "created": "2026-03-23T13:31:02Z"
+  },
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-port",
+      "relationshipType": "GENERATES",
+      "relatedSpdxElement": "SPDXRef-binary"
+    },
+    {
+      "spdxElementId": "SPDXRef-port",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-port-file-0"
+    },
+    {
+      "spdxElementId": "SPDXRef-port",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-port-file-1"
+    },
+    {
+      "spdxElementId": "SPDXRef-port-file-1",
+      "relationshipType": "DEPENDENCY_MANIFEST_OF",
+      "relatedSpdxElement": "SPDXRef-port"
+    },
+    {
+      "spdxElementId": "SPDXRef-port",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-port-file-2"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-0"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-1"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-2"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-3"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-4"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-5"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-6"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-7"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-8"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-9"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-10"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-11"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-12"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-13"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-14"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-15"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-16"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-17"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-18"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-19"
+    }
+  ],
+  "packages": [
+    {
+      "name": "nil-xalt",
+      "SPDXID": "SPDXRef-port",
+      "versionInfo": "1.4.1",
+      "downloadLocation": "git+https://github.com/njaldea/nil-vcpkg-ports@66a35f5ee475c3bb75e47e2d5da340305d131568",
+      "homepage": "https://github.com/njaldea/nil-xalt",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "description": "Utility library dump",
+      "comment": "This is the port (recipe) consumed by vcpkg."
+    },
+    {
+      "name": "nil-xalt:x64-linux",
+      "SPDXID": "SPDXRef-binary",
+      "versionInfo": "b9cf3d8d154118783a6ba524dfc8e10e9d8eb8b13483bf8596763afc7b21ec42",
+      "downloadLocation": "NONE",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "comment": "This is a binary package built by vcpkg."
+    },
+    {
+      "SPDXID": "SPDXRef-resource-0",
+      "name": "njaldea/${PORT}",
+      "downloadLocation": "git+https://github.com/njaldea/${PORT}@v1.4.1",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "checksums": [
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "22809fc5d8f7598b2e81e45447b11445a7d9fdeea106dbfd9baf4b90490fe3373514dcbceeba62f8fb84ae7651e88693780d543a9737c8165eccb92ea7fa86a2"
+        }
+      ]
+    }
+  ],
+  "files": [
+    {
+      "fileName": "./portfile.cmake",
+      "SPDXID": "SPDXRef-port-file-0",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "2de16b0a73bdad05ed856b8cbc60c683641eed328602b1e328eb67996e6e7189"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./vcpkg.json",
+      "SPDXID": "SPDXRef-port-file-1",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "c13606453947bc03261a70830b6f5d0cd7ba37a756a8e22d520b6a46b742258c"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./port.cmake",
+      "SPDXID": "SPDXRef-port-file-2",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "89ae766330bf1835e1c13b949041f73686841b9b4bcbe99cc327d3f23ff42e73"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./BUILD_INFO",
+      "SPDXID": "SPDXRef-binary-file-0",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "b17d8abcb0fd6454b3c1ec6556988d624863978121b87c51af8b1b6d937db69a"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./include/nil-xalt/1.4.1/nil/xalt/literal.hpp",
+      "SPDXID": "SPDXRef-binary-file-1",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "d659a7fea6c34ac187cecb52be9163c5e0a5e358b2f13c5a7b2811ef9489eb5d"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./include/nil-xalt/1.4.1/nil/xalt/checks.hpp",
+      "SPDXID": "SPDXRef-binary-file-2",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "7bafdc8e082c2cdf0e09ee6ff1f702fd00cf1002b3b072665bc02142e2610c69"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./include/nil-xalt/1.4.1/nil/xalt/cast.hpp",
+      "SPDXID": "SPDXRef-binary-file-3",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "f052882b2e0749dcf5c268f4842b90c6daa763624fbfd0d1625b13da12350208"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./include/nil-xalt/1.4.1/nil/xalt/MACROS.h",
+      "SPDXID": "SPDXRef-binary-file-4",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "70f23c9877b9f3f3d8e308491e24340408bf5dc726ab850d0a7916dedf56f8c2"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./include/nil-xalt/1.4.1/nil/xalt/str_enum.hpp",
+      "SPDXID": "SPDXRef-binary-file-5",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "2cf08a4ebe3e688fe46b9ca48adac9f06a44b366bd73e274cfd0e87fd5c98e06"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./include/nil-xalt/1.4.1/nil/xalt/noisy_type.hpp",
+      "SPDXID": "SPDXRef-binary-file-6",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "a0a099ff4896f2b5a2d712553e13413c43e37df6cf1d88e557a465660567d9fc"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./include/nil-xalt/1.4.1/nil/xalt/errors.hpp",
+      "SPDXID": "SPDXRef-binary-file-7",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "5a2f7832f87890b56b0b457e4e44ff76ec6d89f8d30a670d042f1e1aabeb7958"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./include/nil-xalt/1.4.1/nil/xalt/transparent_stl.hpp",
+      "SPDXID": "SPDXRef-binary-file-8",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "48199ee4ba4d71c9c4b2a94aab9c5394b0400ecdc865838a7219007e22fe24e4"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./include/nil-xalt/1.4.1/nil/xalt/typed.hpp",
+      "SPDXID": "SPDXRef-binary-file-9",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "94fe82c7a5464dfd798b1712b90ae0835a2df9e607c127bc3b1687c42d4135af"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./include/nil-xalt/1.4.1/nil/xalt/fn_call.hpp",
+      "SPDXID": "SPDXRef-binary-file-10",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "e840937dd6a6c0996114e384e45079251d2ca6b43b6e5f7af8cec5cdabaeb8b1"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./include/nil-xalt/1.4.1/nil/xalt/tlist.hpp",
+      "SPDXID": "SPDXRef-binary-file-11",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "6915a0fc0276dd7b4b612c91c4b9a144634d77c4fc82b941d4c0d9c6e7745c1c"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./include/nil-xalt/1.4.1/nil/xalt/fn_make.hpp",
+      "SPDXID": "SPDXRef-binary-file-12",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "d333d803bceaaf0c753444ccfd395b04eeb33b306ffe87662d20e041dbac442d"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./include/nil-xalt/1.4.1/nil/xalt/str_name.hpp",
+      "SPDXID": "SPDXRef-binary-file-13",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "51f467de6868b13f06b6159e3594122c5a4b7a87b0396aff528ec225c4c4f5d4"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./include/nil-xalt/1.4.1/nil/xalt/fn_sign.hpp",
+      "SPDXID": "SPDXRef-binary-file-14",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "d76bdf70219149981799e42a3c6f08dddc4e1ad6d199d58118629b37cbfa1343"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/doc/nil-xalt/LICENSE",
+      "SPDXID": "SPDXRef-binary-file-15",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "e9b959169881080c306667d407c53c3a05b0fe38d89a51ddc1786efd8eabc0c9"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/nil-xalt/nil-xalt-targets.cmake",
+      "SPDXID": "SPDXRef-binary-file-16",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "54d484191bd85ee8da1c3de5b906c499862647f0e3146140f2b5ae2d8aa8e1ca"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/nil-xalt/copyright",
+      "SPDXID": "SPDXRef-binary-file-17",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "e9b959169881080c306667d407c53c3a05b0fe38d89a51ddc1786efd8eabc0c9"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/nil-xalt/nil-xalt-config.cmake",
+      "SPDXID": "SPDXRef-binary-file-18",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "c6e6f1a9c6dbce2639d7ee0a501845651939be64860222abf38143631b8a3ffb"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/nil-xalt/nil-xalt-config-version.cmake",
+      "SPDXID": "SPDXRef-binary-file-19",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "bd20caf40474a061e8a69c3aa948b80c5fec1ce20c048894eabb503e13da3940"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    }
+  ]
+}

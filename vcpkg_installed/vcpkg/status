@@ -1,0 +1,42 @@
+Package: vcpkg-cmake-config
+Version: 2024-05-23
+Architecture: x64-linux
+Multi-Arch: same
+Abi: 938b5e1dc7ceacf08654bef246055524d658786b56f39c96f3b23d2de8d063d3
+Status: install ok installed
+
+Package: vcpkg-cmake
+Version: 2024-04-23
+Architecture: x64-linux
+Multi-Arch: same
+Abi: f7cbaf4a1eecbbb1579be1e8dbbd016626910498335b8370236a4219615937b6
+Status: install ok installed
+
+Package: nil-cmake
+Version: 0.0.2
+Depends: vcpkg-cmake, vcpkg-cmake-config
+Architecture: x64-linux
+Multi-Arch: same
+Abi: cbd180350aaf044953d2f058da439f0fb02f80b26e4b503ed013fb1820e2bf84
+Description: common tooling for nil project cxx setup
+Status: install ok installed
+
+Package: nil-xalt
+Version: 1.4.1
+Depends: nil-cmake, vcpkg-cmake, vcpkg-cmake-config
+Architecture: x64-linux
+Multi-Arch: same
+Abi: b9cf3d8d154118783a6ba524dfc8e10e9d8eb8b13483bf8596763afc7b21ec42
+Description: Utility library dump
+Status: install ok installed
+
+Package: gtest
+Version: 1.17.0
+Port-Version: 2
+Depends: vcpkg-cmake, vcpkg-cmake-config
+Architecture: x64-linux
+Multi-Arch: same
+Abi: 4cc21124af27493ac1787e1dc10c3210a797392776b8c63de971fa570703f0b9
+Description: Google Testing and Mocking Framework
+Status: install ok installed
+

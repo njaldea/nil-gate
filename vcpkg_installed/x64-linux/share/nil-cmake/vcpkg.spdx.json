@@ -1,0 +1,304 @@
+{
+  "$schema": "https://raw.githubusercontent.com/spdx/spdx-spec/v2.2.1/schemas/spdx-schema.json",
+  "spdxVersion": "SPDX-2.2",
+  "dataLicense": "CC0-1.0",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "documentNamespace": "https://spdx.org/spdxdocs/nil-cmake-x64-linux-0.0.2-43a0b16b-4985-4402-a6ee-60d8464f0fe2",
+  "name": "nil-cmake:x64-linux@0.0.2 cbd180350aaf044953d2f058da439f0fb02f80b26e4b503ed013fb1820e2bf84",
+  "creationInfo": {
+    "creators": [
+      "Tool: vcpkg-2026-03-04-4b3e4c276b5b87a649e66341e11553e8c577459c"
+    ],
+    "created": "2026-03-23T13:30:54Z"
+  },
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-port",
+      "relationshipType": "GENERATES",
+      "relatedSpdxElement": "SPDXRef-binary"
+    },
+    {
+      "spdxElementId": "SPDXRef-port",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-port-file-0"
+    },
+    {
+      "spdxElementId": "SPDXRef-port",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-port-file-1"
+    },
+    {
+      "spdxElementId": "SPDXRef-port-file-1",
+      "relationshipType": "DEPENDENCY_MANIFEST_OF",
+      "relatedSpdxElement": "SPDXRef-port"
+    },
+    {
+      "spdxElementId": "SPDXRef-port",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-port-file-2"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-0"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-1"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-2"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-3"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-4"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-5"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-6"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-7"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-8"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-9"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-10"
+    }
+  ],
+  "packages": [
+    {
+      "name": "nil-cmake",
+      "SPDXID": "SPDXRef-port",
+      "versionInfo": "0.0.2",
+      "downloadLocation": "git+https://github.com/njaldea/nil-vcpkg-ports@344c95295100f8fe51857c8e43fb9375a500e4f9",
+      "homepage": "https://github.com/njaldea/nil-cmake",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "description": "common tooling for nil project cxx setup",
+      "comment": "This is the port (recipe) consumed by vcpkg."
+    },
+    {
+      "name": "nil-cmake:x64-linux",
+      "SPDXID": "SPDXRef-binary",
+      "versionInfo": "cbd180350aaf044953d2f058da439f0fb02f80b26e4b503ed013fb1820e2bf84",
+      "downloadLocation": "NONE",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "comment": "This is a binary package built by vcpkg."
+    },
+    {
+      "SPDXID": "SPDXRef-resource-0",
+      "name": "njaldea/${PORT}",
+      "downloadLocation": "git+https://github.com/njaldea/${PORT}@v0.0.2",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "checksums": [
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "e34d1f33c6b8890c2db9f315ff9dde09c89a8bf43df99c0c8261d84e5aec142f1a5a4b271a547095bb80606023f23c031f55d99db64e852ec2d3c8f1cb34e8cd"
+        }
+      ]
+    }
+  ],
+  "files": [
+    {
+      "fileName": "./portfile.cmake",
+      "SPDXID": "SPDXRef-port-file-0",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "f479295a12b6098fc1dfa2c54405ac09db22962cb7747bb3228191f00ae739f8"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./vcpkg.json",
+      "SPDXID": "SPDXRef-port-file-1",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "974b32844c49f61323f77dd905001bdc31025a62008332f7ce276ebb2dc4268d"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./port.cmake",
+      "SPDXID": "SPDXRef-port-file-2",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "a632a442c7d3986b43ca8c35f1d70ac1b658bf5e71d6334d8ec9f06e5d260054"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./BUILD_INFO",
+      "SPDXID": "SPDXRef-binary-file-0",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "315e68106bdbfdfc1af3bd353c4adc5619106ba946eeccfac913b59cbfb15c64"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/nil-cmake/toolchain.cmake",
+      "SPDXID": "SPDXRef-binary-file-1",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "0e6c8795814aa19776bbb1f5ad7b519fdba4f63f7c4cc982ac2b4b67221aa2ea"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/nil-cmake/package.cmake",
+      "SPDXID": "SPDXRef-binary-file-2",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "a62fa65cf86d05a4ae5275c1834bd60da2a91c3074c65deb195c910af82f87dd"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/nil-cmake/copyright",
+      "SPDXID": "SPDXRef-binary-file-3",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "00370bde09918d8b503ce7b7ef2bf8b0e902a98b2d44d7ac1d60c7c83e3860cc"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/nil-cmake/nil-cmake-config-version.cmake",
+      "SPDXID": "SPDXRef-binary-file-4",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "e14f04b28203bf5958e17981f19ede788bfeba4a2d9aac4abde42d1c0b6c07d4"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/nil-cmake/test.cmake",
+      "SPDXID": "SPDXRef-binary-file-5",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "015aca65dba16d0b18887250dc503e46af2b28472f8f9476fc2f11bdca15a965"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/nil-cmake/usage",
+      "SPDXID": "SPDXRef-binary-file-6",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "5c72160af42520592f672b5cff8c2af7c784cac2782299c75f8d6c43388dd3f1"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/nil-cmake/cpack.cmake",
+      "SPDXID": "SPDXRef-binary-file-7",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "9aac55424622aba7ac6650a966649f3ac33c2c65a0b59a0a8375737de4fe6c54"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/nil-cmake/quality.cmake",
+      "SPDXID": "SPDXRef-binary-file-8",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "1b2364719dfc1ea273059ad119fdd3f3f6cbbac393f8ebb5d0f558c2662d1f90"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/nil-cmake/nil-cmake-config.cmake",
+      "SPDXID": "SPDXRef-binary-file-9",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "23b2d47beeffc934d0dbcd8b469608cc4896e5c7aee5f8f760b4681a641fda40"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/doc/nil-cmake/LICENSE",
+      "SPDXID": "SPDXRef-binary-file-10",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "00370bde09918d8b503ce7b7ef2bf8b0e902a98b2d44d7ac1d60c7c83e3860cc"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    }
+  ]
+}

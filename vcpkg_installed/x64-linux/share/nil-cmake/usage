@@ -1,0 +1,4 @@
+nil-cmake provides CMake targets:
+
+    find_package(nil-cmake CONFIG REQUIRED)
+
