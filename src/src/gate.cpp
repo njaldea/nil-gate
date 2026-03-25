@@ -31,7 +31,7 @@ extern "C"
         delete core;       // NOLINT
     }
 
-    void nil_gate_core_commit(const nil_gate_core* core)
+    void nil_gate_core_commit(nil_gate_core* core)
     {
         core->core->commit();
     }

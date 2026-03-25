@@ -16,7 +16,7 @@ extern "C"
 
     struct nil_gate_core* nil_gate_core_create(void);
     void nil_gate_core_destroy(struct nil_gate_core* core);
-    void nil_gate_core_commit(struct nil_gate_core const* core);
+    void nil_gate_core_commit(struct nil_gate_core* core);
 
     void nil_gate_core_set_runner_immediate(struct nil_gate_core* core);
     void nil_gate_core_set_runner_soft_blocking(struct nil_gate_core* core);
