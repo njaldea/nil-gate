@@ -9,9 +9,27 @@ TypeEq = Callable[[Any, Any], bool]
 NodeFn = Callable[["NodeArgs"], None]
 PostFn = Callable[["Graph"], None]
 
-NIL_GATE_CORE_CALLABLE_EXEC = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_void_p)
+
+class NilGateCore(ctypes.Structure):
+    _fields_ = [("handle", ctypes.c_void_p)]
+
+
+class NilGateGraph(ctypes.Structure):
+    _fields_ = [("handle", ctypes.c_void_p)]
+
+
+NIL_GATE_CORE_CALLABLE_EXEC = ctypes.CFUNCTYPE(None, ctypes.POINTER(NilGateGraph), ctypes.c_void_p)
 NIL_GATE_CLEANUP = ctypes.CFUNCTYPE(None, ctypes.c_void_p)
 NIL_GATE_EQ = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p)
+
+
+class NilGateCoreCallable(ctypes.Structure):
+    _fields_ = [
+        ("exec", NIL_GATE_CORE_CALLABLE_EXEC),
+        ("context", ctypes.c_void_p),
+        ("cleanup", NIL_GATE_CLEANUP),
+    ]
+
 
 class NilGatePortInfo(ctypes.Structure):
     _fields_ = [
@@ -71,7 +89,7 @@ class NilGateNodeArgsInputs(ctypes.Structure):
 
 class NilGateNodeArgs(ctypes.Structure):
     _fields_ = [
-        ("core", ctypes.c_void_p),
+        ("core", NilGateCore),
         ("inputs", NilGateNodeArgsInputs),
         ("outputs", NilGateMPorts),
         ("context", ctypes.c_void_p),
@@ -93,14 +111,6 @@ class NilGateNodeInfo(ctypes.Structure):
 
 class NilGateNode(ctypes.Structure):
     _fields_ = [("handle", ctypes.c_void_p)]
-
-
-class NilGateCoreCallable(ctypes.Structure):
-    _fields_ = [
-        ("exec", NIL_GATE_CORE_CALLABLE_EXEC),
-        ("context", ctypes.c_void_p),
-        ("cleanup", NIL_GATE_CLEANUP),
-    ]
 
 def _to_ref_id(ptr: Any) -> int:
     return int(ctypes.cast(ptr, ctypes.c_void_p).value)
@@ -144,36 +154,36 @@ class NodeArgs:
 
 def _configure_signatures(gate: Any) -> None:
     gate.nil_gate_core_create.argtypes = []
-    gate.nil_gate_core_create.restype = ctypes.c_void_p
+    gate.nil_gate_core_create.restype = NilGateCore
 
-    gate.nil_gate_core_destroy.argtypes = [ctypes.c_void_p]
+    gate.nil_gate_core_destroy.argtypes = [NilGateCore]
     gate.nil_gate_core_destroy.restype = None
 
-    gate.nil_gate_core_commit.argtypes = [ctypes.c_void_p]
+    gate.nil_gate_core_commit.argtypes = [NilGateCore]
     gate.nil_gate_core_commit.restype = None
 
-    gate.nil_gate_core_set_runner_immediate.argtypes = [ctypes.c_void_p]
+    gate.nil_gate_core_set_runner_immediate.argtypes = [NilGateCore]
     gate.nil_gate_core_set_runner_immediate.restype = None
 
-    gate.nil_gate_core_set_runner_soft_blocking.argtypes = [ctypes.c_void_p]
+    gate.nil_gate_core_set_runner_soft_blocking.argtypes = [NilGateCore]
     gate.nil_gate_core_set_runner_soft_blocking.restype = None
 
-    gate.nil_gate_core_set_runner_async.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
+    gate.nil_gate_core_set_runner_async.argtypes = [NilGateCore, ctypes.c_uint32]
     gate.nil_gate_core_set_runner_async.restype = None
 
-    gate.nil_gate_core_unset_runner.argtypes = [ctypes.c_void_p]
+    gate.nil_gate_core_unset_runner.argtypes = [NilGateCore]
     gate.nil_gate_core_unset_runner.restype = None
 
-    gate.nil_gate_core_post.argtypes = [ctypes.c_void_p, NilGateCoreCallable]
+    gate.nil_gate_core_post.argtypes = [NilGateCore, NilGateCoreCallable]
     gate.nil_gate_core_post.restype = None
 
-    gate.nil_gate_core_apply.argtypes = [ctypes.c_void_p, NilGateCoreCallable]
+    gate.nil_gate_core_apply.argtypes = [NilGateCore, NilGateCoreCallable]
     gate.nil_gate_core_apply.restype = None
 
-    gate.nil_gate_graph_port.argtypes = [ctypes.c_void_p, NilGatePortInfo, ctypes.c_void_p]
+    gate.nil_gate_graph_port.argtypes = [NilGateGraph, NilGatePortInfo, ctypes.c_void_p]
     gate.nil_gate_graph_port.restype = NilGateEPort
 
-    gate.nil_gate_graph_node.argtypes = [ctypes.c_void_p, NilGateNodeInfo]
+    gate.nil_gate_graph_node.argtypes = [NilGateGraph, NilGateNodeInfo]
     gate.nil_gate_graph_node.restype = NilGateNode
 
     gate.nil_gate_node_output_size.argtypes = [NilGateNode]
@@ -299,7 +309,7 @@ class Node:
 class Graph:
     __slots__ = ("_refs", "_fns", "_gate", "_libc", "_graph")
 
-    def __init__(self, refs: Dict[int, RefState], fns: _FnsState, gate: Gate, libc: Any, graph: Graph) -> None:
+    def __init__(self, refs: Dict[int, RefState], fns: _FnsState, gate: Gate, libc: Any, graph: NilGateGraph) -> None:
         self._refs = refs
         self._fns = fns
         self._gate = gate
@@ -362,7 +372,7 @@ class Graph:
 class Core:
     __slots__ = ("_refs", "_fns", "_gate", "_libc", "_core")
 
-    def __init__(self, refs: Dict[int, RefState], fns: _FnsState, gate: Any, libc: Any, core: Any) -> None:
+    def __init__(self, refs: Dict[int, RefState], fns: _FnsState, gate: Any, libc: Any, core: NilGateCore) -> None:
         self._refs = refs
         self._fns = fns
         self._gate = gate
@@ -399,7 +409,8 @@ class Gate:
         self._libc.free.restype = None
 
         @NIL_GATE_CORE_CALLABLE_EXEC
-        def post_exec(graph: Graph, ptr: Any) -> None:
+        def post_exec(graph_ptr: Any, ptr: Any) -> None:
+            graph = graph_ptr.contents
             node = self._refs[_to_ref_id(ptr)]
             node.fn(Graph(self._refs, self._fns, self._gate, self._libc, graph))
 

@@ -6,28 +6,34 @@ ffi.cdef [[
 ]]
 
 ffi.cdef [[
-    struct nil_gate_core;
+    typedef struct nil_gate_core
+    {
+        void* handle;
+    } nil_gate_core;
 
-    struct nil_gate_core* nil_gate_core_create(void);
-    void nil_gate_core_destroy(struct nil_gate_core* core);
-    void nil_gate_core_commit(struct nil_gate_core* core);
+    nil_gate_core nil_gate_core_create(void);
+    void nil_gate_core_destroy(nil_gate_core core);
+    void nil_gate_core_commit(nil_gate_core core);
 
-    void nil_gate_core_set_runner_immediate(struct nil_gate_core* core);
-    void nil_gate_core_set_runner_soft_blocking(struct nil_gate_core* core);
-    void nil_gate_core_set_runner_async(struct nil_gate_core* core, uint32_t thread_count);
-    void nil_gate_core_unset_runner(struct nil_gate_core* core);
+    void nil_gate_core_set_runner_immediate(nil_gate_core core);
+    void nil_gate_core_set_runner_soft_blocking(nil_gate_core core);
+    void nil_gate_core_set_runner_async(nil_gate_core core, uint32_t thread_count);
+    void nil_gate_core_unset_runner(nil_gate_core core);
 
-    struct nil_gate_graph;
+    typedef struct nil_gate_graph
+    {
+        void* handle;
+    } nil_gate_graph;
 
     typedef struct nil_gate_core_callable
     {
-        void (*exec)(struct nil_gate_graph*, void*);
+        void (*exec)(nil_gate_graph*, void*);
         void* context;
         void (*cleanup)(void*);
     } nil_gate_core_callable;
 
-    void nil_gate_core_post(struct nil_gate_core* core, nil_gate_core_callable callable);
-    void nil_gate_core_apply(struct nil_gate_core* core, nil_gate_core_callable callable);
+    void nil_gate_core_post(nil_gate_core core, nil_gate_core_callable callable);
+    void nil_gate_core_apply(nil_gate_core core, nil_gate_core_callable callable);
 
     typedef struct nil_gate_port_info
     {
@@ -41,8 +47,8 @@ ffi.cdef [[
         nil_gate_port_info info;
     } nil_gate_eport;
 
-    struct nil_gate_eport nil_gate_graph_port(
-        struct nil_gate_graph* graph,
+    nil_gate_eport nil_gate_graph_port(
+        nil_gate_graph graph,
         nil_gate_port_info info,
         void* initial_value
     );
@@ -85,7 +91,7 @@ ffi.cdef [[
 
     typedef struct nil_gate_node_args
     {
-        struct nil_gate_core* core;
+        nil_gate_core core;
         nil_gate_node_args_inputs inputs;
         nil_gate_mports outputs;
         void* context;
@@ -106,7 +112,7 @@ ffi.cdef [[
     } nil_gate_node;
 
     nil_gate_node nil_gate_graph_node(
-        struct nil_gate_graph const* graph,
+        nil_gate_graph graph,
         nil_gate_node_info node_info
     );
 
@@ -352,14 +358,14 @@ local function create_core(gate)
     local lua_fns = {}
 
     local post_exec = ffi.cast(
-        "void (*)(struct nil_gate_graph*, void*)",
+        "void (*)(nil_gate_graph*, void*)",
         function(graph, id)
-            refs[to_ref_id(id)].fn(to_lua_graph(refs, lua_fns, gate, graph))
+            refs[to_ref_id(id)].fn(to_lua_graph(refs, lua_fns, gate, graph[0]))
         end
     )
 
     local node_exec = ffi.cast(
-        "void (*)(struct nil_gate_node_args const* args)",
+        "void (*)(const nil_gate_node_args* args)",
         function(args)
             local inputs = {}
             for i = 1, args.inputs.size, 1 do

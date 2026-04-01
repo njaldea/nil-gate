@@ -8,56 +8,45 @@
 
 extern "C"
 {
-    struct nil_gate_core
+    nil_gate_core nil_gate_core_create(void)
     {
-        nil::gate::Core* core;
-    };
-
-    struct nil_gate_graph
-    {
-        nil::gate::Graph* graph;
-    };
-
-    nil_gate_core* nil_gate_core_create(void)
-    {
-        auto* core = new nil_gate_core();   // NOLINT
-        core->core = new nil::gate::Core(); // NOLINT
-        return core;
+        return {.handle = new nil::gate::Core()};
     }
 
-    void nil_gate_core_destroy(nil_gate_core* core)
+    void nil_gate_core_destroy(nil_gate_core core)
     {
-        delete core->core; // NOLINT
-        delete core;       // NOLINT
+        delete static_cast<nil::gate::Core*>(core.handle); // NOLINT
     }
 
-    void nil_gate_core_commit(nil_gate_core* core)
+    void nil_gate_core_commit(nil_gate_core core)
     {
-        core->core->commit();
+        static_cast<nil::gate::Core*>(core.handle)->commit();
     }
 
-    void nil_gate_core_set_runner_immediate(nil_gate_core* core)
+    void nil_gate_core_set_runner_immediate(nil_gate_core core)
     {
-        delete core->core->get_runner();                             // NOLINT
-        core->core->set_runner(new nil::gate::runners::Immediate()); // NOLINT
+        const auto c = static_cast<nil::gate::Core*>(core.handle); // NOLINT
+        delete c->get_runner();                                    // NOLINT
+        c->set_runner(new nil::gate::runners::Immediate());        // NOLINT
     }
 
-    void nil_gate_core_set_runner_soft_blocking(nil_gate_core* core)
+    void nil_gate_core_set_runner_soft_blocking(nil_gate_core core)
     {
-        delete core->core->get_runner();                                // NOLINT
-        core->core->set_runner(new nil::gate::runners::SoftBlocking()); // NOLINT
+        const auto c = static_cast<nil::gate::Core*>(core.handle); // NOLINT
+        c->set_runner(new nil::gate::runners::SoftBlocking());     // NOLINT
     }
 
-    void nil_gate_core_set_runner_async(nil_gate_core* core, uint32_t thread_count)
+    void nil_gate_core_set_runner_async(nil_gate_core core, uint32_t thread_count)
     {
-        delete core->core->get_runner();                                     // NOLINT
-        core->core->set_runner(new nil::gate::runners::Async(thread_count)); // NOLINT
+        const auto c = static_cast<nil::gate::Core*>(core.handle);  // NOLINT
+        c->set_runner(new nil::gate::runners::Async(thread_count)); // NOLINT
     }
 
-    void nil_gate_core_unset_runner(nil_gate_core* core)
+    void nil_gate_core_unset_runner(nil_gate_core core)
     {
-        delete core->core->get_runner(); // NOLINT
-        core->core->set_runner(nullptr);
+        const auto c = static_cast<nil::gate::Core*>(core.handle); // NOLINT
+        delete c->get_runner();                                    // NOLINT
+        c->set_runner(nullptr);
     }
 
     struct nil_gate_raii_context
@@ -86,36 +75,37 @@ extern "C"
         void (*cleanup)(void*);
     };
 
-    void nil_gate_core_post(nil_gate_core* core, nil_gate_core_callable callable)
+    void nil_gate_core_post(nil_gate_core core, nil_gate_core_callable callable)
     {
         auto scoped = std::make_shared<nil_gate_raii_context>(callable.context, callable.cleanup);
-        core->core->post(
-            [exec = callable.exec, scoped = std::move(scoped)](nil::gate::Graph& gate_graph) mutable
-            {
-                if (exec != nullptr)
+        static_cast<nil::gate::Core*>(core.handle)
+            ->post(
+                [exec = callable.exec, scoped = std::move(scoped)](nil::gate::Graph& graph) mutable
                 {
-                    nil_gate_graph graph{.graph = &gate_graph};
-                    exec(&graph, scoped->context);
+                    if (exec != nullptr)
+                    {
+                        nil_gate_graph g{.handle = &graph};
+                        exec(&g, scoped->context);
+                    }
                 }
-            }
-        );
+            );
     }
 
-    void nil_gate_core_apply(nil_gate_core* core, nil_gate_core_callable callable)
+    void nil_gate_core_apply(nil_gate_core core, nil_gate_core_callable callable)
     {
         nil_gate_core_post(core, callable);
         nil_gate_core_commit(core);
     }
 
     nil_gate_eport nil_gate_graph_port(
-        nil_gate_graph* graph,
+        nil_gate_graph graph,
         nil_gate_port_info meta_info,
         void* initial_value
     )
     {
-        auto* handle = graph->graph->port(
-            nil::gate::c::PortType(initial_value, meta_info.eq, meta_info.destroy)
-        );
+        auto* handle
+            = static_cast<nil::gate::Graph*>(graph.handle)
+                  ->port(nil::gate::c::PortType(initial_value, meta_info.eq, meta_info.destroy));
         return nil_gate_eport{.handle = handle, .info = meta_info};
     }
 
@@ -145,7 +135,7 @@ extern "C"
         static_cast<nil::gate::ports::Mutable<nil::gate::c::PortType>*>(port.handle)->unset_value();
     }
 
-    nil_gate_node nil_gate_graph_node(const nil_gate_graph* graph, nil_gate_node_info node_info)
+    nil_gate_node nil_gate_graph_node(nil_gate_graph graph, nil_gate_node_info node_info)
     {
         namespace ng = nil::gate;
         auto ng_inputs = [&node_info]()
@@ -202,10 +192,10 @@ extern "C"
                 return object;
             }();
 
-            auto ngc = nil_gate_core{.core = arg.core};
+            auto ngc = nil_gate_core{.handle = arg.core};
 
             auto args = nil_gate_node_args{
-                .core = &ngc,
+                .core = ngc,
                 .inputs = {
                     .size = static_cast<std::uint8_t>(arg.inputs.size()),
                     .data=arg_inputs.data()
@@ -221,11 +211,12 @@ extern "C"
         };
 
         return {
-            .handle = graph->graph->unode<ng::c::PortType>(
-                {.inputs = std::move(ng_inputs),
-                 .output_size = node_info.outputs.size,
-                 .fn = std::move(ng_fn)}
-            )
+            .handle = static_cast<nil::gate::Graph*>(graph.handle)
+                          ->unode<ng::c::PortType>(
+                              {.inputs = std::move(ng_inputs),
+                               .output_size = node_info.outputs.size,
+                               .fn = std::move(ng_fn)}
+                          )
         };
     }
 

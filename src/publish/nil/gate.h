@@ -12,29 +12,37 @@
 extern "C"
 {
 #endif
-    struct nil_gate_core;
+    // NOLINTNEXTLINE(modernize-use-using)
+    typedef struct nil_gate_core
+    {
+        void* handle;
+    } nil_gate_core;
 
-    struct nil_gate_core* nil_gate_core_create(void);
-    void nil_gate_core_destroy(struct nil_gate_core* core);
-    void nil_gate_core_commit(struct nil_gate_core* core);
+    nil_gate_core nil_gate_core_create(void);
+    void nil_gate_core_destroy(nil_gate_core core);
+    void nil_gate_core_commit(nil_gate_core core);
 
-    void nil_gate_core_set_runner_immediate(struct nil_gate_core* core);
-    void nil_gate_core_set_runner_soft_blocking(struct nil_gate_core* core);
-    void nil_gate_core_set_runner_async(struct nil_gate_core* core, uint32_t thread_count);
-    void nil_gate_core_unset_runner(struct nil_gate_core* core);
+    void nil_gate_core_set_runner_immediate(nil_gate_core core);
+    void nil_gate_core_set_runner_soft_blocking(nil_gate_core core);
+    void nil_gate_core_set_runner_async(nil_gate_core core, uint32_t thread_count);
+    void nil_gate_core_unset_runner(nil_gate_core core);
 
-    struct nil_gate_graph;
+    // NOLINTNEXTLINE(modernize-use-using)
+    typedef struct nil_gate_graph
+    {
+        void* handle;
+    } nil_gate_graph;
 
     // NOLINTNEXTLINE(modernize-use-using)
     typedef struct nil_gate_core_callable
     {
-        void (*exec)(struct nil_gate_graph*, void*);
+        void (*exec)(nil_gate_graph*, void*);
         void* context;
         void (*cleanup)(void*);
     } nil_gate_core_callable;
 
-    void nil_gate_core_post(struct nil_gate_core* core, nil_gate_core_callable callable);
-    void nil_gate_core_apply(struct nil_gate_core* core, nil_gate_core_callable callable);
+    void nil_gate_core_post(nil_gate_core core, nil_gate_core_callable callable);
+    void nil_gate_core_apply(nil_gate_core core, nil_gate_core_callable callable);
 
     // NOLINTNEXTLINE(modernize-use-using)
     typedef struct nil_gate_port_info
@@ -50,8 +58,8 @@ extern "C"
         nil_gate_port_info info;
     } nil_gate_eport;
 
-    struct nil_gate_eport nil_gate_graph_port(
-        struct nil_gate_graph* graph,
+    nil_gate_eport nil_gate_graph_port(
+        nil_gate_graph graph,
         nil_gate_port_info info,
         void* initial_value
     );
@@ -103,7 +111,7 @@ extern "C"
     // NOLINTNEXTLINE(modernize-use-using)
     typedef struct nil_gate_node_args
     {
-        struct nil_gate_core* core;
+        nil_gate_core core;
         nil_gate_node_args_inputs inputs;
         nil_gate_mports outputs;
         void* context;
@@ -125,10 +133,7 @@ extern "C"
         void* handle;
     } nil_gate_node;
 
-    nil_gate_node nil_gate_graph_node(
-        struct nil_gate_graph const* graph,
-        nil_gate_node_info node_info
-    );
+    nil_gate_node nil_gate_graph_node(nil_gate_graph graph, nil_gate_node_info node_info);
 
     uint8_t nil_gate_node_output_size(nil_gate_node node);
     void nil_gate_node_outputs(nil_gate_node node, nil_gate_rport* outputs);
