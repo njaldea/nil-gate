@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.27.1)
 
 project(
     nil-gate
-    VERSION 1.6.4
+    VERSION 1.6.5
     LANGUAGES CXX
     DESCRIPTION "Tiny, header‑only, change‑driven DAG library (C++20) with C-API"
 )

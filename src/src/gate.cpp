@@ -4,6 +4,8 @@
 #include <nil/gate/runners/Immediate.hpp>
 #include <nil/gate/runners/SoftBlocking.hpp>
 
+#include <nil/xalt/raii.hpp>
+
 #include "PortType.hpp"
 
 extern "C"
@@ -49,43 +51,17 @@ extern "C"
         c->set_runner(nullptr);
     }
 
-    struct nil_gate_raii_context
-    {
-        explicit nil_gate_raii_context(void* init_context, void (*init_cleanup)(void*))
-            : context(init_context)
-            , cleanup(init_cleanup)
-        {
-        }
-
-        nil_gate_raii_context(nil_gate_raii_context&& o) noexcept = delete;
-        nil_gate_raii_context(const nil_gate_raii_context& o) = delete;
-
-        nil_gate_raii_context& operator=(const nil_gate_raii_context& o) = delete;
-        nil_gate_raii_context& operator=(nil_gate_raii_context&& o) = delete;
-
-        ~nil_gate_raii_context()
-        {
-            if (cleanup != nullptr)
-            {
-                cleanup(context);
-            }
-        }
-
-        void* context;
-        void (*cleanup)(void*);
-    };
-
     void nil_gate_core_post(nil_gate_core core, nil_gate_core_callable callable)
     {
-        auto scoped = std::make_shared<nil_gate_raii_context>(callable.context, callable.cleanup);
+        auto holder = std::make_shared<nil::xalt::raii<void>>(callable.context, callable.cleanup);
         static_cast<nil::gate::Core*>(core.handle)
             ->post(
-                [exec = callable.exec, scoped = std::move(scoped)](nil::gate::Graph& graph) mutable
+                [exec = callable.exec, holder = std::move(holder)](nil::gate::Graph& graph) mutable
                 {
                     if (exec != nullptr)
                     {
                         nil_gate_graph g{.handle = &graph};
-                        exec(&g, scoped->context);
+                        exec(&g, holder->object);
                     }
                 }
             );
@@ -162,9 +138,9 @@ extern "C"
             return object;
         }();
 
-        auto scoped = std::make_shared<nil_gate_raii_context>(node_info.context, node_info.cleanup);
+        auto holder = std::make_shared<nil::xalt::raii<void>>(node_info.context, node_info.cleanup);
         auto ng_fn = [exec = node_info.exec,
-                      scoped = std::move(scoped),
+                      holder = std::move(holder),
                       ng_output_info = std::move(ng_output_info)] //
             (const ng::UNode<ng::c::PortType>::Arg& arg) -> void
         {
@@ -204,7 +180,7 @@ extern "C"
                     .size = static_cast<std::uint8_t>(arg.outputs.size()),
                     .ports = arg_outputs.data(),
                 },
-                .context = scoped->context
+                .context = holder->object
             };
 
             exec(&args);
