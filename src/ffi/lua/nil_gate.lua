@@ -150,43 +150,43 @@ local function current_file_dir()
     return dir
 end
 
----@class RPort
----@field value fun(self): unknown
----@field has_value fun(self): boolean
-----@field as_input fun(self): RPort
+---@class NilGate.RPort
+---@field value fun(self: NilGate.RPort): unknown
+---@field has_value fun(self: NilGate.RPort): boolean
+----@field as_input fun(self: NilGate.RPort): NilGate.RPort
 
----@class MPort
----@field value fun(self): unknown
----@field has_value fun(self): boolean
----@field set_value fun(self, value)
----@field unset_value fun(self): unknown
-----@field as_input fun(self): RPort
+---@class NilGate.MPort
+---@field value fun(self: NilGate.MPort): unknown
+---@field has_value fun(self: NilGate.MPort): boolean
+---@field set_value fun(self: NilGate.MPort, value: unknown)
+---@field unset_value fun(self: NilGate.MPort)
+----@field as_input fun(self: NilGate.MPort): NilGate.RPort
 
----@class EPort
----@field to_direct fun(self): MPort
-----@field as_input fun(self): RPort
+---@class NilGate.EPort
+---@field to_direct fun(self: NilGate.EPort): NilGate.MPort
+----@field as_input fun(self: NilGate.EPort): NilGate.RPort
 
----@alias TypeID fun(l, r): boolean
+---@alias NilGate.TypeID fun(l, r): boolean
 
----@class Node
----@field outputs fun(): RPort[]
+---@class NilGate.Node
+---@field outputs fun(self: NilGate.Node): NilGate.RPort[]
 
----@class NodeArgs
----@field core Core
+---@class NilGate.NodeArgs
+---@field core NilGate.Core
 ---@field inputs unknown[]
----@field outputs MPort[]
+---@field outputs NilGate.MPort[]
 
----@class Graph
----@field port fun(self, eq: TypeID, value?: unknown): EPort
----@field node fun(self, fn: (fun(args: NodeArgs)), inputs: (RPort | MPort | EPort)[], outputs: TypeID[]): Node
+---@class NilGate.Graph
+---@field port fun(self: NilGate.Graph, eq: NilGate.TypeID, value?: unknown): NilGate.EPort
+---@field node fun(self: NilGate.Graph, fn: (fun(args: NilGate.NodeArgs)), inputs: (NilGate.RPort | NilGate.MPort | NilGate.EPort)[], outputs: NilGate.TypeID[]): NilGate.Node
 
----@class Core
----@field commit fun(self)
----@field post fun(self, fn: fun(graph: Graph))
----@field apply fun(self, fn: fun(graph: Graph))
----@field destroy fun(self)
+---@class NilGate.Core
+---@field commit fun(self: NilGate.Core)
+---@field post fun(self: NilGate.Core, fn: fun(graph: NilGate.Graph))
+---@field apply fun(self: NilGate.Core, fn: fun(graph: NilGate.Graph))
+---@field destroy fun(self: NilGate.Core)
 
----@class RPort
+---@class NilGate.RPort
 local function create_rport(refs, gate, rport)
     return {
         _port = rport,
@@ -203,7 +203,7 @@ local function create_rport(refs, gate, rport)
     }
 end
 
----@return MPort
+---@return NilGate.MPort
 local function create_mport(refs, gate, mport, eq)
     return {
         _port = mport,
@@ -230,7 +230,7 @@ local function create_mport(refs, gate, mport, eq)
     }
 end
 
----@return EPort
+---@return NilGate.EPort
 local function create_lua_eport(refs, lua_fns, gate, graph, eq, value)
     local port_info = ffi.new("nil_gate_port_info")
     local id = nil
@@ -255,7 +255,7 @@ local function create_lua_eport(refs, lua_fns, gate, graph, eq, value)
     }
 end
 
----@return nil
+---@return NilGate.Node
 local function create_lua_node(refs, lua_fns, gate, graph, fn, inputs, outputs)
     local id = ffi.C.malloc(1)
     local node_info = ffi.new("nil_gate_node_info")
@@ -317,6 +317,7 @@ local function create_lua_node(refs, lua_fns, gate, graph, fn, inputs, outputs)
     }
 end
 
+---@return NilGate.Graph
 local function to_lua_graph(refs, lua_fns, gate, graph)
     return {
         _graph = graph,
@@ -329,8 +330,8 @@ local function to_lua_graph(refs, lua_fns, gate, graph)
     }
 end
 
+---@return NilGate.Core
 local function to_lua_core(refs, lua_fns, gate, core)
-    ---@type Core
     return {
         _core = core,
         destroy = function(self)

@@ -290,7 +290,7 @@ class EPort:
 class Node:
     __slots__ = ("_refs", "_gate", "_node")
 
-    def __init__(self, refs: Dict[int, RefState], gate: Gate, node: NilGateNode) -> None:
+    def __init__(self, refs: Dict[int, RefState], gate: Any, node: NilGateNode) -> None:
         self._refs = refs
         self._gate = gate
         self._node = node
@@ -309,7 +309,7 @@ class Node:
 class Graph:
     __slots__ = ("_refs", "_fns", "_gate", "_libc", "_graph")
 
-    def __init__(self, refs: Dict[int, RefState], fns: _FnsState, gate: Gate, libc: Any, graph: NilGateGraph) -> None:
+    def __init__(self, refs: Dict[int, RefState], fns: _FnsState, gate: Any, libc: Any, graph: NilGateGraph) -> None:
         self._refs = refs
         self._fns = fns
         self._gate = gate

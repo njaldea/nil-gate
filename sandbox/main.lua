@@ -36,10 +36,10 @@ if options.check_post then
         return l == r
     end
 
-    ---@type EPort
+    ---@type NilGate.EPort
     local port = nil
 
-    ---@type RPort
+    ---@type NilGate.RPort
     local node_port = nil
 
     core:post(function(graph)
