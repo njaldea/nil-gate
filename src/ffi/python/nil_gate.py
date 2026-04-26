@@ -10,20 +10,20 @@ NodeFn = Callable[["NodeArgs"], None]
 PostFn = Callable[["Graph"], None]
 
 
-class NilGateCore(ctypes.Structure):
+class nil_gateCore(ctypes.Structure):
     _fields_ = [("handle", ctypes.c_void_p)]
 
 
-class NilGateGraph(ctypes.Structure):
+class nil_gateGraph(ctypes.Structure):
     _fields_ = [("handle", ctypes.c_void_p)]
 
 
-NIL_GATE_CORE_CALLABLE_EXEC = ctypes.CFUNCTYPE(None, ctypes.POINTER(NilGateGraph), ctypes.c_void_p)
+NIL_GATE_CORE_CALLABLE_EXEC = ctypes.CFUNCTYPE(None, ctypes.POINTER(nil_gateGraph), ctypes.c_void_p)
 NIL_GATE_CLEANUP = ctypes.CFUNCTYPE(None, ctypes.c_void_p)
 NIL_GATE_EQ = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p)
 
 
-class NilGateCoreCallable(ctypes.Structure):
+class nil_gateCoreCallable(ctypes.Structure):
     _fields_ = [
         ("exec", NIL_GATE_CORE_CALLABLE_EXEC),
         ("context", ctypes.c_void_p),
@@ -31,85 +31,85 @@ class NilGateCoreCallable(ctypes.Structure):
     ]
 
 
-class NilGatePortInfo(ctypes.Structure):
+class nil_gatePortInfo(ctypes.Structure):
     _fields_ = [
         ("eq", NIL_GATE_EQ),
         ("destroy", NIL_GATE_CLEANUP),
     ]
 
 
-class NilGateEPort(ctypes.Structure):
+class nil_gateEPort(ctypes.Structure):
     _fields_ = [
         ("handle", ctypes.c_void_p),
-        ("info", NilGatePortInfo),
+        ("info", nil_gatePortInfo),
     ]
 
 
-class NilGatePortInfos(ctypes.Structure):
+class nil_gatePortInfos(ctypes.Structure):
     _fields_ = [
         ("size", ctypes.c_uint8),
-        ("infos", ctypes.POINTER(NilGatePortInfo)),
+        ("infos", ctypes.POINTER(nil_gatePortInfo)),
     ]
 
 
-class NilGateRPort(ctypes.Structure):
+class nil_gateRPort(ctypes.Structure):
     _fields_ = [
         ("handle", ctypes.c_void_p),
-        ("info", NilGatePortInfo),
+        ("info", nil_gatePortInfo),
     ]
 
 
-class NilGateRPorts(ctypes.Structure):
+class nil_gateRPorts(ctypes.Structure):
     _fields_ = [
         ("size", ctypes.c_uint8),
-        ("ports", ctypes.POINTER(NilGateRPort)),
+        ("ports", ctypes.POINTER(nil_gateRPort)),
     ]
 
 
-class NilGateMPort(ctypes.Structure):
+class nil_gateMPort(ctypes.Structure):
     _fields_ = [
         ("handle", ctypes.c_void_p),
-        ("info", NilGatePortInfo),
+        ("info", nil_gatePortInfo),
     ]
 
 
-class NilGateMPorts(ctypes.Structure):
+class nil_gateMPorts(ctypes.Structure):
     _fields_ = [
         ("size", ctypes.c_uint8),
-        ("ports", ctypes.POINTER(NilGateMPort)),
+        ("ports", ctypes.POINTER(nil_gateMPort)),
     ]
 
 
-class NilGateNodeArgsInputs(ctypes.Structure):
+class nil_gateNodeArgsInputs(ctypes.Structure):
     _fields_ = [
         ("size", ctypes.c_uint8),
         ("data", ctypes.POINTER(ctypes.c_void_p)),
     ]
 
 
-class NilGateNodeArgs(ctypes.Structure):
+class nil_gateNodeArgs(ctypes.Structure):
     _fields_ = [
-        ("core", NilGateCore),
-        ("inputs", NilGateNodeArgsInputs),
-        ("outputs", NilGateMPorts),
+        ("core", nil_gateCore),
+        ("inputs", nil_gateNodeArgsInputs),
+        ("outputs", nil_gateMPorts),
         ("context", ctypes.c_void_p),
     ]
 
 
-NIL_GATE_NODE_EXEC = ctypes.CFUNCTYPE(None, ctypes.POINTER(NilGateNodeArgs))
+NIL_GATE_NODE_EXEC = ctypes.CFUNCTYPE(None, ctypes.POINTER(nil_gateNodeArgs))
 
 
-class NilGateNodeInfo(ctypes.Structure):
+class nil_gateNodeInfo(ctypes.Structure):
     _fields_ = [
         ("exec", NIL_GATE_NODE_EXEC),
-        ("inputs", NilGateRPorts),
-        ("outputs", NilGatePortInfos),
+        ("inputs", nil_gateRPorts),
+        ("outputs", nil_gatePortInfos),
         ("context", ctypes.c_void_p),
         ("cleanup", NIL_GATE_CLEANUP),
     ]
 
 
-class NilGateNode(ctypes.Structure):
+class nil_gateNode(ctypes.Structure):
     _fields_ = [("handle", ctypes.c_void_p)]
 
 def _to_ref_id(ptr: Any) -> int:
@@ -154,73 +154,73 @@ class NodeArgs:
 
 def _configure_signatures(gate: Any) -> None:
     gate.nil_gate_core_create.argtypes = []
-    gate.nil_gate_core_create.restype = NilGateCore
+    gate.nil_gate_core_create.restype = nil_gateCore
 
-    gate.nil_gate_core_destroy.argtypes = [NilGateCore]
+    gate.nil_gate_core_destroy.argtypes = [nil_gateCore]
     gate.nil_gate_core_destroy.restype = None
 
-    gate.nil_gate_core_commit.argtypes = [NilGateCore]
+    gate.nil_gate_core_commit.argtypes = [nil_gateCore]
     gate.nil_gate_core_commit.restype = None
 
-    gate.nil_gate_core_set_runner_immediate.argtypes = [NilGateCore]
+    gate.nil_gate_core_set_runner_immediate.argtypes = [nil_gateCore]
     gate.nil_gate_core_set_runner_immediate.restype = None
 
-    gate.nil_gate_core_set_runner_soft_blocking.argtypes = [NilGateCore]
+    gate.nil_gate_core_set_runner_soft_blocking.argtypes = [nil_gateCore]
     gate.nil_gate_core_set_runner_soft_blocking.restype = None
 
-    gate.nil_gate_core_set_runner_async.argtypes = [NilGateCore, ctypes.c_uint32]
+    gate.nil_gate_core_set_runner_async.argtypes = [nil_gateCore, ctypes.c_uint32]
     gate.nil_gate_core_set_runner_async.restype = None
 
-    gate.nil_gate_core_unset_runner.argtypes = [NilGateCore]
+    gate.nil_gate_core_unset_runner.argtypes = [nil_gateCore]
     gate.nil_gate_core_unset_runner.restype = None
 
-    gate.nil_gate_core_post.argtypes = [NilGateCore, NilGateCoreCallable]
+    gate.nil_gate_core_post.argtypes = [nil_gateCore, nil_gateCoreCallable]
     gate.nil_gate_core_post.restype = None
 
-    gate.nil_gate_core_apply.argtypes = [NilGateCore, NilGateCoreCallable]
+    gate.nil_gate_core_apply.argtypes = [nil_gateCore, nil_gateCoreCallable]
     gate.nil_gate_core_apply.restype = None
 
-    gate.nil_gate_graph_port.argtypes = [NilGateGraph, NilGatePortInfo, ctypes.c_void_p]
-    gate.nil_gate_graph_port.restype = NilGateEPort
+    gate.nil_gate_graph_port.argtypes = [nil_gateGraph, nil_gatePortInfo, ctypes.c_void_p]
+    gate.nil_gate_graph_port.restype = nil_gateEPort
 
-    gate.nil_gate_graph_node.argtypes = [NilGateGraph, NilGateNodeInfo]
-    gate.nil_gate_graph_node.restype = NilGateNode
+    gate.nil_gate_graph_node.argtypes = [nil_gateGraph, nil_gateNodeInfo]
+    gate.nil_gate_graph_node.restype = nil_gateNode
 
-    gate.nil_gate_node_output_size.argtypes = [NilGateNode]
+    gate.nil_gate_node_output_size.argtypes = [nil_gateNode]
     gate.nil_gate_node_output_size.restype = ctypes.c_uint8
 
-    gate.nil_gate_node_outputs.argtypes = [NilGateNode, ctypes.POINTER(NilGateRPort)]
+    gate.nil_gate_node_outputs.argtypes = [nil_gateNode, ctypes.POINTER(nil_gateRPort)]
     gate.nil_gate_node_outputs.restype = None
 
-    gate.nil_gate_rport_value.argtypes = [NilGateRPort]
+    gate.nil_gate_rport_value.argtypes = [nil_gateRPort]
     gate.nil_gate_rport_value.restype = ctypes.c_void_p
 
-    gate.nil_gate_rport_has_value.argtypes = [NilGateRPort]
+    gate.nil_gate_rport_has_value.argtypes = [nil_gateRPort]
     gate.nil_gate_rport_has_value.restype = ctypes.c_int
 
-    gate.nil_gate_mport_set_value.argtypes = [NilGateMPort, ctypes.c_void_p]
+    gate.nil_gate_mport_set_value.argtypes = [nil_gateMPort, ctypes.c_void_p]
     gate.nil_gate_mport_set_value.restype = None
 
-    gate.nil_gate_mport_unset_value.argtypes = [NilGateMPort]
+    gate.nil_gate_mport_unset_value.argtypes = [nil_gateMPort]
     gate.nil_gate_mport_unset_value.restype = None
 
-    gate.nil_gate_mport_as_input.argtypes = [NilGateMPort]
-    gate.nil_gate_mport_as_input.restype = NilGateRPort
+    gate.nil_gate_mport_as_input.argtypes = [nil_gateMPort]
+    gate.nil_gate_mport_as_input.restype = nil_gateRPort
 
-    gate.nil_gate_rport_as_input.argtypes = [NilGateRPort]
-    gate.nil_gate_rport_as_input.restype = NilGateRPort
+    gate.nil_gate_rport_as_input.argtypes = [nil_gateRPort]
+    gate.nil_gate_rport_as_input.restype = nil_gateRPort
 
-    gate.nil_gate_eport_as_input.argtypes = [NilGateEPort]
-    gate.nil_gate_eport_as_input.restype = NilGateRPort
+    gate.nil_gate_eport_as_input.argtypes = [nil_gateEPort]
+    gate.nil_gate_eport_as_input.restype = nil_gateRPort
 
-    gate.nil_gate_eport_to_direct.argtypes = [NilGateEPort]
-    gate.nil_gate_eport_to_direct.restype = NilGateMPort
+    gate.nil_gate_eport_to_direct.argtypes = [nil_gateEPort]
+    gate.nil_gate_eport_to_direct.restype = nil_gateMPort
 
 
 class RPort:
     __slots__ = ("_refs", "_gate", "_port")
 
-    def __init__(self, refs: Dict[int, RefState], gate: Any, rport: NilGateRPort) -> None:
+    def __init__(self, refs: Dict[int, RefState], gate: Any, rport: nil_gateRPort) -> None:
         self._refs = refs
         self._gate = gate
         self._port = rport
@@ -239,7 +239,7 @@ class RPort:
 class MPort:
     __slots__ = ("_refs", "_gate", "_libc", "_eq", "_port")
 
-    def __init__(self, refs: Dict[int, RefState], gate: Any, libc: Any, mport: NilGateMPort, eq: TypeEq) -> None:
+    def __init__(self, refs: Dict[int, RefState], gate: Any, libc: Any, mport: nil_gateMPort, eq: TypeEq) -> None:
         self._refs = refs
         self._gate = gate
         self._libc = libc
@@ -272,7 +272,7 @@ class MPort:
 class EPort:
     __slots__ = ("_refs", "_gate", "_libc", "_eq", "_port")
 
-    def __init__(self, refs: Dict[int, RefState], gate: Any, libc: Any, eport: NilGateEPort, eq: TypeEq) -> None:
+    def __init__(self, refs: Dict[int, RefState], gate: Any, libc: Any, eport: nil_gateEPort, eq: TypeEq) -> None:
         self._refs = refs
         self._gate = gate
         self._libc = libc
@@ -290,7 +290,7 @@ class EPort:
 class Node:
     __slots__ = ("_refs", "_gate", "_node")
 
-    def __init__(self, refs: Dict[int, RefState], gate: Any, node: NilGateNode) -> None:
+    def __init__(self, refs: Dict[int, RefState], gate: Any, node: nil_gateNode) -> None:
         self._refs = refs
         self._gate = gate
         self._node = node
@@ -299,7 +299,7 @@ class Node:
         output_size = int(self._gate.nil_gate_node_output_size(self._node))
         out: List[RPort] = []
         if output_size > 0:
-            rports = (NilGateRPort * output_size)()
+            rports = (nil_gateRPort * output_size)()
             self._gate.nil_gate_node_outputs(self._node, rports)
             for i in range(output_size):
                 out.append(RPort(self._refs, self._gate, rports[i]))
@@ -309,7 +309,7 @@ class Node:
 class Graph:
     __slots__ = ("_refs", "_fns", "_gate", "_libc", "_graph")
 
-    def __init__(self, refs: Dict[int, RefState], fns: _FnsState, gate: Any, libc: Any, graph: NilGateGraph) -> None:
+    def __init__(self, refs: Dict[int, RefState], fns: _FnsState, gate: Any, libc: Any, graph: nil_gateGraph) -> None:
         self._refs = refs
         self._fns = fns
         self._gate = gate
@@ -325,7 +325,7 @@ class Graph:
             ptr = ctypes.c_void_p(allocated)
             self._refs[_to_ref_id(ptr)] = _PortState(value=value, eq=eq)
 
-        port_info = NilGatePortInfo(eq=self._fns.port_eq, destroy=self._fns.cleanup)
+        port_info = nil_gatePortInfo(eq=self._fns.port_eq, destroy=self._fns.cleanup)
         handle = self._gate.nil_gate_graph_port(self._graph, port_info, ptr)
         return EPort(self._refs, self._gate, self._libc, handle, eq)
 
@@ -336,24 +336,24 @@ class Graph:
 
         input_rports = None
         if len(inputs) == 0:
-            c_inputs = NilGateRPorts(size=0, ports=None)
+            c_inputs = nil_gateRPorts(size=0, ports=None)
         else:
-            input_rports = (NilGateRPort * len(inputs))()
+            input_rports = (nil_gateRPort * len(inputs))()
             for i, value in enumerate(inputs):
                 input_rports[i] = value.as_input()._port
-            c_inputs = NilGateRPorts(size=len(inputs), ports=input_rports)
+            c_inputs = nil_gateRPorts(size=len(inputs), ports=input_rports)
 
         output_infos = None
         if len(outputs) == 0:
-            c_outputs = NilGatePortInfos(size=0, infos=None)
+            c_outputs = nil_gatePortInfos(size=0, infos=None)
         else:
-            output_infos = (NilGatePortInfo * len(outputs))()
+            output_infos = (nil_gatePortInfo * len(outputs))()
             for i in range(len(outputs)):
                 output_infos[i].eq = self._fns.port_eq
                 output_infos[i].destroy = self._fns.cleanup
-            c_outputs = NilGatePortInfos(size=len(outputs), infos=output_infos)
+            c_outputs = nil_gatePortInfos(size=len(outputs), infos=output_infos)
 
-        node_info = NilGateNodeInfo(
+        node_info = nil_gateNodeInfo(
             exec=self._fns.node_exec,
             inputs=c_inputs,
             outputs=c_outputs,
@@ -372,7 +372,7 @@ class Graph:
 class Core:
     __slots__ = ("_refs", "_fns", "_gate", "_libc", "_core")
 
-    def __init__(self, refs: Dict[int, RefState], fns: _FnsState, gate: Any, libc: Any, core: NilGateCore) -> None:
+    def __init__(self, refs: Dict[int, RefState], fns: _FnsState, gate: Any, libc: Any, core: nil_gateCore) -> None:
         self._refs = refs
         self._fns = fns
         self._gate = gate
@@ -458,12 +458,12 @@ class Gate:
 
             return 1 if l_value.eq(l_value.value, r_value.value) else 0
 
-        def to_core_callable(fn: PostFn) -> NilGateCoreCallable:
+        def to_core_callable(fn: PostFn) -> nil_gateCoreCallable:
             ctx_id = self._libc.malloc(1)
             if not ctx_id:
                 raise MemoryError("malloc failed")
 
-            callable_value = NilGateCoreCallable(
+            callable_value = nil_gateCoreCallable(
                 exec=self._fns.post_exec,
                 context=ctypes.c_void_p(ctx_id),
                 cleanup=self._fns.cleanup,
