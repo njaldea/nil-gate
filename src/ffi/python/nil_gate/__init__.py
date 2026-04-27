@@ -487,7 +487,7 @@ class Gate:
 
 
 def _load_gate_from_module_dir() -> Gate:
-    lib_path = Path(__file__).resolve().parent / "libgate-c-api.so"
+    lib_path = Path(__file__).resolve().parent / "libnil-gate-c-api.so"
     gate = ctypes.CDLL(str(lib_path))
     _configure_signatures(gate)
     return Gate(gate)
