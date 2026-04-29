@@ -1,6 +1,6 @@
-# nil-gate Python Binding
+# nil-gate
 
-Python binding for **nil/gate** — a tiny, change-driven DAG library for C++20.
+Python binding for **nil-gate** — a tiny, change-driven DAG library for C++20.
 
 ## Features
 
