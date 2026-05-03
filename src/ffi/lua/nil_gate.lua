@@ -126,7 +126,6 @@ ffi.cdef [[
     void nil_gate_mport_unset_value(nil_gate_mport port);
 
     nil_gate_rport nil_gate_mport_as_input(nil_gate_mport port);
-    nil_gate_rport nil_gate_rport_as_input(nil_gate_rport port);
     nil_gate_rport nil_gate_eport_as_input(nil_gate_eport port);
 
     nil_gate_mport nil_gate_eport_to_direct(nil_gate_eport port);
@@ -153,18 +152,15 @@ end
 ---@class nil_gate.RPort
 ---@field value fun(self: nil_gate.RPort): unknown
 ---@field has_value fun(self: nil_gate.RPort): boolean
-----@field as_input fun(self: nil_gate.RPort): nil_gate.RPort
 
 ---@class nil_gate.MPort
 ---@field value fun(self: nil_gate.MPort): unknown
 ---@field has_value fun(self: nil_gate.MPort): boolean
 ---@field set_value fun(self: nil_gate.MPort, value: unknown)
 ---@field unset_value fun(self: nil_gate.MPort)
-----@field as_input fun(self: nil_gate.MPort): nil_gate.RPort
 
 ---@class nil_gate.EPort
 ---@field to_direct fun(self: nil_gate.EPort): nil_gate.MPort
-----@field as_input fun(self: nil_gate.EPort): nil_gate.RPort
 
 ---@alias nil_gate.TypeID fun(l, r): boolean
 
@@ -186,48 +182,41 @@ end
 ---@field apply fun(self: nil_gate.Core, fn: fun(graph: nil_gate.Graph))
 ---@field destroy fun(self: nil_gate.Core)
 
+local function add_rport_methods(target, refs, gate)
+    target.value = function(self)
+        local rid = gate.nil_gate_rport_value(self._rport)
+        return refs[to_ref_id(rid)].value
+    end
+    target.has_value = function(self)
+        return gate.nil_gate_rport_has_value(self._rport) ~= 0
+    end
+end
+
+local function add_mport_methods(target, refs, gate, eq)
+    target.set_value = function(self, new_value)
+        local new_id = ffi.C.malloc(1)
+        refs[to_ref_id(new_id)] = { value = new_value, eq = eq }
+        gate.nil_gate_mport_set_value(self._mport, new_id)
+    end
+    target.unset_value = function(self)
+        gate.nil_gate_mport_unset_value(self._mport)
+    end
+end
+
 ---@class nil_gate.RPort
 local function create_rport(refs, gate, rport)
-    return {
-        _port = rport,
-        value = function(self)
-            local rid = gate.nil_gate_rport_value(self._port)
-            return refs[to_ref_id(rid)].value
-        end,
-        has_value = function(self)
-            return gate.nil_gate_rport_has_value(self._port) ~= 0
-        end,
-        as_input = function(self)
-            return self
-        end
-    }
+    local port = { _rport = rport }
+    add_rport_methods(port, refs, gate)
+    return port
 end
 
 ---@return nil_gate.MPort
 local function create_mport(refs, gate, mport, eq)
-    return {
-        _port = mport,
-        value = function(self)
-            local rport = gate.nil_gate_mport_as_input(self._port);
-            local rid = gate.nil_gate_rport_value(rport)
-            return refs[to_ref_id(rid)].value
-        end,
-        has_value = function(self)
-            local rport = gate.nil_gate_mport_as_input(self._port);
-            return gate.nil_gate_rport_has_value(rport) ~= 0
-        end,
-        set_value = function(self, new_value)
-            local new_id = ffi.C.malloc(1)
-            refs[to_ref_id(new_id)] = { value = new_value, eq = eq }
-            gate.nil_gate_mport_set_value(self._port, new_id)
-        end,
-        unset_value = function(self)
-            gate.nil_gate_mport_unset_value(self._port)
-        end,
-        as_input = function(self)
-            return create_rport(refs, gate, gate.nil_gate_mport_as_input(self._port))
-        end
-    }
+    local rport = gate.nil_gate_mport_as_input(mport)
+    local port = { _mport = mport, _rport = rport }
+    add_rport_methods(port, refs, gate)
+    add_mport_methods(port, refs, gate, eq)
+    return port
 end
 
 ---@return nil_gate.EPort
@@ -243,14 +232,14 @@ local function create_lua_eport(refs, lua_fns, gate, graph, eq, value)
     port_info.eq = lua_fns.port_eq
     port_info.destroy = lua_fns.cleanup
 
+    local eport = gate.nil_gate_graph_port(graph, port_info, id)
+
     return {
-        _port = gate.nil_gate_graph_port(graph, port_info, id),
+        _eport = eport,
+        _rport = gate.nil_gate_eport_as_input(eport),
         to_direct = function(self)
-            local mport = gate.nil_gate_eport_to_direct(self._port)
+            local mport = gate.nil_gate_eport_to_direct(self._eport)
             return create_mport(refs, gate, mport, eq)
-        end,
-        as_input = function(self)
-            return create_rport(refs, gate, gate.nil_gate_eport_as_input(self._port))
         end
     }
 end
@@ -269,7 +258,7 @@ local function create_lua_node(refs, lua_fns, gate, graph, fn, inputs, outputs)
     else
         input_rports = ffi.new("nil_gate_rport[?]", #inputs)
         for i, v in ipairs(inputs) do
-            input_rports[i - 1] = v:as_input()._port
+            input_rports[i - 1] = v._rport
         end
 
         node_info.inputs.size = #inputs
@@ -332,15 +321,26 @@ end
 
 ---@return nil_gate.Core
 local function to_lua_core(refs, lua_fns, gate, core)
+    local function finalize_core(c)
+        if c.handle == nil or c.handle == ffi.NULL then
+            return
+        end
+
+        for k in pairs(refs) do
+            refs[k] = nil
+        end
+
+        gate.nil_gate_core_unset_runner(c)
+        gate.nil_gate_core_destroy(c)
+        c.handle = nil
+    end
+
+    ffi.gc(core, finalize_core)
+
     return {
         _core = core,
         destroy = function(self)
-            for k in pairs(refs) do
-                refs[k] = nil
-            end
-
-            gate.nil_gate_core_unset_runner(self._core)
-            gate.nil_gate_core_destroy(self._core)
+            finalize_core(self._core)
         end,
         post = function(self, fn)
             gate.nil_gate_core_post(self._core, lua_fns.to_core_callable(fn))

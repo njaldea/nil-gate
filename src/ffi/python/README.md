@@ -29,14 +29,17 @@ def eq(l, r):
     return l == r
 
 # Setup: create a port and a doubling node
+def doubler(args):
+    args.outputs[0].set_value(args.inputs[0] * 2)
+
 def setup(graph):
     port = graph.port(eq, 21)
-    doubler = graph.node(
-        lambda args: args.outputs[0].set_value(args.inputs[0] * 2),
+    node_out = graph.node(
+        doubler,
         [port],
         [eq],
     )
-    return port, doubler.outputs()[0]
+    return port, node_out.outputs()[0]
 
 # Execute setup
 port = out = None
@@ -48,7 +51,10 @@ core.post(store_result)
 core.commit()
 
 # Update input and observe output
-core.post(lambda graph: port.to_direct().set_value(42))
+def update_input(graph):
+    port.to_direct().set_value(42)
+
+core.post(update_input)
 core.commit()
 
 print(out.value())  # Output: 84
@@ -88,16 +94,14 @@ Three port types for different access patterns:
 
 - **`EPort`** — External port (created with `graph.port()`)
   - `to_direct()` → `MPort` (mutable handle)
-  - `as_input()` → `RPort` (read-only handle)
 
 - **`MPort`** — Mutable port (write and read values)
+  - Inherits `RPort` read methods
   - `set_value(v)` / `unset_value()`
   - `value()` / `has_value()`
-  - `as_input()` → `RPort`
 
 - **`RPort`** — Read-only port (read values only)
   - `value()` / `has_value()`
-  - `as_input()` → `RPort`
 
 ### NodeArgs
 
@@ -111,18 +115,22 @@ Argument passed to node execution callback.
 
 ## Memory Model
 
-The Python binding uses `ctypes` to interact with the C API. Key points:
+## Lifetime Notes
 
-- Python values are stored in an internal registry and passed as opaque tokens to C
-- Equality functions (`eq`) are called by C to determine if values have changed
-- Cleanup is automatic when ports are destroyed, but call `core.destroy()` explicitly when done
+Core instances are owning handles. The Python binding uses GC finalizers to
+call `core.destroy()` if the object is collected while still active. Finalizer
+timing is nondeterministic and may not run at shutdown, so call
+`core.destroy()` for deterministic teardown.
+
+Graph objects passed to `post()`/`apply()` callbacks are non-owning views and
+must not be stored or destroyed. The `NodeArgs` instance passed to node
+functions is also borrowed and only valid for the duration of the callback.
 
 ## Documentation
 
 For detailed API documentation and more examples, visit:
 - [C++ Documentation](https://github.com/njaldea/nil-gate)
 - [C API Guide](https://github.com/njaldea/nil-gate/blob/master/docs/06-ffi-python.md)
-
 
 ## License
 

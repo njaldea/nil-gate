@@ -207,9 +207,6 @@ def _configure_signatures(gate: Any) -> None:
     gate.nil_gate_mport_as_input.argtypes = [nil_gateMPort]
     gate.nil_gate_mport_as_input.restype = nil_gateRPort
 
-    gate.nil_gate_rport_as_input.argtypes = [nil_gateRPort]
-    gate.nil_gate_rport_as_input.restype = nil_gateRPort
-
     gate.nil_gate_eport_as_input.argtypes = [nil_gateEPort]
     gate.nil_gate_eport_as_input.restype = nil_gateRPort
 
@@ -218,73 +215,56 @@ def _configure_signatures(gate: Any) -> None:
 
 
 class RPort:
-    __slots__ = ("_refs", "_gate", "_port")
+    __slots__ = ("_refs", "_gate", "_rport")
 
     def __init__(self, refs: Dict[int, RefState], gate: Any, rport: nil_gateRPort) -> None:
         self._refs = refs
         self._gate = gate
-        self._port = rport
+        self._rport = rport
 
     def value(self) -> Any:
-        rid = self._gate.nil_gate_rport_value(self._port)
+        rid = self._gate.nil_gate_rport_value(self._rport)
         return self._refs[_to_ref_id(rid)].value
 
     def has_value(self) -> bool:
-        return self._gate.nil_gate_rport_has_value(self._port) != 0
-
-    def as_input(self) -> "RPort":
-        return self
+        return self._gate.nil_gate_rport_has_value(self._rport) != 0
 
 
-class MPort:
-    __slots__ = ("_refs", "_gate", "_libc", "_eq", "_port")
+class MPort(RPort):
+    __slots__ = ("_libc", "_eq", "_mport")
 
     def __init__(self, refs: Dict[int, RefState], gate: Any, libc: Any, mport: nil_gateMPort, eq: TypeEq) -> None:
-        self._refs = refs
-        self._gate = gate
+        rport = gate.nil_gate_mport_as_input(mport)
+        super().__init__(refs, gate, rport)
         self._libc = libc
         self._eq = eq
-        self._port = mport
-
-    def value(self) -> Any:
-        rport = self._gate.nil_gate_mport_as_input(self._port)
-        rid = self._gate.nil_gate_rport_value(rport)
-        return self._refs[_to_ref_id(rid)].value
-
-    def has_value(self) -> bool:
-        rport = self._gate.nil_gate_mport_as_input(self._port)
-        return self._gate.nil_gate_rport_has_value(rport) != 0
+        self._mport = mport
 
     def set_value(self, new_value: Any) -> None:
         new_id = self._libc.malloc(1)
         if not new_id:
             raise MemoryError("malloc failed")
         self._refs[_to_ref_id(new_id)] = _PortState(value=new_value, eq=self._eq)
-        self._gate.nil_gate_mport_set_value(self._port, new_id)
+        self._gate.nil_gate_mport_set_value(self._mport, new_id)
 
     def unset_value(self) -> None:
-        self._gate.nil_gate_mport_unset_value(self._port)
-
-    def as_input(self) -> RPort:
-        return RPort(self._refs, self._gate, self._gate.nil_gate_mport_as_input(self._port))
+        self._gate.nil_gate_mport_unset_value(self._mport)
 
 
 class EPort:
-    __slots__ = ("_refs", "_gate", "_libc", "_eq", "_port")
+    __slots__ = ("_refs", "_gate", "_libc", "_eq", "_eport", "_rport")
 
     def __init__(self, refs: Dict[int, RefState], gate: Any, libc: Any, eport: nil_gateEPort, eq: TypeEq) -> None:
         self._refs = refs
         self._gate = gate
         self._libc = libc
         self._eq = eq
-        self._port = eport
+        self._eport = eport
+        self._rport = gate.nil_gate_eport_as_input(eport)
 
     def to_direct(self) -> MPort:
-        mport = self._gate.nil_gate_eport_to_direct(self._port)
+        mport = self._gate.nil_gate_eport_to_direct(self._eport)
         return MPort(self._refs, self._gate, self._libc, mport, self._eq)
-
-    def as_input(self) -> RPort:
-        return RPort(self._refs, self._gate, self._gate.nil_gate_eport_as_input(self._port))
 
 
 class Node:
@@ -340,7 +320,7 @@ class Graph:
         else:
             input_rports = (nil_gateRPort * len(inputs))()
             for i, value in enumerate(inputs):
-                input_rports[i] = value.as_input()._port
+                input_rports[i] = value._rport
             c_inputs = nil_gateRPorts(size=len(inputs), ports=input_rports)
 
         output_infos = None
@@ -379,10 +359,19 @@ class Core:
         self._libc = libc
         self._core = core
 
+    def __del__(self) -> None:
+        try:
+            self.destroy()
+        except Exception:
+            pass
+
     def destroy(self) -> None:
+        if not self._core.handle:
+            return
         self._refs.clear()
         self._gate.nil_gate_core_unset_runner(self._core)
         self._gate.nil_gate_core_destroy(self._core)
+        self._core.handle = None
 
     def post(self, fn: PostFn) -> None:
         self._gate.nil_gate_core_post(self._core, self._fns.to_core_callable(fn))
