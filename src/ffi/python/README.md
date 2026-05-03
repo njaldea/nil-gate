@@ -117,10 +117,10 @@ Argument passed to node execution callback.
 
 ## Lifetime Notes
 
-Core instances are owning handles. The Python binding uses GC finalizers so
-the underlying core is destroyed if the object is collected. Finalizer timing
-is nondeterministic and may not run at shutdown, so call `core.destroy()` for
-deterministic teardown.
+Core instances are owning handles. The Python binding uses GC finalizers to
+call `core.destroy()` if the object is collected while still active. Finalizer
+timing is nondeterministic and may not run at shutdown, so call
+`core.destroy()` for deterministic teardown.
 
 Graph objects passed to `post()`/`apply()` callbacks are non-owning views and
 must not be stored or destroyed. The `NodeArgs` instance passed to node
