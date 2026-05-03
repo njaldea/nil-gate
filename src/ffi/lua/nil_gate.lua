@@ -332,15 +332,26 @@ end
 
 ---@return nil_gate.Core
 local function to_lua_core(refs, lua_fns, gate, core)
+    local function finalize_core(c)
+        if c.handle == nil or c.handle == ffi.NULL then
+            return
+        end
+
+        for k in pairs(refs) do
+            refs[k] = nil
+        end
+
+        gate.nil_gate_core_unset_runner(c)
+        gate.nil_gate_core_destroy(c)
+        c.handle = nil
+    end
+
+    ffi.gc(core, finalize_core)
+
     return {
         _core = core,
         destroy = function(self)
-            for k in pairs(refs) do
-                refs[k] = nil
-            end
-
-            gate.nil_gate_core_unset_runner(self._core)
-            gate.nil_gate_core_destroy(self._core)
+            finalize_core(self._core)
         end,
         post = function(self, fn)
             gate.nil_gate_core_post(self._core, lua_fns.to_core_callable(fn))

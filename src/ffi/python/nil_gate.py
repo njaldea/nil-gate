@@ -379,10 +379,19 @@ class Core:
         self._libc = libc
         self._core = core
 
+    def __del__(self) -> None:
+        try:
+            self.destroy()
+        except Exception:
+            pass
+
     def destroy(self) -> None:
+        if not self._core.handle:
+            return
         self._refs.clear()
         self._gate.nil_gate_core_unset_runner(self._core)
         self._gate.nil_gate_core_destroy(self._core)
+        self._core.handle = None
 
     def post(self, fn: PostFn) -> None:
         self._gate.nil_gate_core_post(self._core, self._fns.to_core_callable(fn))
