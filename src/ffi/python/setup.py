@@ -1,3 +1,6 @@
+# Copyright (c) 2026, Neil Aldea <njaldea@gmail.com>
+# SPDX-License-Identifier: BSL-1.0
+
 from setuptools import setup, find_packages
 from setuptools.dist import Distribution
 
